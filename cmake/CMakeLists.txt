@@ -2,9 +2,9 @@
 # CMake build system
 # This file is part of LAMMPS
 # Created by Christoph Junghans and Richard Berger
-cmake_minimum_required(VERSION 2.8.12)
+cmake_minimum_required(VERSION 3.14)
 
-project(lammps CXX)
+project(lammps C CXX)
 set(SOVERSION 0)
 get_filename_component(LAMMPS_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../src ABSOLUTE)
 get_filename_component(LAMMPS_LIB_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../lib ABSOLUTE)
@@ -461,6 +461,7 @@ include(Packages/KOKKOS)
 include(Packages/OPT)
 include(Packages/USER-INTEL)
 include(Packages/GPU)
+include(Packages/AUTOPAS)
 
 ######################################################
 # Generate style headers based on global list of
