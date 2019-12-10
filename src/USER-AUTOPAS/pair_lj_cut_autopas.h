@@ -11,20 +11,34 @@
    See the README file in the top-level LAMMPS directory.
 ------------------------------------------------------------------------- */
 
-#ifndef LMP_SUFFIX_H
-#define LMP_SUFFIX_H
+#ifdef PAIR_CLASS
+
+PairStyle(lj/cut/autopas,PairLJCutAutoPas)
+
+#else
+
+#ifndef LMP_PAIR_LJ_CUT_AUTOPAS_H
+#define LMP_PAIR_LJ_CUT_AUTOPAS_H
+
+#include "pair_lj_cut.h"
 
 namespace LAMMPS_NS {
 
-namespace Suffix {
-  static const int NONE = 0;
-  static const int OPT  = 1<<0;
-  static const int GPU  = 1<<1;
-  static const int OMP  = 1<<2;
-  static const int INTEL  = 1<<3;
-  static const int AUTOPAS  = 1<<4;
-}
+class PairLJCutAutoPas : public PairLJCut {
+
+public:
+  PairLJCutAutoPas(class LAMMPS *);
+
+  virtual void compute(int, int);
+
+  virtual double memory_usage();
+
+// private:
+//  template <int EVFLAG, int EFLAG, int NEWTON_PAIR>
+// void eval(int ifrom, int ito, ThrData * const thr);
+};
 
 }
 
+#endif
 #endif

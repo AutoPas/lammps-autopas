@@ -1,17 +1,21 @@
-# autopas library
-option(ENABLE_AUTOPAS "Use autopas library" OFF)
-if(ENABLE_AUTOPAS)
-    message(STATUS "Using AutoPas.")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DLAMMPS_AUTOPAS")
+if (PKG_USER-AUTOPAS)
+
+    if (CMAKE_VERSION VERSION_LESS "3.14")
+        message(FATAL_ERROR "For the AutoPas package you need at least cmake-3.14")
+    endif ()
+
+    enable_language(C)
+
+    ######### 1. Clone and build AutoPas library #########
 
     # Enable ExternalProject CMake module
     include(ExternalProject)
 
     # Select https (default) or ssh path.
     set(autopasRepoPath https://github.com/AutoPas/AutoPas.git)
-    if(GIT_SUBMODULES_SSH)
+    if (GIT_SUBMODULES_SSH)
         set(autopasRepoPath git@github.com:AutoPas/AutoPas.git)
-    endif()
+    endif ()
 
     # Download and install autopas
     ExternalProject_Add(
@@ -30,7 +34,7 @@ if(ENABLE_AUTOPAS)
             -DAUTOPAS_BUILD_TESTS=OFF
             -DAUTOPAS_BUILD_EXAMPLES=OFF
             -DAUTOPAS_ENABLE_ADDRESS_SANITIZER=${ENABLE_ADDRESS_SANITIZER}
-            -DAUTOPAS_OPENMP=${OPENMP}
+            -DAUTOPAS_OPENMP=${BUILD_OMP}
             -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
     )
 
@@ -42,9 +46,9 @@ if(ENABLE_AUTOPAS)
     add_dependencies(libautopas autopas)
 
     # Using target_compile_definitions for imported targets is only possible starting with cmake 3.11, so we use add_definitions here.
-    if(OPENMP)
+    if (BUILD_OMP)
         add_definitions(-DAUTOPAS_OPENMP)
-    endif(OPENMP)
+    endif (BUILD_OMP)
 
     set_target_properties(libautopas PROPERTIES
             "IMPORTED_LOCATION" "${binary_dir}/src/autopas/libautopas.a"
@@ -63,7 +67,25 @@ if(ENABLE_AUTOPAS)
             )
 
     list(APPEND LAMMPS_LINK_LIBS "libautopas")
-else()
-    message(STATUS "Not using AutoPas.")
-    set(AUTOPAS_LIB "")
-endif()
+
+
+    ######### 2. AutoPas package settings #########
+
+    set(USER-AUTOPAS_SOURCES_DIR ${LAMMPS_SOURCE_DIR}/USER-AUTOPAS)
+
+    # Sources that are not a Style
+    set(USER-AUTOPAS_SOURCES #)${USER-AUTOPAS_SOURCES_DIR}/fix_autopas.cpp
+            # ${USER-AUTOPAS_SOURCES_DIR}/thr_data.cpp
+            # ${USER-AUTOPAS_SOURCES_DIR}/thr_omp.cpp
+            )
+
+    set_property(GLOBAL PROPERTY "AUTOPAS_SOURCES" "${USER-AUTOPAS_SOURCES}")
+
+    # detects styles which have USER-AUTOPAS version
+    RegisterStylesExt(${USER-AUTOPAS_SOURCES_DIR} autopas AUTOPAS_SOURCES)
+
+    get_property(USER-AUTOPAS_SOURCES GLOBAL PROPERTY AUTOPAS_SOURCES)
+
+    list(APPEND LIB_SOURCES ${USER-AUTOPAS_SOURCES})
+    include_directories(${USER-AUTOPAS_SOURCES_DIR})
+endif ()
