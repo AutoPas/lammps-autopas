@@ -5,6 +5,8 @@ if (PKG_USER-AUTOPAS)
     endif ()
 
     enable_language(C)
+    set(CMAKE_CXX_STANDARD 17)
+    set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
     ######### 1. Clone and build AutoPas library #########
 
@@ -21,7 +23,8 @@ if (PKG_USER-AUTOPAS)
     ExternalProject_Add(
             autopas
             GIT_REPOSITORY ${autopasRepoPath}
-            GIT_TAG f639d8b77eb62b84ffb3717ca4a3e25f1caaea86
+            # GIT_TAG f639d8b77eb62b84ffb3717ca4a3e25f1caaea86
+            GIT_TAG e95e1e61d5a9bbf862ea9100dfdb080778c5f78b
             #GIT_TAG origin/feature/regionParticleIteratorIncrease
             BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR}/autopas/build
             BUILD_BYPRODUCTS ${CMAKE_CURRENT_BINARY_DIR}/autopas/build/src/autopas/libautopas.a
@@ -36,6 +39,8 @@ if (PKG_USER-AUTOPAS)
             -DAUTOPAS_ENABLE_ADDRESS_SANITIZER=${ENABLE_ADDRESS_SANITIZER}
             -DAUTOPAS_OPENMP=${BUILD_OMP}
             -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
+            -Dspdlog_ForceBundled=ON
+            -DEigen3_ForceBundled=ON
     )
 
     # Get autopas source and binary directories from CMake project
@@ -57,12 +62,12 @@ if (PKG_USER-AUTOPAS)
 
     # workaround for INTERFACE_INCLUDE_DIRECTORIES requiring existent paths, so we create them here...
     file(MAKE_DIRECTORY ${source_dir}/src)
-    file(MAKE_DIRECTORY ${source_dir}/libs/spdlog-1.3.1/include)
+    file(MAKE_DIRECTORY ${binary_dir}/libs/spdlog/src/spdlog_bundled/include)
     file(MAKE_DIRECTORY ${binary_dir}/libs/eigen-3/include)
 
     target_include_directories(libautopas SYSTEM INTERFACE
             "${source_dir}/src"
-            "${source_dir}/libs/spdlog-1.3.1/include"
+            "${binary_dir}/libs/spdlog/src/spdlog_bundled/include"
             "${binary_dir}/libs/eigen-3/include"
             )
 
@@ -73,7 +78,7 @@ if (PKG_USER-AUTOPAS)
 
     set(USER-AUTOPAS_SOURCES_DIR ${LAMMPS_SOURCE_DIR}/USER-AUTOPAS)
 
-    # Sources that are not a Style
+    # Sources that are not a style
     set(USER-AUTOPAS_SOURCES #)${USER-AUTOPAS_SOURCES_DIR}/fix_autopas.cpp
             # ${USER-AUTOPAS_SOURCES_DIR}/thr_data.cpp
             # ${USER-AUTOPAS_SOURCES_DIR}/thr_omp.cpp
