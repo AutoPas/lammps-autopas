@@ -9,6 +9,7 @@
 ------------------------------------------------------------------------- */
 
 #include <cmath>
+#include <domain.h>
 #include "pair_lj_cut_autopas.h"
 #include "atom.h"
 #include "comm.h"
@@ -23,10 +24,11 @@ using namespace LAMMPS_NS;
 /* ---------------------------------------------------------------------- */
 
 PairLJCutAutoPas::PairLJCutAutoPas(LAMMPS *lmp) :
-        PairLJCut(lmp) {
-    suffix_flag |= Suffix::AUTOPAS;
-    respa_enable = 0;
-    cut_respa = NULL;
+    PairLJCut(lmp) {
+  suffix_flag |= Suffix::AUTOPAS;
+  respa_enable = 0;
+  cut_respa = NULL;
+  init_autopas();
 }
 
 /* ---------------------------------------------------------------------- */
@@ -35,12 +37,43 @@ void PairLJCutAutoPas::compute(int eflag, int vflag) {
 
   printf("Simulating computation in AutoPas\n");
 
-/*  ev_init(eflag,vflag);
+  ev_init(eflag, vflag);
 
   const int nall = atom->nlocal + atom->nghost;
-  const int nthreads = comm->nthreads;
   const int inum = list->inum;
 
+
+  // Copy to AutoPas
+  for(int i=0; i<atom->nlocal; ++i){
+
+    floatVecType pos{atom->x[i][0], atom->x[i][1], atom->x[i][2]};
+    floatVecType vel{atom->v[i][0], atom->v[i][1], atom->v[i][2]};
+    unsigned long moleculeId = i;
+    unsigned long typeId = atom->type[i];
+
+    auto particle = ParticleType(pos, vel, moleculeId, typeId);
+    _autopas.addParticle(particle);
+
+    // TODO_AUTOPAS Needs rvalue ref support in AutoPas
+    // _autopas.addParticle(ParticleType(pos, vel, moleculeId, typeId))
+  }
+
+  // Copy from AutoPas
+#ifdef AUTOPAS_OPENMP
+#pragma omp parallel default(none)
+#endif
+  for(auto iter=_autopas.begin(autopas::IteratorBehavior::ownedOnly); iter.isValid(); ++iter){
+    auto pos = iter->getR();
+    auto vel = iter->getV();
+    auto moleculeId = iter->getId();
+  }
+
+  for(int i=0; i<atom->nlocal; ++i){
+    _autopas.i
+  }
+  _autopas.deleteAllParticles()
+
+  /*
 #if defined(_OPENMP)
 #pragma omp parallel default(none) shared(eflag,vflag)
 #endif
@@ -153,8 +186,43 @@ void PairLJCutAutoPas::eval(int iifrom, int iito, ThrData * const thr)
 /* ---------------------------------------------------------------------- */
 
 double PairLJCutAutoPas::memory_usage() {
-    double bytes = 0; // memory_usage_thr(); //TODO_AUTOPAS Get memory usage from AutoPas
-    bytes += PairLJCut::memory_usage();
+  double bytes = 0; // memory_usage_thr(); //TODO_AUTOPAS Get memory usage from AutoPas
+  bytes += PairLJCut::memory_usage();
 
-    return bytes;
+  return bytes;
+}
+
+void PairLJCutAutoPas::init_autopas() {
+
+  // Initialize particle properties
+  for (int i = 1; i <= atom->ntypes; ++i) {
+    _particlePropertiesLibrary->addType(
+        i, epsilon[i][i], sigma[i][i], atom->mass[i], true
+    );
+  }
+
+  // _autopas.setAllowedCellSizeFactors(*cellSizeFactors);
+  //_autopas.setAllowedContainers(containerChoice);
+  //_autopas.setAllowedDataLayouts(dataLayoutOptions);
+  // _autopas.setAllowedNewton3Options(newton3Options);
+  //_autopas.setAllowedTraversals(traversalOptions);
+
+  floatVecType boxMax{}, boxMin{};
+  std::copy(std::begin(domain->boxhi), std::end(domain->boxhi), boxMax.begin());
+  std::copy(std::begin(domain->boxlo), std::end(domain->boxlo), boxMin.begin());
+  _autopas.setBoxMax(boxMax);
+  _autopas.setBoxMin(boxMin);
+
+  _autopas.setCutoff(cut_global); // TODO_AUTOPAS Test: cut_global (PairLJCut) or cutforce (Pair)
+  //_autopas.setNumSamples(tuningSamples);
+  //_autopas.setSelectorStrategy(selectorStrategy);
+  //_autopas.setTuningInterval(tuningInterval);
+  //_autopas.setTuningStrategyOption(tuningStrategy);
+  //_autopas.setVerletClusterSize(_config->verletClusterSize);
+  //_autopas.setVerletRebuildFrequency(_config->verletRebuildFrequency);
+  //_autopas.setVerletRebuildFrequency(verletRebuildFrequency);
+  //_autopas.setVerletSkin(verletSkinRadius);
+  //autopas::Logger::get()->set_level(logLevel);
+  _autopas.init();
+
 }
