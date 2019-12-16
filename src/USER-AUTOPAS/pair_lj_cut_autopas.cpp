@@ -47,6 +47,7 @@ void PairLJCutAutoPas::compute(int eflag, int vflag) {
 
   auto[invalidParticles, updated] = _autopas.updateContainer();
 
+  printf("LAMMPS -> AutoPas\n");
   // Copy to AutoPas
 #ifdef AUTOPAS_OPENMP
 #pragma omp parallel for default(none)
@@ -71,10 +72,12 @@ void PairLJCutAutoPas::compute(int eflag, int vflag) {
     // _autopas.addParticle(ParticleType(pos, vel, moleculeId, typeId))
   }
 
+  printf("AutoPas computation\n");
   // Force calculation
   PairFunctorType functor{_autopas.getCutoff(), *_particlePropertiesLibrary};
   _autopas.iteratePairwise(&functor);
 
+  printf("AutoPas -> LAMMPS\n");
   // Copy from AutoPas
 #ifdef AUTOPAS_OPENMP
 #pragma omp parallel default(none)
@@ -89,6 +92,7 @@ void PairLJCutAutoPas::compute(int eflag, int vflag) {
     atom->f[moleculeId][2] = force[2];
   }
 
+  printf("AutoPas complete\n");
   _autopas.deleteAllParticles();
 
   /*
@@ -223,7 +227,7 @@ void PairLJCutAutoPas::init_autopas() {
   }
 
   // _autopas.setAllowedCellSizeFactors(*cellSizeFactors);
-  //_autopas.setAllowedContainers(containerChoice);
+  _autopas.setAllowedContainers({autopas::ContainerOption::verletLists});
   //_autopas.setAllowedDataLayouts(dataLayoutOptions);
   // _autopas.setAllowedNewton3Options(newton3Options);
   //_autopas.setAllowedTraversals(traversalOptions);
@@ -240,17 +244,26 @@ void PairLJCutAutoPas::init_autopas() {
   //_autopas.setSelectorStrategy(selectorStrategy);
   //_autopas.setTuningInterval(tuningInterval);
   //_autopas.setTuningStrategyOption(tuningStrategy);
+
   //_autopas.setVerletClusterSize(_config->verletClusterSize);
-  //_autopas.setVerletRebuildFrequency(_config->verletRebuildFrequency);
-  //_autopas.setVerletRebuildFrequency(verletRebuildFrequency);
-  //_autopas.setVerletSkin(verletSkinRadius);
+  _autopas.setVerletRebuildFrequency(neighbor->every);
+  _autopas.setVerletSkin(neighbor->skin);
   //autopas::Logger::get()->set_level(logLevel);
 
-  std::streambuf *streamBuf;
-  streamBuf = std::cout.rdbuf();
-  std::ostream outputStream(streamBuf);
-  autopas::Logger::create(outputStream);
+
+  // std::streambuf *_streamBuf;
+  // streamBuf = std::cout.rdbuf();
+
+  //std::ofstream logFile;
+  //logFile.open("autopas.log");
+  //streamBuf = logFile.rdbuf();
+
+  //std::ostream outputStream(streamBuf);
+
+  autopas::Logger::create();
   autopas::Logger::get()->set_level(autopas::Logger::LogLevel::debug);
 
   _autopas.init();
+
+  neighbor->every = 1; //TODO AutoPas cant handle adding particles that are out of bounds
 }
