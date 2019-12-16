@@ -44,7 +44,9 @@ private:
   using ParticleCellType = autopas::FullParticleCell<ParticleType>;
   using AutoPasType = autopas::AutoPas<ParticleType, ParticleCellType>;
   using ParticlePropertiesLibraryType = ParticlePropertiesLibrary<floatType, size_t>;
+  using PairFunctorType = autopas::LJFunctor<ParticleType, ParticleCellType, true>;
 
+  bool _isInitialized = false;
   AutoPasType _autopas;
   std::unique_ptr<ParticlePropertiesLibraryType> _particlePropertiesLibrary;
 
