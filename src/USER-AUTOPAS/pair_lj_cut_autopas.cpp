@@ -87,9 +87,9 @@ void PairLJCutAutoPas::compute(int eflag, int vflag) {
     auto force = iter->getF();
     int moleculeId = iter->getID();
 
-    atom->f[moleculeId][0] = force[0];
-    atom->f[moleculeId][1] = force[1];
-    atom->f[moleculeId][2] = force[2];
+    atom->f[moleculeId][0] += force[0];
+    atom->f[moleculeId][1] += force[1];
+    atom->f[moleculeId][2] += force[2];
   }
 
   printf("AutoPas complete\n");
@@ -221,14 +221,15 @@ void PairLJCutAutoPas::init_autopas() {
       cut_global);
 
   for (int i = 1; i <= atom->ntypes; ++i) {
+    std::cout << "Type, Eps, Sig: " << i << " " << epsilon[i][i] << " " << sigma[i][i] << "\n";
     _particlePropertiesLibrary->addType(
-        i, epsilon[i][i], sigma[i][i], atom->mass[i], true
+        i, epsilon[i][i], sigma[i][i], atom->mass[i], false
     );
   }
 
   // _autopas.setAllowedCellSizeFactors(*cellSizeFactors);
   _autopas.setAllowedContainers({autopas::ContainerOption::verletLists});
-  //_autopas.setAllowedDataLayouts(dataLayoutOptions);
+  _autopas.setAllowedDataLayouts({autopas::DataLayoutOption::aos});
   // _autopas.setAllowedNewton3Options(newton3Options);
   //_autopas.setAllowedTraversals(traversalOptions);
 
