@@ -83,7 +83,7 @@ void PairLJCutAutoPas::compute(int eflag, int vflag) {
 #pragma omp parallel default(none)
 #endif
   for (auto iter = _autopas.begin(
-      autopas::IteratorBehavior::haloAndOwned); iter.isValid(); ++iter) {
+      autopas::IteratorBehavior::ownedOnly); iter.isValid(); ++iter) {
     auto force = iter->getF();
     int moleculeId = iter->getID();
 
@@ -223,7 +223,7 @@ void PairLJCutAutoPas::init_autopas() {
   for (int i = 1; i <= atom->ntypes; ++i) {
     std::cout << "Type, Eps, Sig: " << i << " " << epsilon[i][i] << " " << sigma[i][i] << "\n";
     _particlePropertiesLibrary->addType(
-        i, epsilon[i][i], sigma[i][i], atom->mass[i], false
+        i, epsilon[i][i], sigma[i][i], atom->mass[i]
     );
   }
 

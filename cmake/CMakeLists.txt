@@ -4,6 +4,11 @@
 # Created by Christoph Junghans and Richard Berger
 cmake_minimum_required(VERSION 2.8.12)
 
+# Suppresses a warning in cmake 3.x concerning a currently unused feature (setting VERSION in project() command)
+if (POLICY CMP0048)
+  cmake_policy(SET CMP0048 OLD)
+endif (POLICY CMP0048)
+
 project(lammps CXX)
 set(SOVERSION 0)
 get_filename_component(LAMMPS_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../src ABSOLUTE)

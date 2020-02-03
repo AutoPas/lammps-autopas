@@ -1,7 +1,7 @@
 if (PKG_USER-AUTOPAS)
 
-    if (CMAKE_VERSION VERSION_LESS "3.14")
-        message(FATAL_ERROR "For the AutoPas package you need at least cmake-3.14")
+    if (CMAKE_VERSION VERSION_LESS "3.16")
+        message(FATAL_ERROR "For the AutoPas package you need at least cmake-3.16")
     endif ()
 
     enable_language(C)
@@ -10,68 +10,44 @@ if (PKG_USER-AUTOPAS)
 
     ######### 1. Clone and build AutoPas library #########
 
-    # Enable ExternalProject CMake module
-    include(ExternalProject)
+    # Enable FetchContent CMake module
+    include(FetchContent)
 
     # Select https (default) or ssh path.
-    set(autopasRepoPath https://github.com/AutoPas/AutoPas.git)
+    set(autopasRepoPath https://github.com/ssauermann/AutoPas.git)
     if (GIT_SUBMODULES_SSH)
-        set(autopasRepoPath git@github.com:AutoPas/AutoPas.git)
+        set(autopasRepoPath git@github.com:ssauermann/AutoPas.git)
     endif ()
 
     # Download and install autopas
-    ExternalProject_Add(
+    FetchContent_Declare(
             autopas
             GIT_REPOSITORY ${autopasRepoPath}
             # GIT_TAG f639d8b77eb62b84ffb3717ca4a3e25f1caaea86
-            GIT_TAG e95e1e61d5a9bbf862ea9100dfdb080778c5f78b
+            GIT_TAG origin/cmake-fetchcontent
             #GIT_TAG origin/feature/regionParticleIteratorIncrease
-            BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR}/autopas/build
-            BUILD_BYPRODUCTS ${CMAKE_CURRENT_BINARY_DIR}/autopas/build/src/autopas/libautopas.a
-            PREFIX ${CMAKE_CURRENT_BINARY_DIR}/autopas
-            # Disable install step
-            INSTALL_COMMAND ""
-            CMAKE_ARGS
-            -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
-            -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
-            -DAUTOPAS_BUILD_TESTS=OFF
-            -DAUTOPAS_BUILD_EXAMPLES=OFF
-            -DAUTOPAS_ENABLE_ADDRESS_SANITIZER=${ENABLE_ADDRESS_SANITIZER}
-            -DAUTOPAS_OPENMP=${BUILD_OMP}
-            -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
-            -Dspdlog_ForceBundled=ON
-            -DEigen3_ForceBundled=ON
+            #BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR}/autopas/build
+            #BUILD_BYPRODUCTS ${CMAKE_CURRENT_BINARY_DIR}/autopas/build/src/autopas/libautopas.a
+            #PREFIX ${CMAKE_CURRENT_BINARY_DIR}/autopas
     )
 
-    # Get autopas source and binary directories from CMake project
-    ExternalProject_Get_Property(autopas source_dir binary_dir)
+    option(AUTOPAS_BUILD_TESTS "" OFF)
+    option(AUTOPAS_BUILD_EXAMPLES "" OFF)
+    option(AUTOPAS_BUILD_TARGET_DOC "" OFF)
+    option(AUTOPAS_ENABLE_ADDRESS_SANITIZER "" OFF)
+    option(AUTOPAS_OPENMP "" ${BUILD_OMP})
+    option(spdlog_ForceBundled "" ON)
+    option(Eigen3_ForceBundled "" ON)
+    option(yaml-cpp_ForceBundled "" ON)
 
-    # Create a libautopas target to be used as a dependency by the program
-    add_library(libautopas IMPORTED STATIC GLOBAL)
-    add_dependencies(libautopas autopas)
+    mark_as_advanced(AUTOPAS_BUILD_TESTS)
+    mark_as_advanced(AUTOPAS_BUILD_EXAMPLES)
+    mark_as_advanced(AUTOPAS_ENABLE_ADDRESS_SANITIZER)
+    mark_as_advanced(AUTOPAS_OPENMP)
 
-    # Using target_compile_definitions for imported targets is only possible starting with cmake 3.11, so we use add_definitions here.
-    if (BUILD_OMP)
-        add_definitions(-DAUTOPAS_OPENMP)
-    endif (BUILD_OMP)
+    FetchContent_MakeAvailable(autopas)
 
-    set_target_properties(libautopas PROPERTIES
-            "IMPORTED_LOCATION" "${binary_dir}/src/autopas/libautopas.a"
-            "IMPORTED_LINK_INTERFACE_LIBRARIES" "${CMAKE_THREAD_LIBS_INIT}"
-            )
-
-    # workaround for INTERFACE_INCLUDE_DIRECTORIES requiring existent paths, so we create them here...
-    file(MAKE_DIRECTORY ${source_dir}/src)
-    file(MAKE_DIRECTORY ${binary_dir}/libs/spdlog/src/spdlog_bundled/include)
-    file(MAKE_DIRECTORY ${binary_dir}/libs/eigen-3/include)
-
-    target_include_directories(libautopas SYSTEM INTERFACE
-            "${source_dir}/src"
-            "${binary_dir}/libs/spdlog/src/spdlog_bundled/include"
-            "${binary_dir}/libs/eigen-3/include"
-            )
-
-    list(APPEND LAMMPS_LINK_LIBS "libautopas")
+    list(APPEND LAMMPS_LINK_LIBS "autopas")
 
 
     ######### 2. AutoPas package settings #########
