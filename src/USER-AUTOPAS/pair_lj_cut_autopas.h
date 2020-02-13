@@ -44,7 +44,7 @@ private:
   using ParticleCellType = autopas::FullParticleCell<ParticleType>;
   using AutoPasType = autopas::AutoPas<ParticleType, ParticleCellType>;
   using ParticlePropertiesLibraryType = ParticlePropertiesLibrary<floatType, size_t>;
-  using PairFunctorType = autopas::LJFunctor<ParticleType, ParticleCellType, /*applyShift*/ false, /*useMixing*/ true>;
+  using PairFunctorType = autopas::LJFunctor<ParticleType, ParticleCellType, /*applyShift*/ false, /*useMixing*/ true, /*useNewton3*/ autopas::FunctorN3Modes::Both, /*calculateGlobals*/ true>;
 
   bool _isInitialized = false;
   AutoPasType _autopas;
