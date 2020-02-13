@@ -14,21 +14,17 @@ if (PKG_USER-AUTOPAS)
     include(FetchContent)
 
     # Select https (default) or ssh path.
-    set(autopasRepoPath https://github.com/ssauermann/AutoPas.git)
+    set(autopasRepoPath https://github.com/AutoPas/AutoPas.git)
     if (GIT_SUBMODULES_SSH)
-        set(autopasRepoPath git@github.com:ssauermann/AutoPas.git)
+        set(autopasRepoPath git@github.com:AutoPas/AutoPas.git)
     endif ()
 
     # Download and install autopas
     FetchContent_Declare(
             autopas
             GIT_REPOSITORY ${autopasRepoPath}
-            # GIT_TAG f639d8b77eb62b84ffb3717ca4a3e25f1caaea86
-            GIT_TAG origin/cmake-fetchcontent
+            GIT_TAG d11c982165e9aa952d4c65ccbc0481af64c24e70
             #GIT_TAG origin/feature/regionParticleIteratorIncrease
-            #BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR}/autopas/build
-            #BUILD_BYPRODUCTS ${CMAKE_CURRENT_BINARY_DIR}/autopas/build/src/autopas/libautopas.a
-            #PREFIX ${CMAKE_CURRENT_BINARY_DIR}/autopas
     )
 
     option(AUTOPAS_BUILD_TESTS "" OFF)
