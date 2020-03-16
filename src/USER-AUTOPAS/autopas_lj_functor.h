@@ -157,7 +157,9 @@ public:
       j.subF(f);
     }
     if (calculateGlobals) {
-      auto virial = utils::ArrayMath::mul(dr, f);
+      std::array<double, 6> dr_virial = {dr[0],dr[1],dr[2],dr[0],dr[0],dr[1]};
+      std::array<double, 6> f_virial = {f[0],f[1],f[2],f[1],f[2],f[2]};
+      auto virial = utils::ArrayMath::mul(dr_virial, f_virial);
       double upot = epsilon24 * lj12m6 + shift6;
 
       const int threadnum = autopas_get_thread_num();
@@ -216,9 +218,12 @@ public:
     }
 
     SoAFloatPrecision upotSum = 0.;
-    SoAFloatPrecision virialSumX = 0.;
-    SoAFloatPrecision virialSumY = 0.;
-    SoAFloatPrecision virialSumZ = 0.;
+    SoAFloatPrecision virialSumXX = 0.;
+    SoAFloatPrecision virialSumYY = 0.;
+    SoAFloatPrecision virialSumZZ = 0.;
+    SoAFloatPrecision virialSumXY = 0.;
+    SoAFloatPrecision virialSumYZ = 0.;
+    SoAFloatPrecision virialSumYZ = 0.;
 
     for (unsigned int i = 0; i < soa.getNumParticles(); ++i) {
       SoAFloatPrecision fxacc = 0.;
@@ -247,7 +252,7 @@ public:
 
 // icpc vectorizes this.
 // g++ only with -ffast-math or -funsafe-math-optimizations
-#pragma omp simd reduction(+ : fxacc, fyacc, fzacc, upotSum, virialSumX, virialSumY, virialSumZ)
+#pragma omp simd reduction(+ : fxacc, fyacc, fzacc, upotSum, virialSumXX, virialSumYY, virialSumZZ, virialSumXY, virialSumXZ, virialSumYZ)
       for (unsigned int j = i + 1; j < soa.getNumParticles(); ++j) {
         if constexpr (useMixing) {
           sigmasquare = sigmaSquares[j];
@@ -289,16 +294,22 @@ public:
         fzptr[j] -= fz;
 
         if (calculateGlobals) {
-          const SoAFloatPrecision virialx = drx * fx;
-          const SoAFloatPrecision virialy = dry * fy;
-          const SoAFloatPrecision virialz = drz * fz;
+          const SoAFloatPrecision virialxx = drx * fx;
+          const SoAFloatPrecision virialyy = dry * fy;
+          const SoAFloatPrecision virialzz = drz * fz;
+          const SoAFloatPrecision virialxy = drx * fy;
+          const SoAFloatPrecision virialxz = drx * fz;
+          const SoAFloatPrecision virialyz = dry * fz;
           const SoAFloatPrecision upot = (epsilon24 * lj12m6 + shift6) * mask;
 
           // these calculations assume that this functor is not called for halo cells!
           upotSum += upot;
-          virialSumX += virialx;
-          virialSumY += virialy;
-          virialSumZ += virialz;
+          virialSumXX += virialxx;
+          virialSumYY += virialyy;
+          virialSumZZ += virialzz;
+          virialSumXY += virialxy;
+          virialSumXZ += virialxz;
+          virialSumYZ += virialyz;
         }
       }
 
@@ -311,9 +322,12 @@ public:
       // we assume newton3 to be enabled in this functor call, thus we multiply by two if the value of newton3 is false,
       // since for newton3 disabled we divide by two later on.
       _aosThreadData[threadnum].upotSum += upotSum * (newton3 ? 1. : 2.);
-      _aosThreadData[threadnum].virialSum[0] += virialSumX * (newton3 ? 1. : 2.);
-      _aosThreadData[threadnum].virialSum[1] += virialSumY * (newton3 ? 1. : 2.);
-      _aosThreadData[threadnum].virialSum[2] += virialSumZ * (newton3 ? 1. : 2.);
+      _aosThreadData[threadnum].virialSum[0] += virialSumXX * (newton3 ? 1. : 2.);
+      _aosThreadData[threadnum].virialSum[1] += virialSumYY * (newton3 ? 1. : 2.);
+      _aosThreadData[threadnum].virialSum[2] += virialSumZZ * (newton3 ? 1. : 2.);
+      _aosThreadData[threadnum].virialSum[3] += virialSumXY * (newton3 ? 1. : 2.);
+      _aosThreadData[threadnum].virialSum[4] += virialSumXZ * (newton3 ? 1. : 2.);
+      _aosThreadData[threadnum].virialSum[5] += virialSumYZ * (newton3 ? 1. : 2.);
     }
   }
 
@@ -355,9 +369,12 @@ public:
       }*/
     }
     SoAFloatPrecision upotSum = 0.;
-    SoAFloatPrecision virialSumX = 0.;
-    SoAFloatPrecision virialSumY = 0.;
-    SoAFloatPrecision virialSumZ = 0.;
+    SoAFloatPrecision virialSumXX = 0.;
+    SoAFloatPrecision virialSumYY = 0.;
+    SoAFloatPrecision virialSumZZ = 0.;
+    SoAFloatPrecision virialSumXY = 0.;
+    SoAFloatPrecision virialSumYZ = 0.;
+    SoAFloatPrecision virialSumYZ = 0.;
 
     const SoAFloatPrecision cutoffsquare = _cutoffsquare;
     SoAFloatPrecision shift6 = _shift6;
@@ -390,7 +407,7 @@ public:
 
 // icpc vectorizes this.
 // g++ only with -ffast-math or -funsafe-math-optimizations
-#pragma omp simd reduction(+ : fxacc, fyacc, fzacc, upotSum, virialSumX, virialSumY, virialSumZ)
+#pragma omp simd reduction(+ : fxacc, fyacc, fzacc, upotSum, virialSumXX, virialSumYY, virialSumZZ, virialSumXY, virialSumXZ, virialSumYZ)
       for (unsigned int j = 0; j < soa2.getNumParticles(); ++j) {
         if constexpr (useMixing) {
           sigmasquare = sigmaSquares[j];
@@ -433,15 +450,21 @@ public:
         }
 
         if (calculateGlobals) {
-          SoAFloatPrecision virialx = drx * fx;
-          SoAFloatPrecision virialy = dry * fy;
-          SoAFloatPrecision virialz = drz * fz;
+          SoAFloatPrecision virialxx = drx * fx;
+          SoAFloatPrecision virialyy = dry * fy;
+          SoAFloatPrecision virialzz = drz * fz;
+          SoAFloatPrecision virialxy = drx * fy;
+          SoAFloatPrecision virialxz = drx * fz;
+          SoAFloatPrecision virialyz = dry * fz;
           SoAFloatPrecision upot = (epsilon24 * lj12m6 + shift6) * mask;
 
           upotSum += upot;
-          virialSumX += virialx;
-          virialSumY += virialy;
-          virialSumZ += virialz;
+          virialSumXX += virialxx;
+          virialSumYY += virialyy;
+          virialSumZZ += virialzz;
+          virialSumXY += virialxy;
+          virialSumXZ += virialxz;
+          virialSumYZ += virialyz;
         }
       }
       fx1ptr[i] += fxacc;
@@ -462,9 +485,12 @@ public:
       const int threadnum = autopas_get_thread_num();
 
       _aosThreadData[threadnum].upotSum += upotSum * energyfactor;
-      _aosThreadData[threadnum].virialSum[0] += virialSumX * energyfactor;
-      _aosThreadData[threadnum].virialSum[1] += virialSumY * energyfactor;
-      _aosThreadData[threadnum].virialSum[2] += virialSumZ * energyfactor;
+      _aosThreadData[threadnum].virialSum[0] += virialSumXX * energyfactor;
+      _aosThreadData[threadnum].virialSum[1] += virialSumYY * energyfactor;
+      _aosThreadData[threadnum].virialSum[2] += virialSumZZ * energyfactor;
+      _aosThreadData[threadnum].virialSum[3] += virialSumXY * energyfactor;
+      _aosThreadData[threadnum].virialSum[4] += virialSumXZ * energyfactor;
+      _aosThreadData[threadnum].virialSum[5] += virialSumYZ * energyfactor;
     }
   }
 
@@ -704,15 +730,15 @@ public:
    */
   void initTraversal() override {
     _upotSum = 0.;
-    _virialSum = {0., 0., 0.};
+    _virialSum = {0., 0., 0., 0., 0., 0.};
     _postProcessed = false;
     for (size_t i = 0; i < _aosThreadData.size(); ++i) {
       _aosThreadData[i].setZero();
     }
 #if defined(AUTOPAS_CUDA)
     if (calculateGlobals) {
-      std::array<SoAFloatPrecision, 4> globals{0, 0, 0, 0};
-      _cudaGlobals.copyHostToDevice(4, globals.data());
+      std::array<SoAFloatPrecision, 7> globals{0, 0, 0, 0, 0, 0, 0};
+      _cudaGlobals.copyHostToDevice(7, globals.data());
     }
 #endif
   }
@@ -728,11 +754,14 @@ public:
     }
     if (calculateGlobals) {
 #if defined(AUTOPAS_CUDA)
-      std::array<SoAFloatPrecision, 4> globals{0, 0, 0, 0};
-      _cudaGlobals.copyDeviceToHost(4, globals.data());
+      std::array<SoAFloatPrecision, 7> globals{0, 0, 0, 0, 0, 0, 0};
+      _cudaGlobals.copyDeviceToHost(7, globals.data());
       _virialSum[0] += globals[0];
       _virialSum[1] += globals[1];
       _virialSum[2] += globals[2];
+      _virialSum[3] += globals[3];
+      _virialSum[4] += globals[4];
+      _virialSum[5] += globals[5];
       _upotSum += globals[3];
 #endif
       for (size_t i = 0; i < _aosThreadData.size(); ++i) {
@@ -771,7 +800,7 @@ public:
    * Get the virial.
    * @return
    */
-  double getVirial() {
+  std::array<6, double> getVirial() {
     if (not calculateGlobals) {
       throw utils::ExceptionHandler::AutoPasException(
           "Trying to get virial even though calculateGlobals is false. If you want this functor to calculate global "
@@ -780,7 +809,7 @@ public:
     if (not _postProcessed) {
       throw utils::ExceptionHandler::AutoPasException("Cannot get virial, because endTraversal was not called.");
     }
-    return _virialSum[0] + _virialSum[1] + _virialSum[2];
+    return std::array<6,double>(_virialSum);
   }
 
   /**
@@ -819,9 +848,12 @@ private:
     SoAFloatPrecision epsilon24 = _epsilon24;
 
     SoAFloatPrecision upotSum = 0.;
-    SoAFloatPrecision virialSumX = 0.;
-    SoAFloatPrecision virialSumY = 0.;
-    SoAFloatPrecision virialSumZ = 0.;
+    SoAFloatPrecision virialSumXX = 0.;
+    SoAFloatPrecision virialSumYY = 0.;
+    SoAFloatPrecision virialSumZZ = 0.;
+    SoAFloatPrecision virialSumXY = 0.;
+    SoAFloatPrecision virialSumYZ = 0.;
+    SoAFloatPrecision virialSumYZ = 0.;
 
     SoAFloatPrecision fxacc = 0;
     SoAFloatPrecision fyacc = 0;
@@ -936,25 +968,34 @@ private:
             fzArr[j] = fz;
           }
           if (calculateGlobals) {
-            SoAFloatPrecision virialx = drx * fx;
-            SoAFloatPrecision virialy = dry * fy;
-            SoAFloatPrecision virialz = drz * fz;
+            SoAFloatPrecision virialxx = drx * fx;
+            SoAFloatPrecision virialyy = dry * fy;
+            SoAFloatPrecision virialzz = drz * fz;
+            SoAFloatPrecision virialxy = drx * fy;
+            SoAFloatPrecision virialxz = drx * fz;
+            SoAFloatPrecision virialyz = dry * fz;
             SoAFloatPrecision upot = (epsilon24 * lj12m6 + shift6) * mask;
 
             if (duplicatedCalculations) {
               // for non-newton3 the division is in the post-processing step.
               SoAFloatPrecision inboxMul = inbox1Mul + (newton3 ? ownedArr[j] * .5 : 0.);
               upotSum += upot * inboxMul;
-              virialSumX += virialx * inboxMul;
-              virialSumY += virialy * inboxMul;
-              virialSumZ += virialz * inboxMul;
+              virialSumXX += virialxx * inboxMul;
+              virialSumYY += virialyy * inboxMul;
+              virialSumZZ += virialzz * inboxMul;
+              virialSumXY += virialxy * inboxMul;
+              virialSumXZ += virialxz * inboxMul;
+              virialSumYZ += virialyz * inboxMul;
 
             } else {
               // for non-newton3 we divide by 2 only in the postprocess step!
               upotSum += upot;
-              virialSumX += virialx;
-              virialSumY += virialy;
-              virialSumZ += virialz;
+              virialSumXX += virialxx;
+              virialSumYY += virialyy;
+              virialSumZZ += virialzz;
+              virialSumXY += virialxy;
+              virialSumXZ += virialxz;
+              virialSumYZ += virialyz;
             }
           }
         }
@@ -1014,9 +1055,12 @@ private:
         fzptr[j] -= fz;
       }
       if (calculateGlobals) {
-        SoAFloatPrecision virialx = drx * fx;
-        SoAFloatPrecision virialy = dry * fy;
-        SoAFloatPrecision virialz = drz * fz;
+        SoAFloatPrecision virialxx = drx * fx;
+        SoAFloatPrecision virialyy = dry * fy;
+        SoAFloatPrecision virialzz = drz * fz;
+        SoAFloatPrecision virialxy = drx * fy;
+        SoAFloatPrecision virialxz = drx * fz;
+        SoAFloatPrecision virialyz = dry * fz;
         SoAFloatPrecision upot = (epsilon24 * lj12m6 + shift6);
 
         if (duplicatedCalculations) {
@@ -1029,23 +1073,32 @@ private:
           }
           if (inbox1Mul) {
             upotSum += upot;
-            virialSumX += virialx;
-            virialSumY += virialy;
-            virialSumZ += virialz;
+            virialSumXX += virialxx;
+            virialSumYY += virialyy;
+            virialSumZZ += virialzz;
+            virialSumXY += virialxy;
+            virialSumXZ += virialxz;
+            virialSumYZ += virialyz;
           }
           // for non-newton3 the second particle will be considered in a separate calculation
           if (newton3 and ownedPtr[j]) {
             upotSum += upot;
-            virialSumX += virialx;
-            virialSumY += virialy;
-            virialSumZ += virialz;
+            virialSumXX += virialxx;
+            virialSumYY += virialyy;
+            virialSumZZ += virialzz;
+            virialSumXY += virialxy;
+            virialSumXZ += virialxz;
+            virialSumYZ += virialyz;
           }
         } else {
           // for non-newton3 we divide by 2 only in the postprocess step!
           upotSum += upot;
-          virialSumX += virialx;
-          virialSumY += virialy;
-          virialSumZ += virialz;
+          virialSumXX += virialxx;
+          virialSumYY += virialyy;
+          virialSumZZ += virialzz;
+          virialSumXY += virialxy;
+          virialSumXZ += virialxz;
+          virialSumYZ += virialyz;
         }
       }
     }
@@ -1060,9 +1113,12 @@ private:
       const int threadnum = autopas_get_thread_num();
 
       _aosThreadData[threadnum].upotSum += upotSum;
-      _aosThreadData[threadnum].virialSum[0] += virialSumX;
-      _aosThreadData[threadnum].virialSum[1] += virialSumY;
-      _aosThreadData[threadnum].virialSum[2] += virialSumZ;
+      _aosThreadData[threadnum].virialSum[0] += virialSumXX;
+      _aosThreadData[threadnum].virialSum[1] += virialSumYY;
+      _aosThreadData[threadnum].virialSum[2] += virialSumZZ;
+      _aosThreadData[threadnum].virialSum[3] += virialSumXY;
+      _aosThreadData[threadnum].virialSum[4] += virialSumXZ;
+      _aosThreadData[threadnum].virialSum[5] += virialSumYZ;
     }
   }
 
