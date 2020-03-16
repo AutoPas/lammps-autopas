@@ -2,7 +2,7 @@
 
 #include <array>
 
-#include "ParticlePropertiesLibrary.h"
+#include "autopas/molecularDynamics/ParticlePropertiesLibrary.h"
 #include "autopas/iterators/SingleCellIterator.h"
 #include "autopas/pairwiseFunctors/Functor.h"
 #include "autopas/utils/AlignedAllocator.h"
@@ -37,7 +37,7 @@ template <class Particle, class ParticleCell, bool applyShift = false, bool useM
 class LJFunctorLammps
     : public Functor<
         Particle, ParticleCell, typename Particle::SoAArraysType,
-        LJFunctor<Particle, ParticleCell, applyShift, useMixing, useNewton3, calculateGlobals, relevantForTuning>> {
+        LJFunctorLammps<Particle, ParticleCell, applyShift, useMixing, useNewton3, calculateGlobals, relevantForTuning>> {
   using SoAArraysType = typename Particle::SoAArraysType;
   using SoAFloatPrecision = typename Particle::ParticleSoAFloatPrecision;
 
@@ -45,7 +45,7 @@ public:
   /**
    * Deleted default constructor
    */
-  LJFunctor() = delete;
+  LJFunctorLammps() = delete;
 
 private:
   /**
@@ -58,7 +58,7 @@ private:
   explicit LJFunctorLammps(double cutoff, bool duplicatedCalculation, void * /*dummy*/)
       : Functor<
       Particle, ParticleCell, SoAArraysType,
-      LJFunctor<Particle, ParticleCell, applyShift, useMixing, useNewton3, calculateGlobals, relevantForTuning>>(
+      LJFunctorLammps<Particle, ParticleCell, applyShift, useMixing, useNewton3, calculateGlobals, relevantForTuning>>(
       cutoff),
         _cutoffsquare{cutoff * cutoff},
         _upotSum{0.},
@@ -222,7 +222,7 @@ public:
     SoAFloatPrecision virialSumYY = 0.;
     SoAFloatPrecision virialSumZZ = 0.;
     SoAFloatPrecision virialSumXY = 0.;
-    SoAFloatPrecision virialSumYZ = 0.;
+    SoAFloatPrecision virialSumXZ = 0.;
     SoAFloatPrecision virialSumYZ = 0.;
 
     for (unsigned int i = 0; i < soa.getNumParticles(); ++i) {
@@ -373,7 +373,7 @@ public:
     SoAFloatPrecision virialSumYY = 0.;
     SoAFloatPrecision virialSumZZ = 0.;
     SoAFloatPrecision virialSumXY = 0.;
-    SoAFloatPrecision virialSumYZ = 0.;
+    SoAFloatPrecision virialSumXZ = 0.;
     SoAFloatPrecision virialSumYZ = 0.;
 
     const SoAFloatPrecision cutoffsquare = _cutoffsquare;
@@ -800,7 +800,7 @@ public:
    * Get the virial.
    * @return
    */
-  std::array<6, double> getVirial() {
+  std::array<double, 6>* getVirial() {
     if (not calculateGlobals) {
       throw utils::ExceptionHandler::AutoPasException(
           "Trying to get virial even though calculateGlobals is false. If you want this functor to calculate global "
@@ -809,7 +809,7 @@ public:
     if (not _postProcessed) {
       throw utils::ExceptionHandler::AutoPasException("Cannot get virial, because endTraversal was not called.");
     }
-    return std::array<6,double>(_virialSum);
+    return &_virialSum;
   }
 
   /**
@@ -852,7 +852,7 @@ private:
     SoAFloatPrecision virialSumYY = 0.;
     SoAFloatPrecision virialSumZZ = 0.;
     SoAFloatPrecision virialSumXY = 0.;
-    SoAFloatPrecision virialSumYZ = 0.;
+    SoAFloatPrecision virialSumXZ = 0.;
     SoAFloatPrecision virialSumYZ = 0.;
 
     SoAFloatPrecision fxacc = 0;
@@ -925,7 +925,7 @@ private:
           ownedArr[tmpj] = ownedPtr[neighborListPtr[joff + tmpj]];
         }
         // do omp simd with reduction of the interaction
-#pragma omp simd reduction(+ : fxacc, fyacc, fzacc, upotSum, virialSumX, virialSumY, virialSumZ) safelen(vecsize)
+#pragma omp simd reduction(+ : fxacc, fyacc, fzacc, upotSum, virialSumXX, virialSumYY, virialSumZZ, virialSumXY, virialSumXZ, virialSumYZ) safelen(vecsize)
         for (size_t j = 0; j < vecsize; j++) {
           if constexpr (useMixing) {
             sigmasquare = sigmaSquares[j];
@@ -1067,9 +1067,12 @@ private:
           // for non-newton3 the division is in the post-processing step.
           if (newton3) {
             upot *= 0.5;
-            virialx *= 0.5;
-            virialy *= 0.5;
-            virialz *= 0.5;
+            virialxx *= 0.5;
+            virialyy *= 0.5;
+            virialzz *= 0.5;
+            virialxy *= 0.5;
+            virialxz *= 0.5;
+            virialyz *= 0.5;
           }
           if (inbox1Mul) {
             upotSum += upot;
@@ -1139,7 +1142,7 @@ private:
 
   private:
     // dummy parameter to get the right size (64 bytes)
-    double __remainingTo64[(64 - 4 * sizeof(double)) / sizeof(double)];
+    double __remainingTo64[(64 - 7 * sizeof(double)) / sizeof(double)];
   };
   // make sure of the size of AoSThreadData
   static_assert(sizeof(AoSThreadData) % 64 == 0, "AoSThreadData has wrong size");

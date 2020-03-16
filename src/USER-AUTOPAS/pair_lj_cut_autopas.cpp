@@ -92,11 +92,9 @@ void PairLJCutAutoPas::compute(int eflag, int vflag) {
     atom->f[moleculeId][2] += force[2];
   }
 
-  auto virial_ = functor.getVirial();
+  std::copy_n(functor.getVirial()->begin(), 6, virial);
   auto upot = functor.getUpot();
-
   eng_vdwl = upot;
-  std::fill_n(virial, 6, virial_);
 
   printf("AutoPas complete\n");
   _autopas.deleteAllParticles();

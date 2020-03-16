@@ -23,7 +23,7 @@ PairStyle(lj/cut/autopas,PairLJCutAutoPas)
 #include "pair_lj_cut.h"
 
 #include "autopas/AutoPas.h"
-#include "autopas/molecularDynamics/LJFunctor.h"
+#include "autopas_lj_functor.h"
 #include "autopas/molecularDynamics/MoleculeLJ.h"
 
 namespace LAMMPS_NS {
@@ -31,11 +31,11 @@ namespace LAMMPS_NS {
 class PairLJCutAutoPas : public PairLJCut {
 
 public:
-  PairLJCutAutoPas(class LAMMPS *);
+  explicit PairLJCutAutoPas(class LAMMPS *);
 
-  virtual void compute(int, int);
+  void compute(int, int) override;
 
-  virtual double memory_usage();
+  double memory_usage() override;
 
 private:
   using floatType = double;
@@ -44,7 +44,7 @@ private:
   using ParticleCellType = autopas::FullParticleCell<ParticleType>;
   using AutoPasType = autopas::AutoPas<ParticleType, ParticleCellType>;
   using ParticlePropertiesLibraryType = ParticlePropertiesLibrary<floatType, size_t>;
-  using PairFunctorType = autopas::LJFunctor<ParticleType, ParticleCellType, /*applyShift*/ false, /*useMixing*/ true, /*useNewton3*/ autopas::FunctorN3Modes::Both, /*calculateGlobals*/ true>;
+  using PairFunctorType = autopas::LJFunctorLammps<ParticleType, ParticleCellType, /*applyShift*/ false, /*useMixing*/ true, /*useNewton3*/ autopas::FunctorN3Modes::Both, /*calculateGlobals*/ true>;
 
   bool _isInitialized = false;
   AutoPasType _autopas;
