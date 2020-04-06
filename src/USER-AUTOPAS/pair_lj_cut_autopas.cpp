@@ -16,6 +16,7 @@
 #include "force.h"
 #include "neighbor.h"
 #include "neigh_list.h"
+#include "timer.h"
 
 #include "suffix.h"
 
@@ -38,7 +39,7 @@ void PairLJCutAutoPas::compute(int eflag, int vflag) {
     _isInitialized = true;
   }
 
-  printf("Simulating computation in AutoPas\n");
+  //printf("Simulating computation in AutoPas\n");
 
   ev_init(eflag, vflag);
 
@@ -47,7 +48,7 @@ void PairLJCutAutoPas::compute(int eflag, int vflag) {
 
   auto[invalidParticles, updated] = _autopas.updateContainer();
 
-  printf("LAMMPS -> AutoPas\n");
+  //printf("LAMMPS -> AutoPas\n");
   // Copy to AutoPas
 #ifdef AUTOPAS_OPENMP
 #pragma omp parallel for default(none)
@@ -72,12 +73,17 @@ void PairLJCutAutoPas::compute(int eflag, int vflag) {
     // _autopas.addParticle(ParticleType(pos, vel, moleculeId, typeId))
   }
 
-  printf("AutoPas computation\n");
+  timer->stamp(Timer::PAIR);
+
+  //printf("AutoPas computation\n");
+
   // Force calculation
   PairFunctorType functor{_autopas.getCutoff(), *_particlePropertiesLibrary};
   _autopas.iteratePairwise(&functor);
 
-  printf("AutoPas -> LAMMPS\n");
+  timer->stamp(Timer::AUTOPAS);
+
+  //printf("AutoPas -> LAMMPS\n");
   // Copy from AutoPas
 #ifdef AUTOPAS_OPENMP
 #pragma omp parallel default(none)
@@ -96,7 +102,7 @@ void PairLJCutAutoPas::compute(int eflag, int vflag) {
   auto upot = functor.getUpot();
   eng_vdwl = upot;
 
-  printf("AutoPas complete\n");
+  //printf("AutoPas complete\n");
   _autopas.deleteAllParticles();
 
 }
@@ -123,10 +129,10 @@ void PairLJCutAutoPas::init_autopas() {
   }
 
   // _autopas.setAllowedCellSizeFactors(*cellSizeFactors);
-  _autopas.setAllowedContainers({autopas::ContainerOption::verletLists});
-  _autopas.setAllowedDataLayouts({autopas::DataLayoutOption::aos});
-  // _autopas.setAllowedNewton3Options(newton3Options);
-  //_autopas.setAllowedTraversals(traversalOptions);
+  _autopas.setAllowedContainers({autopas::ContainerOption::verletLists, autopas::ContainerOption::linkedCells});
+  _autopas.setAllowedDataLayouts({autopas::DataLayoutOption::aos, autopas::DataLayoutOption::soa});
+  // _autopas.setAllowedNewton3Options({autopas::Newton3Option::disabled, autopas::Newton3Option::enabled});
+  // _autopas.setAllowedTraversals({autopas::TraversalOption::c08,autopas::TraversalOption::c04,autopas::TraversalOption::c04SoA, autopas::TraversalOption::sliced, autopas::TraversalOption::slicedVerlet});
 
   floatVecType boxMax{}, boxMin{};
   std::copy(std::begin(domain->boxhi), std::end(domain->boxhi), boxMax.begin());
@@ -144,20 +150,9 @@ void PairLJCutAutoPas::init_autopas() {
   //_autopas.setVerletClusterSize(_config->verletClusterSize);
   _autopas.setVerletRebuildFrequency(neighbor->every);
   _autopas.setVerletSkin(neighbor->skin);
-  //autopas::Logger::get()->set_level(logLevel);
-
-
-  // std::streambuf *_streamBuf;
-  // streamBuf = std::cout.rdbuf();
-
-  //std::ofstream logFile;
-  //logFile.open("autopas.log");
-  //streamBuf = logFile.rdbuf();
-
-  //std::ostream outputStream(streamBuf);
 
   autopas::Logger::create();
-  autopas::Logger::get()->set_level(autopas::Logger::LogLevel::debug);
+  autopas::Logger::get()->set_level(autopas::Logger::LogLevel::warn);
 
   _autopas.init();
 

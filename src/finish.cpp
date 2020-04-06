@@ -493,6 +493,8 @@ void Finish::end(int flag)
 
     mpi_timings("Pair",timer,Timer::PAIR, world,nprocs,
                 nthreads,me,time_loop,screen,logfile);
+    mpi_timings("Autopas",timer,Timer::AUTOPAS, world,nprocs,
+                nthreads,me,time_loop,screen,logfile);
 
     if (atom->molecular)
       mpi_timings("Bond",timer,Timer::BOND,world,nprocs,
