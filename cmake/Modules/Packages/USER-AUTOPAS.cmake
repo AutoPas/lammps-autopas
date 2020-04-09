@@ -23,7 +23,7 @@ if (PKG_USER-AUTOPAS)
     FetchContent_Declare(
             autopas
             GIT_REPOSITORY ${autopasRepoPath}
-            GIT_TAG d11c982165e9aa952d4c65ccbc0481af64c24e70
+            GIT_TAG 509a78ebe70020456c5e07ac68800db5936f50c9
             #GIT_TAG origin/feature/regionParticleIteratorIncrease
     )
 
