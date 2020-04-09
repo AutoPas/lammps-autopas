@@ -77,8 +77,12 @@ void PairLJCutAutoPas::compute(int eflag, int vflag) {
 
   //printf("AutoPas computation\n");
 
+
   // Force calculation
-  PairFunctorType functor{_autopas.getCutoff(), *_particlePropertiesLibrary};
+  // PairFunctorType functor{_autopas.getCutoff(), *_particlePropertiesLibrary};
+  PairFunctorType functor{_autopas.getCutoff()};
+  functor.setParticleProperties(24,1);
+
   _autopas.iteratePairwise(&functor);
 
   timer->stamp(Timer::AUTOPAS);
