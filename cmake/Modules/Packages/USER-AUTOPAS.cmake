@@ -50,6 +50,8 @@ if (PKG_USER-AUTOPAS)
 
     set(USER-AUTOPAS_SOURCES_DIR ${LAMMPS_SOURCE_DIR}/USER-AUTOPAS)
 
+    add_definitions(-DLMP_AUTOPAS)
+
     # Sources that are not a style
     set(USER-AUTOPAS_SOURCES #)${USER-AUTOPAS_SOURCES_DIR}/fix_autopas.cpp
             # ${USER-AUTOPAS_SOURCES_DIR}/thr_data.cpp

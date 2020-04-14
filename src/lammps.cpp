@@ -47,6 +47,7 @@
 #include "group.h"
 #include "output.h"
 #include "citeme.h"
+#include "accelerator_autopas.h"
 #include "accelerator_kokkos.h"
 #include "accelerator_omp.h"    // IWYU pragma: keep
 #include "timer.h"
