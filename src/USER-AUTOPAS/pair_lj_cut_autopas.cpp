@@ -43,9 +43,6 @@ void PairLJCutAutoPas::compute(int eflag, int vflag) {
 
   ev_init(eflag, vflag);
 
-  const int nall = atom->nlocal + atom->nghost;
-  const int inum = list->inum;
-
   auto[invalidParticles, updated] = _autopas.updateContainer();
 
   //printf("LAMMPS -> AutoPas\n");
@@ -79,9 +76,9 @@ void PairLJCutAutoPas::compute(int eflag, int vflag) {
 
 
   // Force calculation
-  // PairFunctorType functor{_autopas.getCutoff(), *_particlePropertiesLibrary};
+  //PairFunctorType functor{_autopas.getCutoff(), *_particlePropertiesLibrary};
   PairFunctorType functor{_autopas.getCutoff()};
-  functor.setParticleProperties(24,1);
+  functor.setParticleProperties(24, 1);
 
   _autopas.iteratePairwise(&functor);
 
@@ -110,6 +107,7 @@ void PairLJCutAutoPas::compute(int eflag, int vflag) {
   _autopas.deleteAllParticles();
 
 }
+
 /* ---------------------------------------------------------------------- */
 
 double PairLJCutAutoPas::memory_usage() {
@@ -126,17 +124,28 @@ void PairLJCutAutoPas::init_autopas() {
       cut_global);
 
   for (int i = 1; i <= atom->ntypes; ++i) {
-    std::cout << "Type, Eps, Sig: " << i << " " << epsilon[i][i] << " " << sigma[i][i] << "\n";
+    std::cout << "Type, Eps, Sig: " << i << " " << epsilon[i][i] << " "
+              << sigma[i][i] << "\n";
     _particlePropertiesLibrary->addType(
         i, epsilon[i][i], sigma[i][i], atom->mass[i]
     );
   }
 
   // _autopas.setAllowedCellSizeFactors(*cellSizeFactors);
-  _autopas.setAllowedContainers({autopas::ContainerOption::verletLists, autopas::ContainerOption::linkedCells});
-  _autopas.setAllowedDataLayouts({autopas::DataLayoutOption::aos, autopas::DataLayoutOption::soa});
-  // _autopas.setAllowedNewton3Options({autopas::Newton3Option::disabled, autopas::Newton3Option::enabled});
-  // _autopas.setAllowedTraversals({autopas::TraversalOption::c08,autopas::TraversalOption::c04,autopas::TraversalOption::c04SoA, autopas::TraversalOption::sliced, autopas::TraversalOption::slicedVerlet});
+  auto sensibleContainerOptions = autopas::ContainerOption::getAllOptions();
+  sensibleContainerOptions.erase(autopas::ContainerOption::directSum); // Never good choice
+  _autopas.setAllowedContainers(sensibleContainerOptions);
+
+  auto sensibleTraversalOptions = autopas::TraversalOption::getAllOptions();
+  sensibleTraversalOptions.erase(autopas::TraversalOption::verletClusters); //  Segfault
+  sensibleTraversalOptions.erase(autopas::TraversalOption::verletClustersColoring); // Segfault
+  sensibleTraversalOptions.erase(autopas::TraversalOption::verletClustersStatic); // Segfault
+  sensibleTraversalOptions.erase(autopas::TraversalOption::verletClusterCells); // Segfault
+  _autopas.setAllowedTraversals(sensibleTraversalOptions);
+  /*_autopas.setAllowedContainers({autopas::ContainerOption::linkedCells});
+  _autopas.setAllowedDataLayouts({autopas::DataLayoutOption::soa});
+  _autopas.setAllowedNewton3Options({autopas::Newton3Option::enabled});
+  _autopas.setAllowedTraversals({autopas::TraversalOption::c04});*/
 
   floatVecType boxMax{}, boxMin{};
   std::copy(std::begin(domain->boxhi), std::end(domain->boxhi), boxMax.begin());
@@ -148,17 +157,19 @@ void PairLJCutAutoPas::init_autopas() {
       cut_global); // TODO_AUTOPAS Test: cut_global (PairLJCut) or cutforce (Pair)
   //_autopas.setNumSamples(tuningSamples);
   //_autopas.setSelectorStrategy(selectorStrategy);
-  //_autopas.setTuningInterval(tuningInterval);
-  //_autopas.setTuningStrategyOption(tuningStrategy);
+  _autopas.setTuningInterval(1000);
+  _autopas.setTuningStrategyOption(autopas::TuningStrategyOption::fullSearch);
 
+  neighbor->every = 1; //TODO AutoPas cant handle adding particles that are out of bounds
   //_autopas.setVerletClusterSize(_config->verletClusterSize);
   _autopas.setVerletRebuildFrequency(neighbor->every);
-  _autopas.setVerletSkin(neighbor->skin);
+  std::cout << neighbor->skin << "\n";
+  // _autopas.setVerletSkin(neighbor->skin);
+  _autopas.setVerletSkin(0); // No skin needed when rebuilding every step
 
   autopas::Logger::create();
-  autopas::Logger::get()->set_level(autopas::Logger::LogLevel::warn);
+  autopas::Logger::get()->set_level(autopas::Logger::LogLevel::debug);
 
   _autopas.init();
 
-  neighbor->every = 1; //TODO AutoPas cant handle adding particles that are out of bounds
 }
