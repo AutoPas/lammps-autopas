@@ -1,5 +1,4 @@
-#ifndef AUTOPAS_LMP_H
-#define AUTOPAS_LMP_H
+#pragma once
 
 #include "pointers.h"
 // #include "autopas_type.h" // TODO_AP: Same types as LAMMPS
@@ -12,12 +11,13 @@ public:
   int autopas_exists;
 
   AutoPasLMP(class LAMMPS *, int, char **);
-  ~AutoPasLMP();
+
+  ~AutoPasLMP() override;
+
   void accelerator(int, char **);
+
   int neigh_count(int);
 
 };
 
 }
-
-#endif

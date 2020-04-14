@@ -94,7 +94,8 @@ LAMMPS::LAMMPS(int narg, char **arg, MPI_Comm communicator) :
   memory(NULL), error(NULL), universe(NULL), input(NULL), atom(NULL),
   update(NULL), neighbor(NULL), comm(NULL), domain(NULL), force(NULL),
   modify(NULL), group(NULL), output(NULL), timer(NULL), kokkos(NULL),
-  atomKK(NULL), memoryKK(NULL), python(NULL), citeme(NULL)
+  atomKK(NULL), memoryKK(NULL), autopas(nullptr), atomAP(nullptr),
+  memoryAP(nullptr), python(NULL), citeme(NULL)
 {
   memory = new Memory(this);
   error = new Error(this);
@@ -150,6 +151,7 @@ LAMMPS::LAMMPS(int narg, char **arg, MPI_Comm communicator) :
   int partscreenflag = 0;
   int partlogflag = 0;
   int kokkosflag = 0;
+  int autopasflag = 0;
   int restart2data = 0;
   int restart2dump = 0;
   int restartremap = 0;
@@ -165,6 +167,7 @@ LAMMPS::LAMMPS(int narg, char **arg, MPI_Comm communicator) :
   char *restartfile = NULL;
   int wfirst,wlast;
   int kkfirst,kklast;
+  int autopasfirst,autopaslast;
 
   int npack = 0;
   int *pfirst = NULL;
@@ -206,6 +209,18 @@ LAMMPS::LAMMPS(int narg, char **arg, MPI_Comm communicator) :
       kkfirst = iarg;
       while (iarg < narg && arg[iarg][0] != '-') iarg++;
       kklast = iarg;
+
+    } else if (strcmp(arg[iarg],"-autopas") == 0) {
+      if (iarg+2 > narg)
+        error->universe_all(FLERR,"Invalid command-line argument");
+      if (strcmp(arg[iarg+1],"on") == 0) autopasflag = 1;
+      else if (strcmp(arg[iarg+1],"off") == 0) autopasflag = 0;
+      else error->universe_all(FLERR,"Invalid command-line argument");
+      iarg += 2;
+      // delimit any extra args for the AutoPas instantiation
+      autopasfirst = iarg;
+      while (iarg < narg && arg[iarg][0] != '-') iarg++;
+      autopaslast = iarg;
 
     } else if (strcmp(arg[iarg],"-log") == 0 ||
                strcmp(arg[iarg],"-l") == 0) {
@@ -589,6 +604,16 @@ LAMMPS::LAMMPS(int narg, char **arg, MPI_Comm communicator) :
       error->all(FLERR,"Cannot use -kokkos on without KOKKOS installed");
   }
 
+  // create AutoPas class if AUTOPAS installed, unless explicitly switched off
+  // instantiation creates dummy AutoPas class if AUTOPAS is not installed
+  // add args between autopasfirst and autopaslast to Kokkos instantiation
+  autopas = nullptr;
+  if(autopasflag == 1) {
+    autopas = new AutoPasLMP(this,autopaslast-autopasfirst,&arg[autopasfirst]);
+    if (!autopas->autopas_exists)
+      error->all(FLERR,"Cannot use -autopas on without AUTOPAS installed");
+  }
+
   // allocate CiteMe class if enabled
 
   if (citeflag) citeme = new CiteMe(this);
@@ -750,6 +775,7 @@ void LAMMPS::create()
 #endif
 
   if (kokkos) atom = new AtomKokkos(this);
+  else if (autopas) atom = new AtomAutoPas(this);
   else atom = new Atom(this);
 
   if (kokkos)
@@ -761,6 +787,7 @@ void LAMMPS::create()
   force = new Force(this);    // must be after group, to create temperature
 
   if (kokkos) modify = new ModifyKokkos(this);
+  else if (autopas) modify = new ModifyAutoPas(this);
   else modify = new Modify(this);
 
   output = new Output(this);  // must be after group, so "all" exists
@@ -799,6 +826,9 @@ void LAMMPS::post_create()
     if (strcmp(suffix,"kk") == 0 &&
         (kokkos == NULL || kokkos->kokkos_exists == 0))
       error->all(FLERR,"Using suffix kk without KOKKOS package enabled");
+    if (strcmp(suffix,"autopas") == 0 &&
+        (autopas == NULL || autopas->autopas_exists == 0))
+      error->all(FLERR,"Using suffix autopas without AUTOPAS package enabled");
     if (strcmp(suffix,"omp") == 0 && !modify->check_package("OMP"))
       error->all(FLERR,"Using suffix omp without USER-OMP package installed");
 
@@ -1001,7 +1031,7 @@ void _noopt LAMMPS::init_pkg_lists()
 #undef REGION_CLASS
 }
 
-bool LAMMPS::is_installed_pkg(const char *pkg) 
+bool LAMMPS::is_installed_pkg(const char *pkg)
 {
   for (int i=0; installed_packages[i] != NULL; ++i)
     if (strcmp(installed_packages[i],pkg) == 0) return true;

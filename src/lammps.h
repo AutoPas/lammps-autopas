@@ -60,6 +60,10 @@ class LAMMPS {
   class AtomKokkos *atomKK;      // KOKKOS version of Atom class
   class MemoryKokkos *memoryKK;  // KOKKOS version of Memory class
 
+  class AutoPasLMP *autopas;       // AUTOPAS accelerator class
+  class AtomAutoPas *atomAP;      // AUTOPAS version of Atom class
+  class MemoryAutoPas *memoryAP;  // AUTOPAS version of Memory class
+
   class Python * python;         // Python interface
 
   class CiteMe *citeme;          // citation info

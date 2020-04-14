@@ -53,9 +53,10 @@ if (PKG_USER-AUTOPAS)
     add_definitions(-DLMP_AUTOPAS)
 
     # Sources that are not a style
-    set(USER-AUTOPAS_SOURCES #)${USER-AUTOPAS_SOURCES_DIR}/fix_autopas.cpp
-            # ${USER-AUTOPAS_SOURCES_DIR}/thr_data.cpp
-            # ${USER-AUTOPAS_SOURCES_DIR}/thr_omp.cpp
+    set(USER-AUTOPAS_SOURCES
+            ${USER-AUTOPAS_SOURCES_DIR}/autopas.cpp
+            ${USER-AUTOPAS_SOURCES_DIR}/atom_autopas.cpp
+            ${USER-AUTOPAS_SOURCES_DIR}/modify_autopas.cpp
             )
 
     set_property(GLOBAL PROPERTY "AUTOPAS_SOURCES" "${USER-AUTOPAS_SOURCES}")
