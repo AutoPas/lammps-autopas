@@ -37,22 +37,8 @@ public:
 
   double memory_usage() override;
 
-private:
-  using floatType = double;
-  using floatVecType = std::array<floatType, 3>;
-  using ParticleType = autopas::MoleculeLJ<>;
-  using ParticleCellType = autopas::FullParticleCell<ParticleType>;
-  using AutoPasType = autopas::AutoPas<ParticleType, ParticleCellType>;
-  using ParticlePropertiesLibraryType = ParticlePropertiesLibrary<floatType, size_t>;
-  using PairFunctorType = autopas::LJFunctorLammps<ParticleType, ParticleCellType, /*applyShift*/ false, /*useMixing*/ false, /*useNewton3*/ autopas::FunctorN3Modes::Both, /*calculateGlobals*/ true>;
-
   bool _isInitialized = false;
-  AutoPasType _autopas;
-  std::unique_ptr<ParticlePropertiesLibraryType> _particlePropertiesLibrary;
 
-
-//  template <int EVFLAG, int EFLAG, int NEWTON_PAIR>
-// void eval(int ifrom, int ito, ThrData * const thr);
   void init_autopas();
 };
 

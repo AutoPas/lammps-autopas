@@ -1,13 +1,3 @@
-/* ----------------------------------------------------------------------
-   LAMMPS - Large-scale Atomic/Molecular Massively Parallel Simulator
-   http://lammps.sandia.gov, Sandia National Laboratories
-   Steve Plimpton, sjplimp@sandia.gov
-
-   This software is distributed under the GNU General Public License.
-
-   See the README file in the top-level LAMMPS directory.
-------------------------------------------------------------------------- */
-
 #include <cmath>
 #include <domain.h>
 #include "pair_lj_cut_autopas.h"
@@ -17,6 +7,7 @@
 #include "neighbor.h"
 #include "neigh_list.h"
 #include "timer.h"
+#include "autopas.h"
 
 #include "suffix.h"
 
@@ -28,12 +19,14 @@ PairLJCutAutoPas::PairLJCutAutoPas(LAMMPS *lmp) :
     PairLJCut(lmp) {
   suffix_flag |= Suffix::AUTOPAS;
   respa_enable = 0;
-  cut_respa = NULL;
+  cut_respa = nullptr;
 }
 
 /* ---------------------------------------------------------------------- */
 
 void PairLJCutAutoPas::compute(int eflag, int vflag) {
+  auto &autopas = lmp->autopas->_autopas;
+
   if (!_isInitialized) {
     init_autopas();
     _isInitialized = true;
@@ -43,8 +36,10 @@ void PairLJCutAutoPas::compute(int eflag, int vflag) {
 
   ev_init(eflag, vflag);
 
-  auto[invalidParticles, updated] = _autopas.updateContainer();
+  auto[invalidParticles, updated] = autopas->updateContainer();
 
+
+  /*
   //printf("LAMMPS -> AutoPas\n");
   // Copy to AutoPas
 #ifdef AUTOPAS_OPENMP
@@ -68,7 +63,7 @@ void PairLJCutAutoPas::compute(int eflag, int vflag) {
 
     // TODO_AUTOPAS Needs rvalue ref support in AutoPas
     // _autopas.addParticle(ParticleType(pos, vel, moleculeId, typeId))
-  }
+  }*/
 
   timer->stamp(Timer::PAIR);
 
@@ -77,13 +72,14 @@ void PairLJCutAutoPas::compute(int eflag, int vflag) {
 
   // Force calculation
   //PairFunctorType functor{_autopas.getCutoff(), *_particlePropertiesLibrary};
-  PairFunctorType functor{_autopas.getCutoff()};
+  AutoPasLMP::PairFunctorType functor{autopas->getCutoff()};
   functor.setParticleProperties(24, 1);
 
-  _autopas.iteratePairwise(&functor);
+  autopas->iteratePairwise(&functor);
 
   timer->stamp(Timer::AUTOPAS);
 
+  /*
   //printf("AutoPas -> LAMMPS\n");
   // Copy from AutoPas
 #ifdef AUTOPAS_OPENMP
@@ -99,12 +95,14 @@ void PairLJCutAutoPas::compute(int eflag, int vflag) {
     atom->f[moleculeId][2] += force[2];
   }
 
+   */
+
   std::copy_n(functor.getVirial()->begin(), 6, virial);
   auto upot = functor.getUpot();
   eng_vdwl = upot;
 
   //printf("AutoPas complete\n");
-  _autopas.deleteAllParticles();
+ // _autopas.deleteAllParticles();
 
 }
 
@@ -119,57 +117,6 @@ double PairLJCutAutoPas::memory_usage() {
 
 void PairLJCutAutoPas::init_autopas() {
 
-  // Initialize particle properties
-  _particlePropertiesLibrary = std::make_unique<ParticlePropertiesLibraryType>(
-      cut_global);
-
-  for (int i = 1; i <= atom->ntypes; ++i) {
-    std::cout << "Type, Eps, Sig: " << i << " " << epsilon[i][i] << " "
-              << sigma[i][i] << "\n";
-    _particlePropertiesLibrary->addType(
-        i, epsilon[i][i], sigma[i][i], atom->mass[i]
-    );
-  }
-
-  // _autopas.setAllowedCellSizeFactors(*cellSizeFactors);
-  auto sensibleContainerOptions = autopas::ContainerOption::getAllOptions();
-  sensibleContainerOptions.erase(autopas::ContainerOption::directSum); // Never good choice
-  _autopas.setAllowedContainers(sensibleContainerOptions);
-
-  auto sensibleTraversalOptions = autopas::TraversalOption::getAllOptions();
-  sensibleTraversalOptions.erase(autopas::TraversalOption::verletClusters); //  Segfault
-  sensibleTraversalOptions.erase(autopas::TraversalOption::verletClustersColoring); // Segfault
-  sensibleTraversalOptions.erase(autopas::TraversalOption::verletClustersStatic); // Segfault
-  sensibleTraversalOptions.erase(autopas::TraversalOption::verletClusterCells); // Segfault
-  _autopas.setAllowedTraversals(sensibleTraversalOptions);
-  /*_autopas.setAllowedContainers({autopas::ContainerOption::linkedCells});
-  _autopas.setAllowedDataLayouts({autopas::DataLayoutOption::soa});
-  _autopas.setAllowedNewton3Options({autopas::Newton3Option::enabled});
-  _autopas.setAllowedTraversals({autopas::TraversalOption::c04});*/
-
-  floatVecType boxMax{}, boxMin{};
-  std::copy(std::begin(domain->boxhi), std::end(domain->boxhi), boxMax.begin());
-  std::copy(std::begin(domain->boxlo), std::end(domain->boxlo), boxMin.begin());
-  _autopas.setBoxMax(boxMax);
-  _autopas.setBoxMin(boxMin);
-
-  _autopas.setCutoff(
-      cut_global); // TODO_AUTOPAS Test: cut_global (PairLJCut) or cutforce (Pair)
-  //_autopas.setNumSamples(tuningSamples);
-  //_autopas.setSelectorStrategy(selectorStrategy);
-  _autopas.setTuningInterval(1000);
-  _autopas.setTuningStrategyOption(autopas::TuningStrategyOption::fullSearch);
-
-  neighbor->every = 1; //TODO AutoPas cant handle adding particles that are out of bounds
-  //_autopas.setVerletClusterSize(_config->verletClusterSize);
-  _autopas.setVerletRebuildFrequency(neighbor->every);
-  std::cout << neighbor->skin << "\n";
-  // _autopas.setVerletSkin(neighbor->skin);
-  _autopas.setVerletSkin(0); // No skin needed when rebuilding every step
-
-  autopas::Logger::create();
-  autopas::Logger::get()->set_level(autopas::Logger::LogLevel::debug);
-
-  _autopas.init();
+  lmp->autopas->init_autopas(cut_global, epsilon, sigma);
 
 }
