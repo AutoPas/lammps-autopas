@@ -25,12 +25,12 @@ public:
 
   //int neigh_count(int);
 
-  using floatType = double;
-  using floatVecType = std::array<floatType, 3>;
+  using FloatType = double;
+  using FloatVecType = std::array<FloatType, 3>;
   using ParticleType = autopas::MoleculeLJ<>;
   using ParticleCellType = autopas::FullParticleCell<ParticleType>;
   using AutoPasType = autopas::AutoPas<ParticleType, ParticleCellType>;
-  using ParticlePropertiesLibraryType = ParticlePropertiesLibrary<floatType, size_t>;
+  using ParticlePropertiesLibraryType = ParticlePropertiesLibrary<FloatType, size_t>;
   using PairFunctorType = autopas::LJFunctorLammps<ParticleType, ParticleCellType, /*applyShift*/ false, /*useMixing*/ false, /*useNewton3*/ autopas::FunctorN3Modes::Both, /*calculateGlobals*/ true>;
 
   std::unique_ptr<AutoPasType> _autopas;

@@ -44,7 +44,7 @@ void AutoPasLMP::init_autopas(double cutoff, double** epsilon, double** sigma) {
   _autopas->setAllowedNewton3Options({autopas::Newton3Option::enabled});
   _autopas->setAllowedTraversals({autopas::TraversalOption::c04});
 
-  floatVecType boxMax{}, boxMin{};
+  FloatVecType boxMax{}, boxMin{};
   std::copy(std::begin(domain->boxhi), std::end(domain->boxhi), boxMax.begin());
   std::copy(std::begin(domain->boxlo), std::end(domain->boxlo), boxMin.begin());
   _autopas->setBoxMax(boxMax);
