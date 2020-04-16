@@ -15,16 +15,6 @@ namespace LAMMPS_NS {
 
 class AutoPasLMP : protected Pointers {
 public:
-  int autopas_exists;
-
-  AutoPasLMP(class LAMMPS *, int, char **);
-
-  ~AutoPasLMP() override;
-
-  //void accelerator(int, char **);
-
-  //int neigh_count(int);
-
   using FloatType = double;
   using FloatVecType = std::array<FloatType, 3>;
   using ParticleType = autopas::MoleculeLJ<>;
@@ -33,11 +23,25 @@ public:
   using ParticlePropertiesLibraryType = ParticlePropertiesLibrary<FloatType, size_t>;
   using PairFunctorType = autopas::LJFunctorLammps<ParticleType, ParticleCellType, /*applyShift*/ false, /*useMixing*/ false, /*useNewton3*/ autopas::FunctorN3Modes::Both, /*calculateGlobals*/ true>;
 
+  int autopas_exists;
+
+  AutoPasLMP(class LAMMPS *, int, char **);
+
+  ~AutoPasLMP() override;
+
+  void addParticle(ParticleType&& particle);
+
+  //void accelerator(int, char **);
+
+  //int neigh_count(int);
+
   std::unique_ptr<AutoPasType> _autopas;
   std::unique_ptr<ParticlePropertiesLibraryType> _particlePropertiesLibrary;
 
   void init_autopas(double cutoff, double** epsilon, double** sigma);
 
+private:
+  std::vector<ParticleType> init_particles;
 };
 
 }

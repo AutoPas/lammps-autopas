@@ -33,13 +33,11 @@ class PairLJCutAutoPas : public PairLJCut {
 public:
   explicit PairLJCutAutoPas(class LAMMPS *);
 
+  void init_style() override;
+
   void compute(int, int) override;
 
   double memory_usage() override;
-
-  bool _isInitialized = false;
-
-  void init_autopas();
 };
 
 }

@@ -27,11 +27,6 @@ PairLJCutAutoPas::PairLJCutAutoPas(LAMMPS *lmp) :
 void PairLJCutAutoPas::compute(int eflag, int vflag) {
   auto &autopas = lmp->autopas->_autopas;
 
-  if (!_isInitialized) {
-    init_autopas();
-    _isInitialized = true;
-  }
-
   //printf("Simulating computation in AutoPas\n");
 
   ev_init(eflag, vflag);
@@ -115,8 +110,7 @@ double PairLJCutAutoPas::memory_usage() {
   return bytes;
 }
 
-void PairLJCutAutoPas::init_autopas() {
-
+void PairLJCutAutoPas::init_style() {
+  PairLJCut::init_style();
   lmp->autopas->init_autopas(cut_global, epsilon, sigma);
-
 }

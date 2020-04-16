@@ -52,6 +52,11 @@ public:
   void write_data(FILE *file, int i, double **pDouble) override;
 
   bigint memory_usage() override;
+
+protected:
+  tagint *tag;
+  int *type,*mask;
+  imageint *image;
 };
 }
 

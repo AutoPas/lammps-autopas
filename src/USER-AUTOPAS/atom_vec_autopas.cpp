@@ -6,7 +6,6 @@ using namespace LAMMPS_NS;
 
 AtomVecAutopas::AtomVecAutopas(LAMMPS_NS::LAMMPS *lmp)
     : AtomVec(lmp) {
-
 }
 
 AutoPasLMP::FloatVecType LAMMPS_NS::AtomVecAutopas::h_x(int i) {

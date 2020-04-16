@@ -67,4 +67,18 @@ void AutoPasLMP::init_autopas(double cutoff, double** epsilon, double** sigma) {
   autopas::Logger::get()->set_level(autopas::Logger::LogLevel::warn);
 
   _autopas->init();
+
+  // Handle particles that got added before AutoPas was initialized
+  for(auto &&p : init_particles){
+    _autopas->addParticle(p);
+  }
+  init_particles.clear();
+}
+
+void AutoPasLMP::addParticle(AutoPasLMP::ParticleType &&particle) {
+  if (_autopas){
+    _autopas->addParticle(particle);
+  } else { // Not yet initialized, store particles temporarily
+    init_particles.push_back(particle);
+  }
 }
