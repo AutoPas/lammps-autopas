@@ -34,7 +34,9 @@ void LAMMPS_NS::FixNVEAutoPas::do_integrate() {
   // if (igroup == atom->firstgroup) nlocal = atom->nfirst;
 
 #pragma omp parallel default(none) shared(autopas, rmass, mass, type, mask) private(dtfm)
-  for (auto &particle : autopas) {
+  for (auto iter = autopas.begin(
+      autopas::IteratorBehavior::ownedOnly); iter.isValid(); ++iter) {
+    auto &particle = *iter;
     int idx = particle.getID(); // TODO Handle global index to local mapping?
     if (mask[idx] & groupbit) {
 

@@ -16,13 +16,13 @@ public:
 
   void box_too_small_check() override;
 
-  int closest_image(int i, int i1) override;
+  int closest_image(int, int) override;
 
-  int closest_image(const double *const pDouble, int i) override;
+  int closest_image(const double *const, int) override;
 
-  void lamda2x(int i) override;
+  void lamda2x(int) override;
 
-  void x2lamda(int i) override;
+  void x2lamda(int) override;
 
 };
 

@@ -8,9 +8,6 @@
 #include "pointers.h"
 #include "autopas_lj_functor.h"
 
-// #include "autopas_type.h" // TODO_AP: Same types as LAMMPS
-// #include "pair_autopas.h"  // TODO_AP: No default pair style for AP
-
 namespace LAMMPS_NS {
 
 class AutoPasLMP : protected Pointers {
@@ -29,19 +26,13 @@ public:
 
   ~AutoPasLMP() override;
 
-  void addParticle(ParticleType&& particle);
-
-  //void accelerator(int, char **);
-
-  //int neigh_count(int);
-
   std::unique_ptr<AutoPasType> _autopas;
   std::unique_ptr<ParticlePropertiesLibraryType> _particlePropertiesLibrary;
 
   void init_autopas(double cutoff, double** epsilon, double** sigma);
 
-private:
-  std::vector<ParticleType> init_particles;
+  [[nodiscard]] ParticleType* particle_by_index(int idx);
+
 };
 
 }
