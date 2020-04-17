@@ -100,7 +100,7 @@ AutoPasLMP::ParticleType *AutoPasLMP::particle_by_index(int idx) {
   // Assuming the particle ids are unique, no reduction is necessary
 #pragma omp parallel default(none) shared(idx, particle)
   for (auto iter = _autopas->begin(
-      autopas::IteratorBehavior::ownedOnly); iter.isValid(); ++iter) {
+      autopas::IteratorBehavior::haloAndOwned); iter.isValid(); ++iter) {
     auto &p = *iter;
     if (p.getID() == idx) {
       particle = &p;
