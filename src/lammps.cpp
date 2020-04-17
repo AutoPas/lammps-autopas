@@ -762,7 +762,7 @@ void LAMMPS::create()
   // so that nthreads is defined when create_avec invokes grow()
 
   if (kokkos) comm = new CommKokkos(this);
-  // else if (autopas) comm = new CommAutoPas(this); //TODO
+  else if (autopas) comm = new CommAutoPas(this); //TODO
   else comm = new CommBrick(this);
 
   if (kokkos) neighbor = new NeighborKokkos(this);
