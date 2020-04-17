@@ -762,12 +762,15 @@ void LAMMPS::create()
   // so that nthreads is defined when create_avec invokes grow()
 
   if (kokkos) comm = new CommKokkos(this);
+  // else if (autopas) comm = new CommAutoPas(this); //TODO
   else comm = new CommBrick(this);
 
   if (kokkos) neighbor = new NeighborKokkos(this);
+  // else if (autopas) neighbor = new NeighborAutoPas(this); //TODO
   else neighbor = new Neighbor(this);
 
   if (kokkos) domain = new DomainKokkos(this);
+  else if (autopas) domain = new DomainAutoPas(this);
 #ifdef LMP_USER_OMP
   else domain = new DomainOMP(this);
 #else
@@ -787,7 +790,7 @@ void LAMMPS::create()
   force = new Force(this);    // must be after group, to create temperature
 
   if (kokkos) modify = new ModifyKokkos(this);
-  else if (autopas) modify = new ModifyAutoPas(this);
+  // else if (autopas) modify = new ModifyAutoPas(this); //TODO
   else modify = new Modify(this);
 
   output = new Output(this);  // must be after group, so "all" exists

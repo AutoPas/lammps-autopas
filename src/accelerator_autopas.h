@@ -10,7 +10,7 @@
 #include "atom_autopas.h"        // IWYU pragma: export
 // #include "comm_autopas.h"         // IWYU pragma: export
 // #include "comm_tiled_autopas.h"   // IWYU pragma: export
-// #include "domain_autopas.h"       // IWYU pragma: export
+#include "domain_autopas.h"       // IWYU pragma: export
 // #include "neighbor_autopas.h"     // IWYU pragma: export
 #include "memory_autopas.h"       // IWYU pragma: export
 #include "modify_autopas.h"       // IWYU pragma: export

@@ -18,6 +18,7 @@ ModifyAutoPas::ModifyAutoPas(LAMMPS *lmp) : Modify(lmp)
 
 void ModifyAutoPas::setup(int vflag)
 {
+  throw "Not implemented";
 }
 
 /* ----------------------------------------------------------------------
@@ -27,6 +28,7 @@ void ModifyAutoPas::setup(int vflag)
 
 void ModifyAutoPas::setup_pre_exchange()
 {
+  throw "Not implemented";
 }
 
 /* ----------------------------------------------------------------------
@@ -36,6 +38,7 @@ void ModifyAutoPas::setup_pre_exchange()
 
 void ModifyAutoPas::setup_pre_neighbor()
 {
+  throw "Not implemented";
 }
 
 /* ----------------------------------------------------------------------
@@ -45,6 +48,7 @@ void ModifyAutoPas::setup_pre_neighbor()
 
 void ModifyAutoPas::setup_pre_force(int vflag)
 {
+  throw "Not implemented";
 }
 
 /* ----------------------------------------------------------------------
@@ -54,6 +58,7 @@ void ModifyAutoPas::setup_pre_force(int vflag)
 
 void ModifyAutoPas::setup_pre_reverse(int eflag, int vflag)
 {
+  throw "Not implemented";
 }
 
 /* ----------------------------------------------------------------------
@@ -62,6 +67,7 @@ void ModifyAutoPas::setup_pre_reverse(int eflag, int vflag)
 
 void ModifyAutoPas::initial_integrate(int vflag)
 {
+  throw "Not implemented";
 }
 
 /* ----------------------------------------------------------------------
@@ -70,6 +76,7 @@ void ModifyAutoPas::initial_integrate(int vflag)
 
 void ModifyAutoPas::post_integrate()
 {
+  throw "Not implemented";
 }
 
 /* ----------------------------------------------------------------------
@@ -78,6 +85,7 @@ void ModifyAutoPas::post_integrate()
 
 void ModifyAutoPas::pre_exchange()
 {
+  throw "Not implemented";
 }
 
 /* ----------------------------------------------------------------------
@@ -86,6 +94,7 @@ void ModifyAutoPas::pre_exchange()
 
 void ModifyAutoPas::pre_neighbor()
 {
+  throw "Not implemented";
 }
 
 /* ----------------------------------------------------------------------
@@ -94,6 +103,7 @@ void ModifyAutoPas::pre_neighbor()
 
 void ModifyAutoPas::pre_force(int vflag)
 {
+  throw "Not implemented";
 }
 
 /* ----------------------------------------------------------------------
@@ -102,6 +112,7 @@ void ModifyAutoPas::pre_force(int vflag)
 
 void ModifyAutoPas::pre_reverse(int eflag, int vflag)
 {
+  throw "Not implemented";
 }
 
 /* ----------------------------------------------------------------------
@@ -110,6 +121,7 @@ void ModifyAutoPas::pre_reverse(int eflag, int vflag)
 
 void ModifyAutoPas::post_force(int vflag)
 {
+  throw "Not implemented";
 }
 
 /* ----------------------------------------------------------------------
@@ -118,6 +130,7 @@ void ModifyAutoPas::post_force(int vflag)
 
 void ModifyAutoPas::final_integrate()
 {
+  throw "Not implemented";
 }
 
 /* ----------------------------------------------------------------------
@@ -127,6 +140,7 @@ void ModifyAutoPas::final_integrate()
 
 void ModifyAutoPas::end_of_step()
 {
+  throw "Not implemented";
 }
 
 /* ----------------------------------------------------------------------
@@ -137,6 +151,7 @@ void ModifyAutoPas::end_of_step()
 
 double ModifyAutoPas::thermo_energy()
 {
+  throw "Not implemented";
   return 0;
 }
 
@@ -146,6 +161,7 @@ double ModifyAutoPas::thermo_energy()
 
 void ModifyAutoPas::post_run()
 {
+  throw "Not implemented";
 }
 
 /* ----------------------------------------------------------------------
@@ -154,6 +170,7 @@ void ModifyAutoPas::post_run()
 
 void ModifyAutoPas::setup_pre_force_respa(int vflag, int ilevel)
 {
+  throw "Not implemented";
 }
 
 /* ----------------------------------------------------------------------
@@ -162,6 +179,7 @@ void ModifyAutoPas::setup_pre_force_respa(int vflag, int ilevel)
 
 void ModifyAutoPas::initial_integrate_respa(int vflag, int ilevel, int iloop)
 {
+  throw "Not implemented";
 }
 
 /* ----------------------------------------------------------------------
@@ -170,6 +188,7 @@ void ModifyAutoPas::initial_integrate_respa(int vflag, int ilevel, int iloop)
 
 void ModifyAutoPas::post_integrate_respa(int ilevel, int iloop)
 {
+  throw "Not implemented";
 }
 
 /* ----------------------------------------------------------------------
@@ -178,6 +197,7 @@ void ModifyAutoPas::post_integrate_respa(int ilevel, int iloop)
 
 void ModifyAutoPas::pre_force_respa(int vflag, int ilevel, int iloop)
 {
+  throw "Not implemented";
 }
 
 /* ----------------------------------------------------------------------
@@ -186,6 +206,7 @@ void ModifyAutoPas::pre_force_respa(int vflag, int ilevel, int iloop)
 
 void ModifyAutoPas::post_force_respa(int vflag, int ilevel, int iloop)
 {
+  throw "Not implemented";
 }
 
 /* ----------------------------------------------------------------------
@@ -194,6 +215,7 @@ void ModifyAutoPas::post_force_respa(int vflag, int ilevel, int iloop)
 
 void ModifyAutoPas::final_integrate_respa(int ilevel, int iloop)
 {
+  throw "Not implemented";
 }
 
 /* ----------------------------------------------------------------------
@@ -202,6 +224,7 @@ void ModifyAutoPas::final_integrate_respa(int ilevel, int iloop)
 
 void ModifyAutoPas::min_pre_exchange()
 {
+  throw "Not implemented";
 }
 
 /* ----------------------------------------------------------------------
@@ -210,6 +233,7 @@ void ModifyAutoPas::min_pre_exchange()
 
 void ModifyAutoPas::min_pre_neighbor()
 {
+  throw "Not implemented";
 }
 
 /* ----------------------------------------------------------------------
@@ -218,6 +242,7 @@ void ModifyAutoPas::min_pre_neighbor()
 
 void ModifyAutoPas::min_pre_force(int vflag)
 {
+  throw "Not implemented";
 }
 
 /* ----------------------------------------------------------------------
@@ -226,6 +251,7 @@ void ModifyAutoPas::min_pre_force(int vflag)
 
 void ModifyAutoPas::min_pre_reverse(int eflag, int vflag)
 {
+  throw "Not implemented";
 }
 
 /* ----------------------------------------------------------------------
@@ -234,6 +260,7 @@ void ModifyAutoPas::min_pre_reverse(int eflag, int vflag)
 
 void ModifyAutoPas::min_post_force(int vflag)
 {
+  throw "Not implemented";
 }
 
 /* ----------------------------------------------------------------------
@@ -243,6 +270,7 @@ void ModifyAutoPas::min_post_force(int vflag)
 
 double ModifyAutoPas::min_energy(double *fextra)
 {
+  throw "Not implemented";
   return 0;
 }
 
@@ -252,6 +280,7 @@ double ModifyAutoPas::min_energy(double *fextra)
 
 void ModifyAutoPas::min_store()
 {
+  throw "Not implemented";
 }
 
 /* ----------------------------------------------------------------------
@@ -260,14 +289,17 @@ void ModifyAutoPas::min_store()
 
 void ModifyAutoPas::min_clearstore()
 {
+  throw "Not implemented";
 }
 
 void ModifyAutoPas::min_pushstore()
 {
+  throw "Not implemented";
 }
 
 void ModifyAutoPas::min_popstore()
 {
+  throw "Not implemented";
 }
 
 /* ----------------------------------------------------------------------
@@ -276,7 +308,7 @@ void ModifyAutoPas::min_popstore()
 
 void ModifyAutoPas::min_step(double alpha, double *hextra)
 {
-  
+  throw "Not implemented";
 }
 
 /* ----------------------------------------------------------------------
@@ -285,6 +317,7 @@ void ModifyAutoPas::min_step(double alpha, double *hextra)
 
 double ModifyAutoPas::max_alpha(double *hextra)
 {
+  throw "Not implemented";
   return 0;
 }
 
@@ -294,6 +327,7 @@ double ModifyAutoPas::max_alpha(double *hextra)
 
 int ModifyAutoPas::min_dof()
 {
+  throw "Not implemented";
   return 0;
 }
 
@@ -303,6 +337,7 @@ int ModifyAutoPas::min_dof()
 
 int ModifyAutoPas::min_reset_ref()
 {
+  throw "Not implemented";
   return 0;
 }
 

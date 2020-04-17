@@ -108,14 +108,14 @@ class Domain : protected Pointers {
   virtual void set_local_box();
   virtual void reset_box();
   virtual void pbc();
-  void image_check();
-  void box_too_small_check();
+  virtual void image_check();
+  virtual void box_too_small_check();
   void subbox_too_small_check(double);
   void minimum_image(double &, double &, double &);
   void minimum_image(double *);
   void minimum_image_once(double *);
-  int closest_image(int, int);
-  int closest_image(const double * const, int);
+  virtual int closest_image(int, int);
+  virtual int closest_image(const double * const, int);
   void closest_image(const double * const, const double * const, double * const);
   void remap(double *, imageint &);
   void remap(double *);

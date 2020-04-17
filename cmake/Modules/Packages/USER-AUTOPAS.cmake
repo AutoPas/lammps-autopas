@@ -57,6 +57,7 @@ if (PKG_USER-AUTOPAS)
             ${USER-AUTOPAS_SOURCES_DIR}/autopas.cpp
             ${USER-AUTOPAS_SOURCES_DIR}/atom_autopas.cpp
             ${USER-AUTOPAS_SOURCES_DIR}/atom_vec_autopas.cpp
+            ${USER-AUTOPAS_SOURCES_DIR}/domain_autopas.cpp
             ${USER-AUTOPAS_SOURCES_DIR}/modify_autopas.cpp
             )
 
