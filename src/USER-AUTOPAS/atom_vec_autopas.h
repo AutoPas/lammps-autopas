@@ -19,7 +19,7 @@ public:
   void unpack_reverse(int, int *, double *) override;
 
 protected:
-  AutoPasLMP::FloatVecType h_x(int i);
+  int *mask;
 
 };
 }
