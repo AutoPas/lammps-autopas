@@ -165,12 +165,12 @@ void DomainAutoPas::pbc() {
 
 void DomainAutoPas::image_check() {
   //TODO This method is only used for molecular systems, but needs adaption
-  throw "Not implemented";
+  Domain::image_check();
 }
 
 void DomainAutoPas::box_too_small_check() {
   //TODO This method is only used for molecular systems, but needs adaption
-  throw "Not implemented";
+  Domain::box_too_small_check();
 }
 
 int DomainAutoPas::closest_image(int i, int j) {
