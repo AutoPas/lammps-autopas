@@ -57,6 +57,7 @@ protected:
   tagint *tag;
   int *type,*mask;
   imageint *image;
+  double **x,**v;//,**f;
 };
 }
 

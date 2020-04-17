@@ -34,9 +34,12 @@ void LAMMPS_NS::AtomVecAtomicAutopas::grow(int n) {
   type = memory->grow(atom->type,nmax,"atom:type");
   mask = memory->grow(atom->mask,nmax,"atom:mask");
   image = memory->grow(atom->image,nmax,"atom:image");
-  // x = memory->grow(atom->x,nmax,3,"atom:x");
-  // v = memory->grow(atom->v,nmax,3,"atom:v");
-  // f = memory->grow(atom->f,nmax*comm->nthreads,3,"atom:f");
+
+  if (!lmp->autopas->_autopas){ // Only used for startup
+    x = memory->grow(atom->x,nmax,3,"atom:x");
+    v = memory->grow(atom->v,nmax,3,"atom:v");
+    // f = memory->grow(atom->f,nmax*comm->nthreads,3,"atom:f");
+  }
 
   if (atom->nextra_grow)
     for (int iextra = 0; iextra < atom->nextra_grow; iextra++)
@@ -105,24 +108,32 @@ int LAMMPS_NS::AtomVecAtomicAutopas::unpack_restart(double *pDouble) {
 
 void LAMMPS_NS::AtomVecAtomicAutopas::create_atom(int itype, double *coord) {
 
+  // Only used on startup, thus use original arrays
   int nlocal = atom->nlocal;
   if (nlocal == nmax) grow(0);
 
   tag[nlocal] = 0;
   type[nlocal] = itype;
+  x[nlocal][0] = coord[0];
+  x[nlocal][1] = coord[1];
+  x[nlocal][2] = coord[2];
   mask[nlocal] = 1;
   image[nlocal] = ((imageint) IMGMAX << IMG2BITS) |
                   ((imageint) IMGMAX << IMGBITS) | IMGMAX;
+  v[nlocal][0] = 0.0;
+  v[nlocal][1] = 0.0;
+  v[nlocal][2] = 0.0;
 
+  atom->nlocal++;
 
+  /*
   AutoPasLMP::FloatVecType pos{coord[0], coord[1], coord[2]};
   AutoPasLMP::FloatVecType  vel{0};
   unsigned long moleculeId = nlocal;
   unsigned long typeId = itype;
 
-  lmp->autopas->addParticle(AutoPasLMP::ParticleType(pos, vel, moleculeId, typeId));
+  lmp->autopas->addParticle(AutoPasLMP::ParticleType(pos, vel, moleculeId, typeId));*/
 
-  atom->nlocal++;
 }
 
 void LAMMPS_NS::AtomVecAtomicAutopas::data_atom(double *pDouble,
