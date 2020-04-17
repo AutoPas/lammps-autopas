@@ -60,12 +60,17 @@ if (PKG_USER-AUTOPAS)
             ${USER-AUTOPAS_SOURCES_DIR}/comm_autopas.cpp
             ${USER-AUTOPAS_SOURCES_DIR}/domain_autopas.cpp
             ${USER-AUTOPAS_SOURCES_DIR}/modify_autopas.cpp
+            ${USER-AUTOPAS_SOURCES_DIR}/nbin_autopas.cpp
+            ${USER-AUTOPAS_SOURCES_DIR}/neighbor_autopas.cpp
             )
 
     set_property(GLOBAL PROPERTY "AUTOPAS_SOURCES" "${USER-AUTOPAS_SOURCES}")
 
     # detects styles which have USER-AUTOPAS version
     RegisterStylesExt(${USER-AUTOPAS_SOURCES_DIR} autopas AUTOPAS_SOURCES)
+
+    # register autopas-only styles
+    RegisterNBinStyle(${USER-AUTOPAS_SOURCES_DIR}/nbin_autopas.h)
 
     get_property(USER-AUTOPAS_SOURCES GLOBAL PROPERTY AUTOPAS_SOURCES)
 

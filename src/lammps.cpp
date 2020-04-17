@@ -766,7 +766,7 @@ void LAMMPS::create()
   else comm = new CommBrick(this);
 
   if (kokkos) neighbor = new NeighborKokkos(this);
-  // else if (autopas) neighbor = new NeighborAutoPas(this); //TODO
+  else if (autopas) neighbor = new NeighborAutoPas(this); //TODO
   else neighbor = new Neighbor(this);
 
   if (kokkos) domain = new DomainKokkos(this);
