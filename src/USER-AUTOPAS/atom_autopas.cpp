@@ -14,5 +14,5 @@ AtomAutoPas::~AtomAutoPas() {
 void AtomAutoPas::sort() {
   sortfreq = 0;
   error->warning(FLERR,"Atom sorting is not supported using AutoPas "
-                       "and will thus be disabled.");
+                       "and will be disabled.");
 }

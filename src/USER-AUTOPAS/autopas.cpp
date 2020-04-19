@@ -1,6 +1,8 @@
 #include "autopas.h"
 #include "atom.h"
 #include "domain.h"
+#include "error.h"
+#include "memory.h"
 #include "neighbor.h"
 
 using namespace LAMMPS_NS;
@@ -88,19 +90,27 @@ void AutoPasLMP::init_autopas(double cutoff, double **epsilon, double **sigma) {
     _autopas->addParticle(ParticleType(pos, vel, moleculeId, typeId));
   }
 
-  delete atom->x;
-  delete atom->v;
+  memory->destroy(atom->x);
+  memory->destroy(atom->v);
   // TODO When to copy back?
 }
 
+#pragma clang diagnostic push
+#pragma ide diagnostic ignored "UnreachableCode" // constexpr-if makes function unreachable?
+template<bool halo>
 AutoPasLMP::ParticleType *AutoPasLMP::particle_by_index(int idx) {
+  // TODO Global to local mapping?
+
+  auto iteratorBehavior = autopas::IteratorBehavior::ownedOnly;
+  if constexpr (halo) {
+    iteratorBehavior = autopas::IteratorBehavior::haloOnly;
+  }
 
   ParticleType *particle = nullptr;
 
   // Assuming the particle ids are unique, no reduction is necessary
-#pragma omp parallel default(none) shared(idx, particle)
-  for (auto iter = _autopas->begin(
-      autopas::IteratorBehavior::haloAndOwned); iter.isValid(); ++iter) {
+#pragma omp parallel default(none) shared(idx, particle, iteratorBehavior)
+  for (auto iter = _autopas->begin(iteratorBehavior); iter.isValid(); ++iter) {
     auto &p = *iter;
     if (p.getID() == idx) {
       particle = &p;
@@ -111,3 +121,11 @@ AutoPasLMP::ParticleType *AutoPasLMP::particle_by_index(int idx) {
 
 }
 
+unsigned long AutoPasLMP::idx(const AutoPasLMP::ParticleType &p) {
+  return p.getID(); // TODO Global to local particle mapping // TODO Halo particles?
+}
+
+#pragma clang diagnostic pop
+
+template AutoPasLMP::ParticleType *AutoPasLMP::particle_by_index<true>(int idx);
+template AutoPasLMP::ParticleType *AutoPasLMP::particle_by_index<false>(int idx);

@@ -1,5 +1,4 @@
 #include "domain_autopas.h"
-#include <cstring>
 #include "style_region.h"
 #include "atom.h"
 #include "atom_vec.h"
@@ -17,7 +16,6 @@
 #include "universe.h"
 #include "memory.h"
 #include "error.h"
-#include "utils.h"
 #include "autopas.h"
 
 using namespace LAMMPS_NS;

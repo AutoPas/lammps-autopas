@@ -31,7 +31,10 @@ public:
 
   void init_autopas(double cutoff, double** epsilon, double** sigma);
 
+  template<bool halo=false>
   [[nodiscard]] ParticleType* particle_by_index(int idx);
+
+  unsigned long idx(const ParticleType &p);
 
 };
 
