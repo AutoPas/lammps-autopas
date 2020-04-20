@@ -783,6 +783,8 @@ void LAMMPS::create()
 
   if (kokkos)
     atom->create_avec("atomic/kk",0,NULL,1);
+  else if(autopas)
+    atom->create_avec("atomic/autopas",0,NULL,1);
   else
     atom->create_avec("atomic",0,NULL,1);
 

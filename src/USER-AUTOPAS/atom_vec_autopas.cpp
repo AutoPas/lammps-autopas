@@ -1,11 +1,15 @@
 #include "atom_vec_autopas.h"
 // #include <iterator>     // std::next
 #include "domain.h"
+#include "error.h"
 
 using namespace LAMMPS_NS;
 
 AtomVecAutopas::AtomVecAutopas(LAMMPS_NS::LAMMPS *lmp)
     : AtomVec(lmp) {
+  if(!lmp->autopas){
+      error->all(FLERR,"Cannot use AutoPas without the '-autopas on' flag");
+  }
 }
 
 int
