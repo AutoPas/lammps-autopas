@@ -97,13 +97,16 @@ void AutoPasLMP::init_autopas(double cutoff, double **epsilon, double **sigma) {
 
 #pragma clang diagnostic push
 #pragma ide diagnostic ignored "UnreachableCode" // constexpr-if makes function unreachable?
-template<bool halo>
+template<bool owned, bool halo>
 AutoPasLMP::ParticleType *AutoPasLMP::particle_by_index(int idx) {
   // TODO Global to local mapping?
 
   auto iteratorBehavior = autopas::IteratorBehavior::ownedOnly;
   if constexpr (halo) {
     iteratorBehavior = autopas::IteratorBehavior::haloOnly;
+    if constexpr (owned) {
+      iteratorBehavior = autopas::IteratorBehavior::haloAndOwned;
+    }
   }
 
   ParticleType *particle = nullptr;
@@ -132,5 +135,6 @@ void AutoPasLMP::update_autopas() {
 
 #pragma clang diagnostic pop
 
-template AutoPasLMP::ParticleType *AutoPasLMP::particle_by_index<true>(int idx);
-template AutoPasLMP::ParticleType *AutoPasLMP::particle_by_index<false>(int idx);
+template AutoPasLMP::ParticleType *AutoPasLMP::particle_by_index<true, true>(int idx);
+template AutoPasLMP::ParticleType *AutoPasLMP::particle_by_index<true, false>(int idx);
+template AutoPasLMP::ParticleType *AutoPasLMP::particle_by_index<false, true>(int idx);

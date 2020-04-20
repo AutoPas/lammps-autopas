@@ -83,7 +83,7 @@ LAMMPS_NS::AtomVecAtomicAutopas::pack_border(int n, int *list, double *buf,
   if (pbc_flag == 0) {
     for (i = 0; i < n; i++) {
       j = list[i];
-      auto &x = lmp->autopas->particle_by_index(j)->getR();
+      auto &x = lmp->autopas->particle_by_index<true, true>(j)->getR();
       buf[m++] = x[0];
       buf[m++] = x[1];
       buf[m++] = x[2];
@@ -103,7 +103,7 @@ LAMMPS_NS::AtomVecAtomicAutopas::pack_border(int n, int *list, double *buf,
     }
     for (i = 0; i < n; i++) {
       j = list[i];
-      auto &x = lmp->autopas->particle_by_index(j)->getR();
+      auto &x = lmp->autopas->particle_by_index<true, true>(j)->getR();
       buf[m++] = x[0] + dx;
       buf[m++] = x[1] + dy;
       buf[m++] = x[2] + dz;
@@ -131,7 +131,7 @@ LAMMPS_NS::AtomVecAtomicAutopas::pack_border_vel(int n, int *list, double *buf,
   if (pbc_flag == 0) {
     for (i = 0; i < n; i++) {
       j = list[i];
-      auto *pj = lmp->autopas->particle_by_index(j);
+      auto *pj = lmp->autopas->particle_by_index<true, true>(j);
       auto &x = pj->getR();
       auto &v = pj->getV();
       buf[m++] = x[0];
@@ -157,7 +157,7 @@ LAMMPS_NS::AtomVecAtomicAutopas::pack_border_vel(int n, int *list, double *buf,
     if (!deform_vremap) {
       for (i = 0; i < n; i++) {
         j = list[i];
-        auto *pj = lmp->autopas->particle_by_index(j);
+        auto *pj = lmp->autopas->particle_by_index<true, true>(j);
         auto &x = pj->getR();
         auto &v = pj->getV();
         buf[m++] = x[0] + dx;
@@ -176,7 +176,7 @@ LAMMPS_NS::AtomVecAtomicAutopas::pack_border_vel(int n, int *list, double *buf,
       dvz = pbc[2] * h_rate[2];
       for (i = 0; i < n; i++) {
         j = list[i];
-        auto *pj = lmp->autopas->particle_by_index(j);
+        auto *pj = lmp->autopas->particle_by_index<true, true>(j);
         auto &x = pj->getR();
         auto &v = pj->getV();
         buf[m++] = x[0] + dx;

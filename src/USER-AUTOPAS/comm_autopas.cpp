@@ -338,7 +338,7 @@ void LAMMPS_NS::CommAutoPas::borders() {
         if (!bordergroup || ineed >= 2) {
           if (mode == Comm::SINGLE) {
             for (i = nfirst; i < nlast; i++) {
-              auto &x = lmp->autopas->particle_by_index(i)->getR();
+              auto &x = lmp->autopas->particle_by_index<true,true>(i)->getR();
               if (x[dim] >= lo && x[dim] <= hi) {
                 if (nsend == maxsendlist[iswap]) grow_list(iswap, nsend);
                 sendlist[iswap][nsend++] = i;
@@ -347,7 +347,7 @@ void LAMMPS_NS::CommAutoPas::borders() {
           } else {
             for (i = nfirst; i < nlast; i++) {
               itype = type[i];
-              auto &x = lmp->autopas->particle_by_index(i)->getR();
+              auto &x = lmp->autopas->particle_by_index<true,true>(i)->getR();
               if (x[dim] >= mlo[itype] && x[dim] <= mhi[itype]) {
                 if (nsend == maxsendlist[iswap]) grow_list(iswap, nsend);
                 sendlist[iswap][nsend++] = i;
@@ -359,14 +359,14 @@ void LAMMPS_NS::CommAutoPas::borders() {
           if (mode == Comm::SINGLE) {
             ngroup = atom->nfirst;
             for (i = 0; i < ngroup; i++) {
-              auto &x = lmp->autopas->particle_by_index(i)->getR();
+              auto &x = lmp->autopas->particle_by_index<true,true>(i)->getR();
               if (x[dim] >= lo && x[dim] <= hi) {
                 if (nsend == maxsendlist[iswap]) grow_list(iswap, nsend);
                 sendlist[iswap][nsend++] = i;
               }
             }
-            for (i = atom->nlocal; i < nlast; i++) {
-              auto &x = lmp->autopas->particle_by_index(i)->getR();
+            for (i = atom->nlocal; i < nlast; i++) { // can only be halo
+              auto &x = lmp->autopas->particle_by_index<false,true>(i)->getR();
               if (x[dim] >= lo && x[dim] <= hi) {
                 if (nsend == maxsendlist[iswap]) grow_list(iswap, nsend);
                 sendlist[iswap][nsend++] = i;
@@ -376,15 +376,15 @@ void LAMMPS_NS::CommAutoPas::borders() {
             ngroup = atom->nfirst;
             for (i = 0; i < ngroup; i++) {
               itype = type[i];
-              auto &x = lmp->autopas->particle_by_index(i)->getR();
+              auto &x = lmp->autopas->particle_by_index<true,true>(i)->getR();
               if (x[dim] >= mlo[itype] && x[dim] <= mhi[itype]) {
                 if (nsend == maxsendlist[iswap]) grow_list(iswap, nsend);
                 sendlist[iswap][nsend++] = i;
               }
             }
-            for (i = atom->nlocal; i < nlast; i++) {
+            for (i = atom->nlocal; i < nlast; i++) { // can only be halo
               itype = type[i];
-              auto &x = lmp->autopas->particle_by_index(i)->getR();
+              auto &x = lmp->autopas->particle_by_index<false,true>(i)->getR();
               if (x[dim] >= mlo[itype] && x[dim] <= mhi[itype]) {
                 if (nsend == maxsendlist[iswap]) grow_list(iswap, nsend);
                 sendlist[iswap][nsend++] = i;
