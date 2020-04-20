@@ -58,11 +58,14 @@ void LAMMPS_NS::AtomVecAtomicAutopas::copy(int i, int j, int delflag) {
   mask[j] = mask[i];
   image[j] = image[i];
 
+  // TODO Copy is only used for sorting, which we will not support, or for deleting particles -> no need to handle x and v
+  /*
   auto *pj = lmp->autopas->particle_by_index(j);
   auto *pi = lmp->autopas->particle_by_index(i);
 
   pj->setR(pi->getR());
   pj->setV(pi->getV());
+   */
 
   if (atom->nextra_grow)
     for (int iextra = 0; iextra < atom->nextra_grow; iextra++)
@@ -504,4 +507,30 @@ LAMMPS_NS::bigint LAMMPS_NS::AtomVecAtomicAutopas::memory_usage() {
   //if (atom->memcheck("f")) bytes += memory->usage(f,nmax*comm->nthreads,3);
 
   return bytes;
+}
+
+int LAMMPS_NS::AtomVecAtomicAutopas::pack_exchange(
+    const LAMMPS_NS::AutoPasLMP::ParticleType &p, double *buf) {
+  auto idx = lmp->autopas->idx(p);
+  auto &x = p.getR();
+  auto &v = p.getV();
+
+  int m = 1;
+  buf[m++] = x[0];
+  buf[m++] = x[1];
+  buf[m++] = x[2];
+  buf[m++] = v[0];
+  buf[m++] = v[1];
+  buf[m++] = v[2];
+  buf[m++] = ubuf(tag[idx]).d;
+  buf[m++] = ubuf(type[idx]).d;
+  buf[m++] = ubuf(mask[idx]).d;
+  buf[m++] = ubuf(image[idx]).d;
+
+  if (atom->nextra_grow)
+    for (int iextra = 0; iextra < atom->nextra_grow; iextra++)
+      m += modify->fix[atom->extra_grow[iextra]]->pack_exchange(idx, &buf[m]);
+
+  buf[0] = m;
+  return m;
 }

@@ -18,6 +18,8 @@ public:
   int pack_reverse(int, int, double *) override;
   void unpack_reverse(int, int *, double *) override;
 
+  virtual int pack_exchange(const AutoPasLMP::ParticleType &, double *) = 0;
+
 protected:
   int *mask;
 

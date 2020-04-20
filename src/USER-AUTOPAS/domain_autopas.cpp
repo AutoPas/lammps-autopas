@@ -27,12 +27,11 @@ DomainAutoPas::DomainAutoPas(LAMMPS_NS::LAMMPS *lmp) : Domain(lmp) {
 void DomainAutoPas::pbc() {
   auto &autopas = *lmp->autopas->_autopas;
 
+  // Update leaving particles
+  lmp->autopas->update_autopas();
+
   int i;
-  imageint idim, otherdims;
   double *lo, *hi, *period;
-  int nlocal = atom->nlocal;
-  int *mask = atom->mask;
-  imageint *image = atom->image;
 
   // verify owned atoms have valid numerical coords
   // may not if computed pairwise force between 2 atoms at same location
@@ -66,99 +65,135 @@ void DomainAutoPas::pbc() {
 
   // apply PBC to each owned atom
 
-#pragma omp parallel default(none) shared(autopas, hi, lo, period, mask, image) private(idim, otherdims)
+  // TODO Do we need owned atoms as well or are leaving particles enough?
+  // Probably not
+
+#pragma omp parallel default(none) shared(autopas, hi, lo, period)
   for (auto iter = autopas.begin(
       autopas::IteratorBehavior::ownedOnly); iter.isValid(); ++iter) {
-    auto &particle = *iter;
+    pbc(*iter, lo, hi, period);
+  }
 
-    auto x = particle.getR();
-    auto v = particle.getV();
-
-    unsigned long idx = particle.getID(); // TODO Global to local index mapping
-
-    if (xperiodic) {
-      if (x[0] < lo[0]) {
-        x[0] += period[0];
-        if (deform_vremap && mask[idx] & deform_groupbit) v[0] += h_rate[0];
-        idim = image[idx] & IMGMASK;
-        otherdims = image[idx] ^ idim;
-        idim--;
-        idim &= IMGMASK;
-        image[idx] = otherdims | idim;
-      }
-      if (x[0] >= hi[0]) {
-        x[0] -= period[0];
-        x[0] = MAX(x[0], lo[0]);
-        if (deform_vremap && mask[idx] & deform_groupbit) v[0] -= h_rate[0];
-        idim = image[idx] & IMGMASK;
-        otherdims = image[idx] ^ idim;
-        idim++;
-        idim &= IMGMASK;
-        image[idx] = otherdims | idim;
-      }
+  for (auto iter = lmp->autopas->_leavingParticles.begin();
+       iter != lmp->autopas->_leavingParticles.end();) {
+    bool wasTouched = pbc(*iter, lo, hi, period);
+    if (wasTouched) {
+      autopas.addParticle(*iter); // Particle is in the domain again
+      // No longer part of the leaving particles
+      iter = lmp->autopas->_leavingParticles.erase(iter);
+    } else {
+      ++iter;
     }
+  }
 
-    if (yperiodic) {
-      if (x[1] < lo[1]) {
-        x[1] += period[1];
-        if (deform_vremap && mask[idx] & deform_groupbit) {
-          v[0] += h_rate[5];
-          v[1] += h_rate[1];
-        }
-        idim = (image[idx] >> IMGBITS) & IMGMASK;
-        otherdims = image[idx] ^ (idim << IMGBITS);
-        idim--;
-        idim &= IMGMASK;
-        image[idx] = otherdims | (idim << IMGBITS);
-      }
-      if (x[1] >= hi[1]) {
-        x[1] -= period[1];
-        x[1] = MAX(x[1], lo[1]);
-        if (deform_vremap && mask[idx] & deform_groupbit) {
-          v[0] -= h_rate[5];
-          v[1] -= h_rate[1];
-        }
-        idim = (image[idx] >> IMGBITS) & IMGMASK;
-        otherdims = image[idx] ^ (idim << IMGBITS);
-        idim++;
-        idim &= IMGMASK;
-        image[idx] = otherdims | (idim << IMGBITS);
-      }
+}
+
+bool
+DomainAutoPas::pbc(AutoPasLMP::ParticleType &particle, double *lo, double *hi,
+                   double *period) {
+  imageint idim, otherdims;
+  int nlocal = atom->nlocal;
+  int *mask = atom->mask;
+  imageint *image = atom->image;
+
+  auto x = particle.getR();
+  auto v = particle.getV();
+
+  auto idx = lmp->autopas->idx(particle);
+  bool was_touched = false;
+
+  if (xperiodic) {
+    if (x[0] < lo[0]) {
+      was_touched = true;
+      x[0] += period[0];
+      if (deform_vremap && mask[idx] & deform_groupbit) v[0] += h_rate[0];
+      idim = image[idx] & IMGMASK;
+      otherdims = image[idx] ^ idim;
+      idim--;
+      idim &= IMGMASK;
+      image[idx] = otherdims | idim;
     }
-
-    if (zperiodic) {
-      if (x[2] < lo[2]) {
-        x[2] += period[2];
-        if (deform_vremap && mask[idx] & deform_groupbit) {
-          v[0] += h_rate[4];
-          v[1] += h_rate[3];
-          v[2] += h_rate[2];
-        }
-        idim = image[idx] >> IMG2BITS;
-        otherdims = image[idx] ^ (idim << IMG2BITS);
-        idim--;
-        idim &= IMGMASK;
-        image[idx] = otherdims | (idim << IMG2BITS);
-      }
-      if (x[2] >= hi[2]) {
-        x[2] -= period[2];
-        x[2] = MAX(x[2], lo[2]);
-        if (deform_vremap && mask[idx] & deform_groupbit) {
-          v[0] -= h_rate[4];
-          v[1] -= h_rate[3];
-          v[2] -= h_rate[2];
-        }
-        idim = image[idx] >> IMG2BITS;
-        otherdims = image[idx] ^ (idim << IMG2BITS);
-        idim++;
-        idim &= IMGMASK;
-        image[idx] = otherdims | (idim << IMG2BITS);
-      }
+    if (x[0] >= hi[0]) {
+      was_touched = true;
+      x[0] -= period[0];
+      x[0] = MAX(x[0], lo[0]);
+      if (deform_vremap && mask[idx] & deform_groupbit) v[0] -= h_rate[0];
+      idim = image[idx] & IMGMASK;
+      otherdims = image[idx] ^ idim;
+      idim++;
+      idim &= IMGMASK;
+      image[idx] = otherdims | idim;
     }
+  }
 
+  if (yperiodic) {
+    if (x[1] < lo[1]) {
+      was_touched = true;
+      x[1] += period[1];
+      if (deform_vremap && mask[idx] & deform_groupbit) {
+        v[0] += h_rate[5];
+        v[1] += h_rate[1];
+      }
+      idim = (image[idx] >> IMGBITS) & IMGMASK;
+      otherdims = image[idx] ^ (idim << IMGBITS);
+      idim--;
+      idim &= IMGMASK;
+      image[idx] = otherdims | (idim << IMGBITS);
+    }
+    if (x[1] >= hi[1]) {
+      was_touched = true;
+      x[1] -= period[1];
+      x[1] = MAX(x[1], lo[1]);
+      if (deform_vremap && mask[idx] & deform_groupbit) {
+        v[0] -= h_rate[5];
+        v[1] -= h_rate[1];
+      }
+      idim = (image[idx] >> IMGBITS) & IMGMASK;
+      otherdims = image[idx] ^ (idim << IMGBITS);
+      idim++;
+      idim &= IMGMASK;
+      image[idx] = otherdims | (idim << IMGBITS);
+    }
+  }
+
+  if (zperiodic) {
+    if (x[2] < lo[2]) {
+      was_touched = true;
+      x[2] += period[2];
+      if (deform_vremap && mask[idx] & deform_groupbit) {
+        v[0] += h_rate[4];
+        v[1] += h_rate[3];
+        v[2] += h_rate[2];
+      }
+      idim = image[idx] >> IMG2BITS;
+      otherdims = image[idx] ^ (idim << IMG2BITS);
+      idim--;
+      idim &= IMGMASK;
+      image[idx] = otherdims | (idim << IMG2BITS);
+    }
+    if (x[2] >= hi[2]) {
+      was_touched = true;
+      x[2] -= period[2];
+      x[2] = MAX(x[2], lo[2]);
+      if (deform_vremap && mask[idx] & deform_groupbit) {
+        v[0] -= h_rate[4];
+        v[1] -= h_rate[3];
+        v[2] -= h_rate[2];
+      }
+      idim = image[idx] >> IMG2BITS;
+      otherdims = image[idx] ^ (idim << IMG2BITS);
+      idim++;
+      idim &= IMGMASK;
+      image[idx] = otherdims | (idim << IMG2BITS);
+    }
+  }
+
+  if (was_touched) {
     particle.setR(x);
     particle.setV(v);
   }
+
+  return was_touched;
 }
 
 void DomainAutoPas::image_check() {
@@ -239,7 +274,7 @@ void DomainAutoPas::lamda2x(int n) {
   for (auto iter = lmp->autopas->_autopas->begin(
       autopas::IteratorBehavior::ownedOnly); iter.isValid(); ++iter) {
 
-    if (iter->getID() < n) {
+    if (lmp->autopas->idx(*iter) < n) {
       auto x = iter->getR();
 
       x[0] = h[0] * x[0] + h[5] * x[1] + h[4] * x[2] + boxlo[0];
@@ -259,7 +294,7 @@ void DomainAutoPas::x2lamda(int n) {
   for (auto iter = lmp->autopas->_autopas->begin(
       autopas::IteratorBehavior::ownedOnly); iter.isValid(); ++iter) {
 
-    if (iter->getID() < n) {
+    if (lmp->autopas->idx(*iter) < n) {
       auto x = iter->getR();
 
       delta[0] = x[0] - boxlo[0];
@@ -274,3 +309,4 @@ void DomainAutoPas::x2lamda(int n) {
     }
   }
 }
+

@@ -3,12 +3,22 @@
 #include "atom_vec.h"
 #include "comm_autopas.h"
 #include "domain.h"
+#include "atom_vec_autopas.h"
 
 LAMMPS_NS::CommAutoPas::CommAutoPas(LAMMPS_NS::LAMMPS *lmp) : CommBrick(lmp) {
 
 }
 
+/* ----------------------------------------------------------------------
+   forward communication of atom coords every timestep
+   other per-atom attributes may also be sent via pack/unpack routines
+------------------------------------------------------------------------- */
+
 void LAMMPS_NS::CommAutoPas::forward_comm(int /*dummy*/) {
+  //TODO Fixme
+  // Currently not called?
+  std::cout << "Forward comm missing" << "\n";
+  return;
 
   int n;
   MPI_Request request;
@@ -73,7 +83,16 @@ void LAMMPS_NS::CommAutoPas::forward_comm(int /*dummy*/) {
   }
 }
 
+/* ----------------------------------------------------------------------
+   reverse communication of forces on atoms every timestep
+   other per-atom attributes may also be sent via pack/unpack routines
+------------------------------------------------------------------------- */
+
 void LAMMPS_NS::CommAutoPas::reverse_comm() {
+  //TODO Fixme (Only used when newton3 is true)
+  std::cout << "Reverse comm missing" << "\n";
+  return;
+
   int n;
   MPI_Request request;
   AtomVec *avec = atom->avec;
@@ -121,12 +140,24 @@ void LAMMPS_NS::CommAutoPas::reverse_comm() {
   }
 }
 
+/* ----------------------------------------------------------------------
+   exchange: move atoms to correct processors
+   atoms exchanged with all 6 stencil neighbors
+   send out atoms that have left my box, receive ones entering my box
+   atoms will be lost if not inside a stencil proc's box
+     can happen if atom moves outside of non-periodic bounary
+     or if atom moves more than one proc away
+   this routine called before every reneighboring
+   for triclinic, atoms must be in lamda coords (0-1) before exchange is called
+------------------------------------------------------------------------- */
+
 void LAMMPS_NS::CommAutoPas::exchange() {
+
   int i, m, nsend, nrecv, nrecv1, nrecv2, nlocal;
   double lo, hi, value;
   double *sublo, *subhi;
   MPI_Request request;
-  AtomVec *avec = atom->avec;
+  AtomVecAutopas *avec = dynamic_cast<AtomVecAutopas *>(atom->avec);
 
   // clear global->local map for owned and ghost atoms
   // b/c atoms migrate to new procs in exchange() and
@@ -167,23 +198,25 @@ void LAMMPS_NS::CommAutoPas::exchange() {
     // fill buffer with atoms leaving my box, using < and >=
     // when atom is deleted, fill it in with last atom
 
-    // TODO: Use AutoPas' leaving particle
-
     lo = sublo[dim];
     hi = subhi[dim];
     nlocal = atom->nlocal;
-    i = nsend = 0;
+    nsend = 0;
 
-    while (i < nlocal) {
-      auto &x = lmp->autopas->particle_by_index(i)->getR();
-
+    for (auto &p : lmp->autopas->_leavingParticles) {
+      auto &x  = p.getR();
       if (x[dim] < lo || x[dim] >= hi) {
         if (nsend > maxsend) grow_send(nsend, 1);
-        nsend += avec->pack_exchange(i, &buf_send[nsend]);
-        avec->copy(nlocal - 1, i, 1);
+        nsend += avec->pack_exchange(p, &buf_send[nsend]);
+        /////////////////
+        // Autopas already removed particles //TODO But: Gaps in other arrays?
+        auto idx = lmp->autopas->idx(p);
+        avec->copy(nlocal - 1, idx, 1);
         nlocal--;
-      } else i++;
+        //////////////////
+      }
     }
+
     atom->nlocal = nlocal;
 
     // send/recv atoms in both directions
@@ -236,7 +269,19 @@ void LAMMPS_NS::CommAutoPas::exchange() {
   if (atom->firstgroupname) atom->first_reorder();
 }
 
+/* ----------------------------------------------------------------------
+   borders: list nearby atoms to send to neighboring procs at every timestep
+   one list is created for every swap that will be made
+   as list is made, actually do swaps
+   this does equivalent of a forward_comm(), so don't need to explicitly
+     call forward_comm() on reneighboring timestep
+   this routine is called before every reneighboring
+   for triclinic, atoms must be in lamda coords (0-1) before borders is called
+------------------------------------------------------------------------- */
+
 void LAMMPS_NS::CommAutoPas::borders() {
+  // TODO Only search in outer regions?
+  // TODO Do not use index based access
 
   int i, n, itype, iswap, dim, ineed, twoneed;
   int nsend, nrecv, sendflag, nfirst, nlast, ngroup;
@@ -244,7 +289,7 @@ void LAMMPS_NS::CommAutoPas::borders() {
   int *type;
   double *buf, *mlo, *mhi;
   MPI_Request request;
-  AtomVec *avec = atom->avec;
+  AtomVecAutopas *avec = dynamic_cast<AtomVecAutopas *>(atom->avec);
 
   // do swaps over all 3 dimensions
 

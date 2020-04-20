@@ -52,6 +52,13 @@ public:
 
   bigint memory_usage() override;
 
+  /*
+   * AutoPas variants
+   */
+
+  int pack_exchange(const AutoPasLMP::ParticleType &, double *) override;
+
+
 protected:
   tagint *tag;
   int *type;

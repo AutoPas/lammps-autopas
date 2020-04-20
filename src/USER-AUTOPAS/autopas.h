@@ -28,8 +28,10 @@ public:
 
   std::unique_ptr<AutoPasType> _autopas;
   std::unique_ptr<ParticlePropertiesLibraryType> _particlePropertiesLibrary;
+  std::vector<ParticleType> _leavingParticles;
 
   void init_autopas(double cutoff, double** epsilon, double** sigma);
+  void update_autopas();
 
   template<bool halo=false>
   [[nodiscard]] ParticleType* particle_by_index(int idx);

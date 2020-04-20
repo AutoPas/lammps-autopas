@@ -50,7 +50,7 @@ void AutoPasLMP::init_autopas(double cutoff, double **epsilon, double **sigma) {
 
   _autopas->setAllowedContainers({autopas::ContainerOption::linkedCells});
   _autopas->setAllowedDataLayouts({autopas::DataLayoutOption::soa});
-  _autopas->setAllowedNewton3Options({autopas::Newton3Option::enabled});
+  _autopas->setAllowedNewton3Options({autopas::Newton3Option::disabled}); //TODO Newton based on lammps settings
   _autopas->setAllowedTraversals({autopas::TraversalOption::c04});
 
   FloatVecType boxMax{}, boxMin{};
@@ -123,6 +123,11 @@ AutoPasLMP::ParticleType *AutoPasLMP::particle_by_index(int idx) {
 
 unsigned long AutoPasLMP::idx(const AutoPasLMP::ParticleType &p) {
   return p.getID(); // TODO Global to local particle mapping // TODO Halo particles?
+}
+
+void AutoPasLMP::update_autopas() {
+  auto&&[invalidParticles, updated] = _autopas->updateContainer();
+  _leavingParticles = std::move(invalidParticles);
 }
 
 #pragma clang diagnostic pop

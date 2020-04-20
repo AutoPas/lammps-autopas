@@ -1,6 +1,7 @@
 #pragma once
 
 #include "domain.h"
+#include "autopas.h"
 
 namespace LAMMPS_NS {
 
@@ -23,6 +24,13 @@ public:
   void lamda2x(int) override;
 
   void x2lamda(int) override;
+
+  /*
+   * AutoPas only functions
+   */
+
+protected:
+  virtual bool pbc(AutoPasLMP::ParticleType &, double *lo, double *hi, double *period);
 
 };
 
