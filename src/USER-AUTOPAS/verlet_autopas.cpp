@@ -2,6 +2,7 @@
 
 #include "neighbor.h"
 #include "domain.h"
+#include "autopas.h"
 #include "comm.h"
 #include "atom.h"
 #include "atom_vec.h"
@@ -21,8 +22,7 @@
 using namespace LAMMPS_NS;
 
 VerletAutoPas::VerletAutoPas(LAMMPS *lmp, int narg, char **arg) :
-    Verlet(lmp, narg, arg)
-{
+    Verlet(lmp, narg, arg) {
 
 }
 
@@ -39,5 +39,10 @@ void VerletAutoPas::run(int i) {
 }
 
 void VerletAutoPas::force_clear() {
-  // Not necessary
+
+#pragma omp parallel default(none)
+  for (auto iter = lmp->autopas->_autopas->begin(
+      autopas::IteratorBehavior::ownedOnly); iter.isValid(); ++iter) {
+    iter->setF({0, 0, 0});
+  }
 }
