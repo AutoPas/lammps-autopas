@@ -14,6 +14,8 @@
 #include "neighbor_autopas.h"     // IWYU pragma: export
 #include "memory_autopas.h"       // IWYU pragma: export
 #include "modify_autopas.h"       // IWYU pragma: export
+#include "output_autopas.h"       // IWYU pragma: export
+
 
 #else
 
@@ -86,6 +88,12 @@ class ModifyAutoPas : public Modify {
  public:
   ModifyAutoPas(class LAMMPS *lmp) : Modify(lmp) {}
   ~ModifyAutoPas() {}
+};
+
+class OutputAutoPas : public Output {
+ public:
+  OutputAutoPas(class LAMMPS *lmp) : Output(lmp) {}
+  ~OutputAutoPas() {}
 };
 
 }

@@ -606,7 +606,7 @@ LAMMPS::LAMMPS(int narg, char **arg, MPI_Comm communicator) :
 
   // create AutoPas class if AUTOPAS installed, unless explicitly switched off
   // instantiation creates dummy AutoPas class if AUTOPAS is not installed
-  // add args between autopasfirst and autopaslast to Kokkos instantiation
+  // add args between autopasfirst and autopaslast to AUTOPAS instantiation
   autopas = nullptr;
   if(autopasflag == 1) {
     autopas = new AutoPasLMP(this,autopaslast-autopasfirst,&arg[autopasfirst]);
@@ -795,7 +795,8 @@ void LAMMPS::create()
   // else if (autopas) modify = new ModifyAutoPas(this); //TODO
   else modify = new Modify(this);
 
-  output = new Output(this);  // must be after group, so "all" exists
+  if (autopas) output = new OutputAutoPas(this);
+  else output = new Output(this);  // must be after group, so "all" exists
                               // must be after modify so can create Computes
   update = new Update(this);  // must be after output, force, neighbor
   timer = new Timer(this);

@@ -115,7 +115,7 @@ AutoPasLMP::ParticleType *AutoPasLMP::particle_by_index(int idx) {
 #pragma omp parallel default(none) shared(idx, particle, iteratorBehavior)
   for (auto iter = _autopas->begin(iteratorBehavior); iter.isValid(); ++iter) {
     auto &p = *iter;
-    if (p.getID() == idx) {
+    if (this->idx(p) == idx) {
       particle = &p;
     }
   }
@@ -123,6 +123,7 @@ AutoPasLMP::ParticleType *AutoPasLMP::particle_by_index(int idx) {
   return particle;
 
 }
+#pragma clang diagnostic pop
 
 unsigned long AutoPasLMP::idx(const AutoPasLMP::ParticleType &p) {
   return p.getID(); // TODO Global to local particle mapping // TODO Halo particles?
@@ -133,7 +134,23 @@ void AutoPasLMP::update_autopas() {
   _leavingParticles = std::move(invalidParticles);
 }
 
-#pragma clang diagnostic pop
+void AutoPasLMP::copy_back() {
+  auto nmax = _autopas->getNumberOfParticles();
+  atom->x = memory->grow(atom->x,nmax,3,"atom:x");
+  atom->v = memory->grow(atom->v,nmax,3,"atom:v");
+  atom->f = memory->grow(atom->f,nmax,3,"atom:f");
+  // auto &f = memory->grow(atom->f,nmax*comm->nthreads,3,"atom:f");
+
+#pragma omp parallel default(none)
+  for (auto iter = _autopas->begin(autopas::ownedOnly); iter.isValid(); ++iter) {
+    auto &p = *iter;
+    auto idx = this->idx(p);
+    std::copy_n(p.getR().begin(), 3, atom->x[idx]);
+    std::copy_n(p.getV().begin(), 3, atom->v[idx]);
+    std::copy_n(p.getF().begin(), 3, atom->f[idx]);
+  }
+}
+
 
 template AutoPasLMP::ParticleType *AutoPasLMP::particle_by_index<true, true>(int idx);
 template AutoPasLMP::ParticleType *AutoPasLMP::particle_by_index<true, false>(int idx);

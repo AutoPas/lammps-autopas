@@ -38,6 +38,7 @@ public:
 
   unsigned long idx(const ParticleType &p);
 
+  void copy_back();
 };
 
 }

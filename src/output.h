@@ -67,10 +67,11 @@ class Output : protected Pointers {
   Output(class LAMMPS *);
   ~Output();
   void init();
-  void setup(int memflag = 1);       // initial output before run/min
-  void write(bigint);                // output for current timestep
-  void write_dump(bigint);           // force output of dump snapshots
-  void write_restart(bigint);        // force output of a restart file
+
+  virtual void setup(int memflag = 1);       // initial output before run/min
+  virtual void write(bigint);                // output for current timestep
+  virtual void write_dump(bigint);           // force output of dump snapshots
+  virtual void write_restart(bigint);        // force output of a restart file
   void reset_timestep(bigint);       // reset next timestep for all output
 
   void add_dump(int, char **);       // add a Dump to Dump list
