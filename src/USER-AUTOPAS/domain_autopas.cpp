@@ -81,6 +81,9 @@ void DomainAutoPas::pbc() {
       autopas.addParticle(*iter); // Particle is in the domain again
       // No longer part of the leaving particles
       iter = lmp->autopas->_leavingParticles.erase(iter);
+      // TODO This is not correct for multiple processes
+      //  Instead of adding the particle to self, it might need to be sent
+      //  Do the adding in the communication class?
     } else {
       ++iter;
     }

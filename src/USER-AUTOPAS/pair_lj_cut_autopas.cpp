@@ -31,6 +31,9 @@ void PairLJCutAutoPas::compute(int eflag, int vflag) {
 
   ev_init(eflag, vflag);
 
+  //auto[invalidParticles, updated] = autopas->updateContainer();
+
+  // std::cout << invalidParticles.size() << " leaving particles\n";
 
 
   /*
@@ -59,6 +62,7 @@ void PairLJCutAutoPas::compute(int eflag, int vflag) {
     // _autopas.addParticle(ParticleType(pos, vel, moleculeId, typeId))
   }*/
 
+  // timer->stamp(Timer::PAIR);
 
   //printf("AutoPas computation\n");
 
