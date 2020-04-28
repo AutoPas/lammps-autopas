@@ -42,6 +42,10 @@ public:
   template<bool halo=false>
   void add_particle(const ParticleType &p);
 
+  template<bool haloOnly=false>
+  autopas::ParticleIteratorWrapper<autopas::MoleculeLJ<double>, true>
+  particles_by_slab(int i, double d, double d1) const;
+
 private:
   std::unordered_map<int,AutoPasLMP::ParticleType *> index_map;
   std::vector<AutoPasLMP::ParticleType *> index_vector;

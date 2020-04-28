@@ -7,8 +7,8 @@ using namespace LAMMPS_NS;
 
 AtomVecAutopas::AtomVecAutopas(LAMMPS_NS::LAMMPS *lmp)
     : AtomVec(lmp) {
-  if(!lmp->autopas){
-      error->all(FLERR,"Cannot use AutoPas without the '-autopas on' flag");
+  if (!lmp->autopas) {
+    error->all(FLERR, "Cannot use AutoPas without the '-autopas on' flag");
   }
 }
 

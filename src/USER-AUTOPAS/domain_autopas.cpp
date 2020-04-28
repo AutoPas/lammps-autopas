@@ -312,4 +312,3 @@ void DomainAutoPas::x2lamda(int n) {
     }
   }
 }
-

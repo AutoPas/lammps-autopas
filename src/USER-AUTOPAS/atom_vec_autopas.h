@@ -20,6 +20,15 @@ public:
 
   virtual int pack_exchange(const AutoPasLMP::ParticleType &, double *) = 0;
 
+  /*
+   * AutoPas versions
+   */
+
+  virtual int pack_border_autopas(const std::vector<AutoPasLMP::ParticleType *> &, double *,
+                                  int, const int *) = 0;
+  virtual int pack_border_vel_autopas(const std::vector<AutoPasLMP::ParticleType *> &, double *,
+                                  int, const int *) = 0;
+
 protected:
   int *mask;
 

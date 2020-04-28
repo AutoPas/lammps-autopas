@@ -8,7 +8,9 @@
 #include "error.h"
 #include "utils.h"
 
-LAMMPS_NS::AtomVecAtomicAutopas::AtomVecAtomicAutopas(LAMMPS_NS::LAMMPS *lmp)
+using namespace LAMMPS_NS;
+
+AtomVecAtomicAutopas::AtomVecAtomicAutopas(LAMMPS_NS::LAMMPS *lmp)
     : AtomVecAutopas(lmp) {
   molecular = 0;
   mass_type = 1;
@@ -23,7 +25,7 @@ LAMMPS_NS::AtomVecAtomicAutopas::AtomVecAtomicAutopas(LAMMPS_NS::LAMMPS *lmp)
   xcol_data = 3;
 }
 
-void LAMMPS_NS::AtomVecAtomicAutopas::grow(int n) {
+void AtomVecAtomicAutopas::grow(int n) {
   if (n == 0) grow_nmax();
   else nmax = n;
   atom->nmax = nmax;
@@ -46,13 +48,13 @@ void LAMMPS_NS::AtomVecAtomicAutopas::grow(int n) {
       modify->fix[atom->extra_grow[iextra]]->grow_arrays(nmax);
 }
 
-void LAMMPS_NS::AtomVecAtomicAutopas::grow_reset() {
+void AtomVecAtomicAutopas::grow_reset() {
   // This is only called from special.cpp line 718
   throw "Not implemented";
 }
 
 
-void LAMMPS_NS::AtomVecAtomicAutopas::copy(int i, int j, int delflag) {
+void AtomVecAtomicAutopas::copy(int i, int j, int delflag) {
   tag[j] = tag[i];
   type[j] = type[i];
   mask[j] = mask[i];
@@ -72,26 +74,22 @@ void LAMMPS_NS::AtomVecAtomicAutopas::copy(int i, int j, int delflag) {
       modify->fix[atom->extra_grow[iextra]]->copy_arrays(i, j, delflag);
 }
 
+
 int
-LAMMPS_NS::AtomVecAtomicAutopas::pack_border(int n, int *list, double *buf,
+AtomVecAtomicAutopas::pack_border(int n, int *list, double *buf,
                                              int pbc_flag, int *pbc) {
+  error->all(FLERR,
+             "Function pack_border not supported, use pack_border_autopas instead");
+  return 0;
+}
 
-  int i, j, m;
-  double dx, dy, dz;
+int
+AtomVecAtomicAutopas::pack_border_autopas(
+    const std::vector<AutoPasLMP::ParticleType *> &particles, double *buf,
+    int pbc_flag, const int *pbc) {
 
-  m = 0;
-  if (pbc_flag == 0) {
-    for (i = 0; i < n; i++) {
-      j = list[i];
-      auto &x = lmp->autopas->particle_by_index(j)->getR();
-      buf[m++] = x[0];
-      buf[m++] = x[1];
-      buf[m++] = x[2];
-      buf[m++] = ubuf(tag[j]).d;
-      buf[m++] = ubuf(type[j]).d;
-      buf[m++] = ubuf(mask[j]).d;
-    }
-  } else {
+  double dx = 0, dy = 0, dz = 0;
+  if (pbc_flag != 0) {
     if (domain->triclinic == 0) {
       dx = pbc[0] * domain->xprd;
       dy = pbc[1] * domain->yprd;
@@ -101,50 +99,52 @@ LAMMPS_NS::AtomVecAtomicAutopas::pack_border(int n, int *list, double *buf,
       dy = pbc[1];
       dz = pbc[2];
     }
-    for (i = 0; i < n; i++) {
-      j = list[i];
-      auto &x = lmp->autopas->particle_by_index(j)->getR();
-      buf[m++] = x[0] + dx;
-      buf[m++] = x[1] + dy;
-      buf[m++] = x[2] + dz;
-      buf[m++] = ubuf(tag[j]).d;
-      buf[m++] = ubuf(type[j]).d;
-      buf[m++] = ubuf(mask[j]).d;
-    }
   }
 
-  if (atom->nextra_border)
+  int m = 0;
+
+  for (const auto p : particles) {
+    auto idx = lmp->autopas->idx(*p);
+    auto &_x = p->getR();
+    buf[m++] = _x[0] + dx;
+    buf[m++] = _x[1] + dy;
+    buf[m++] = _x[2] + dz;
+    buf[m++] = ubuf(tag[idx]).d;
+    buf[m++] = ubuf(type[idx]).d;
+    buf[m++] = ubuf(mask[idx]).d;
+  }
+
+  if (atom->nextra_border) {
+    std::vector<int> list(particles.size());
+    for (const auto &p : particles) {
+      list.push_back(p->getID());
+    }
+
     for (int iextra = 0; iextra < atom->nextra_border; iextra++)
-      m += modify->fix[atom->extra_border[iextra]]->pack_border(n, list,
+      m += modify->fix[atom->extra_border[iextra]]->pack_border(list.size(),
+                                                                list.data(),
                                                                 &buf[m]);
+  }
 
   return m;
 }
 
-int
-LAMMPS_NS::AtomVecAtomicAutopas::pack_border_vel(int n, int *list, double *buf,
-                                                 int pbc_flag, int *pbc) {
-  int i, j, m;
-  double dx, dy, dz, dvx, dvy, dvz;
 
-  m = 0;
-  if (pbc_flag == 0) {
-    for (i = 0; i < n; i++) {
-      j = list[i];
-      auto *pj = lmp->autopas->particle_by_index(j);
-      auto &x = pj->getR();
-      auto &v = pj->getV();
-      buf[m++] = x[0];
-      buf[m++] = x[1];
-      buf[m++] = x[2];
-      buf[m++] = ubuf(tag[j]).d;
-      buf[m++] = ubuf(type[j]).d;
-      buf[m++] = ubuf(mask[j]).d;
-      buf[m++] = v[0];
-      buf[m++] = v[1];
-      buf[m++] = v[2];
-    }
-  } else {
+int
+AtomVecAtomicAutopas::pack_border_vel(int n, int *list, double *buf,
+                                                 int pbc_flag, int *pbc) {
+  error->all(FLERR,
+             "Function pack_border_vel not supported, use pack_border_vel_autopas instead");
+  return 0;
+}
+
+int
+AtomVecAtomicAutopas::pack_border_vel_autopas(
+    const std::vector<AutoPasLMP::ParticleType *> &particles, double *buf,
+    int pbc_flag, const int *pbc) {
+  double dx = 0, dy = 0, dz = 0, dvx = 0, dvy = 0, dvz = 0;
+
+  if (pbc_flag != 0) {
     if (domain->triclinic == 0) {
       dx = pbc[0] * domain->xprd;
       dy = pbc[1] * domain->yprd;
@@ -154,60 +154,53 @@ LAMMPS_NS::AtomVecAtomicAutopas::pack_border_vel(int n, int *list, double *buf,
       dy = pbc[1];
       dz = pbc[2];
     }
-    if (!deform_vremap) {
-      for (i = 0; i < n; i++) {
-        j = list[i];
-        auto *pj = lmp->autopas->particle_by_index(j);
-        auto &x = pj->getR();
-        auto &v = pj->getV();
-        buf[m++] = x[0] + dx;
-        buf[m++] = x[1] + dy;
-        buf[m++] = x[2] + dz;
-        buf[m++] = ubuf(tag[j]).d;
-        buf[m++] = ubuf(type[j]).d;
-        buf[m++] = ubuf(mask[j]).d;
-        buf[m++] = v[0];
-        buf[m++] = v[1];
-        buf[m++] = v[2];
-      }
-    } else {
+    if (deform_vremap) {
       dvx = pbc[0] * h_rate[0] + pbc[5] * h_rate[5] + pbc[4] * h_rate[4];
       dvy = pbc[1] * h_rate[1] + pbc[3] * h_rate[3];
       dvz = pbc[2] * h_rate[2];
-      for (i = 0; i < n; i++) {
-        j = list[i];
-        auto *pj = lmp->autopas->particle_by_index(j);
-        auto &x = pj->getR();
-        auto &v = pj->getV();
-        buf[m++] = x[0] + dx;
-        buf[m++] = x[1] + dy;
-        buf[m++] = x[2] + dz;
-        buf[m++] = ubuf(tag[j]).d;
-        buf[m++] = ubuf(type[j]).d;
-        buf[m++] = ubuf(mask[j]).d;
-        if (mask[i] & deform_groupbit) {
-          buf[m++] = v[0] + dvx;
-          buf[m++] = v[1] + dvy;
-          buf[m++] = v[2] + dvz;
-        } else {
-          buf[m++] = v[0];
-          buf[m++] = v[1];
-          buf[m++] = v[2];
-        }
-      }
+    }
+  }
+  int m = 0;
+
+  for (const auto p : particles) {
+    auto idx = lmp->autopas->idx(*p);
+    auto &_x = p->getR();
+    auto &_v = p->getV();
+    buf[m++] = _x[0] + dx;
+    buf[m++] = _x[1] + dy;
+    buf[m++] = _x[2] + dz;
+    buf[m++] = ubuf(tag[idx]).d;
+    buf[m++] = ubuf(type[idx]).d;
+    buf[m++] = ubuf(mask[idx]).d;
+
+    if (deform_vremap && (mask[idx] & deform_groupbit)) {
+      buf[m++] = _v[0] + dvx;
+      buf[m++] = _v[1] + dvy;
+      buf[m++] = _v[2] + dvz;
+    } else {
+      buf[m++] = _v[0];
+      buf[m++] = _v[1];
+      buf[m++] = _v[2];
     }
   }
 
-  if (atom->nextra_border)
+  if (atom->nextra_border) {
+    std::vector<int> list(particles.size());
+    for (const auto &p : particles) {
+      list.push_back(p->getID());
+    }
+
     for (int iextra = 0; iextra < atom->nextra_border; iextra++)
-      m += modify->fix[atom->extra_border[iextra]]->pack_border(n, list,
+      m += modify->fix[atom->extra_border[iextra]]->pack_border(list.size(),
+                                                                list.data(),
                                                                 &buf[m]);
+  }
 
   return m;
 }
 
 void
-LAMMPS_NS::AtomVecAtomicAutopas::unpack_border(int n, int first, double *buf) {
+AtomVecAtomicAutopas::unpack_border(int n, int first, double *buf) {
 
   int i, m, last;
 
@@ -238,7 +231,7 @@ LAMMPS_NS::AtomVecAtomicAutopas::unpack_border(int n, int first, double *buf) {
           unpack_border(n, first, &buf[m]);
 }
 
-void LAMMPS_NS::AtomVecAtomicAutopas::unpack_border_vel(int n, int first,
+void AtomVecAtomicAutopas::unpack_border_vel(int n, int first,
                                                         double *buf) {
 
   int i, m, last;
@@ -274,7 +267,7 @@ void LAMMPS_NS::AtomVecAtomicAutopas::unpack_border_vel(int n, int first,
           unpack_border(n, first, &buf[m]);
 }
 
-int LAMMPS_NS::AtomVecAtomicAutopas::pack_exchange(int i, double *buf) {
+int AtomVecAtomicAutopas::pack_exchange(int i, double *buf) {
 
   auto *pi = lmp->autopas->particle_by_index(i);
   auto &x = pi->getR();
@@ -300,7 +293,7 @@ int LAMMPS_NS::AtomVecAtomicAutopas::pack_exchange(int i, double *buf) {
   return m;
 }
 
-int LAMMPS_NS::AtomVecAtomicAutopas::unpack_exchange(double *buf) {
+int AtomVecAtomicAutopas::unpack_exchange(double *buf) {
 
   int nlocal = atom->nlocal;
   if (nlocal == nmax) grow(0);
@@ -335,7 +328,7 @@ int LAMMPS_NS::AtomVecAtomicAutopas::unpack_exchange(double *buf) {
   return m;
 }
 
-int LAMMPS_NS::AtomVecAtomicAutopas::size_restart() {
+int AtomVecAtomicAutopas::size_restart() {
   int i;
 
   int nlocal = atom->nlocal;
@@ -349,7 +342,7 @@ int LAMMPS_NS::AtomVecAtomicAutopas::size_restart() {
   return n;
 }
 
-int LAMMPS_NS::AtomVecAtomicAutopas::pack_restart(int i, double *buf) {
+int AtomVecAtomicAutopas::pack_restart(int i, double *buf) {
 
   auto *pi = lmp->autopas->particle_by_index(i);
   auto &x = pi->getR();
@@ -375,7 +368,7 @@ int LAMMPS_NS::AtomVecAtomicAutopas::pack_restart(int i, double *buf) {
   return m;
 }
 
-int LAMMPS_NS::AtomVecAtomicAutopas::unpack_restart(double *buf) {
+int AtomVecAtomicAutopas::unpack_restart(double *buf) {
 
   // Only used from commands, thus use original arrays
   int nlocal = atom->nlocal;
@@ -407,7 +400,7 @@ int LAMMPS_NS::AtomVecAtomicAutopas::unpack_restart(double *buf) {
   return m;
 }
 
-void LAMMPS_NS::AtomVecAtomicAutopas::create_atom(int itype, double *coord) {
+void AtomVecAtomicAutopas::create_atom(int itype, double *coord) {
 
   // Only used from commands, thus use original arrays
   int nlocal = atom->nlocal;
@@ -438,7 +431,7 @@ void LAMMPS_NS::AtomVecAtomicAutopas::create_atom(int itype, double *coord) {
 }
 
 void
-LAMMPS_NS::AtomVecAtomicAutopas::data_atom(double *coord, imageint imagetmp,
+AtomVecAtomicAutopas::data_atom(double *coord, imageint imagetmp,
                                            char **values) {
   // Probably only used on startup / from commands -> use original arrays
 
@@ -465,7 +458,7 @@ LAMMPS_NS::AtomVecAtomicAutopas::data_atom(double *coord, imageint imagetmp,
 
 }
 
-void LAMMPS_NS::AtomVecAtomicAutopas::pack_data(double **buf) {
+void AtomVecAtomicAutopas::pack_data(double **buf) {
 
 #pragma omp parallel default(none) shared(buf)
   for (auto iter = lmp->autopas->_autopas->begin(
@@ -483,23 +476,24 @@ void LAMMPS_NS::AtomVecAtomicAutopas::pack_data(double **buf) {
   }
 }
 
-void LAMMPS_NS::AtomVecAtomicAutopas::write_data(FILE *fp, int n, double **buf) {
+void
+AtomVecAtomicAutopas::write_data(FILE *fp, int n, double **buf) {
 
   for (int i = 0; i < n; i++)
-    fprintf(fp,TAGINT_FORMAT " %d %-1.16e %-1.16e %-1.16e %d %d %d\n",
-            (tagint) ubuf(buf[i][0]).i,(int) ubuf(buf[i][1]).i,
-            buf[i][2],buf[i][3],buf[i][4],
-            (int) ubuf(buf[i][5]).i,(int) ubuf(buf[i][6]).i,
+    fprintf(fp, TAGINT_FORMAT " %d %-1.16e %-1.16e %-1.16e %d %d %d\n",
+            (tagint) ubuf(buf[i][0]).i, (int) ubuf(buf[i][1]).i,
+            buf[i][2], buf[i][3], buf[i][4],
+            (int) ubuf(buf[i][5]).i, (int) ubuf(buf[i][6]).i,
             (int) ubuf(buf[i][7]).i);
 }
 
-LAMMPS_NS::bigint LAMMPS_NS::AtomVecAtomicAutopas::memory_usage() {
+bigint AtomVecAtomicAutopas::memory_usage() {
   bigint bytes = 0;
 
-  if (atom->memcheck("tag")) bytes += memory->usage(tag,nmax);
-  if (atom->memcheck("type")) bytes += memory->usage(type,nmax);
-  if (atom->memcheck("mask")) bytes += memory->usage(mask,nmax);
-  if (atom->memcheck("image")) bytes += memory->usage(image,nmax);
+  if (atom->memcheck("tag")) bytes += memory->usage(tag, nmax);
+  if (atom->memcheck("type")) bytes += memory->usage(type, nmax);
+  if (atom->memcheck("mask")) bytes += memory->usage(mask, nmax);
+  if (atom->memcheck("image")) bytes += memory->usage(image, nmax);
 
   //TODO Memory usage from autopas
   //if (atom->memcheck("x")) bytes += memory->usage(x,nmax,3);
@@ -509,8 +503,8 @@ LAMMPS_NS::bigint LAMMPS_NS::AtomVecAtomicAutopas::memory_usage() {
   return bytes;
 }
 
-int LAMMPS_NS::AtomVecAtomicAutopas::pack_exchange(
-    const LAMMPS_NS::AutoPasLMP::ParticleType &p, double *buf) {
+int AtomVecAtomicAutopas::pack_exchange(
+    const AutoPasLMP::ParticleType &p, double *buf) {
   auto idx = lmp->autopas->idx(p);
   auto &x = p.getR();
   auto &v = p.getV();
@@ -534,3 +528,4 @@ int LAMMPS_NS::AtomVecAtomicAutopas::pack_exchange(
   buf[0] = m;
   return m;
 }
+

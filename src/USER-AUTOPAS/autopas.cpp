@@ -177,8 +177,38 @@ void AutoPasLMP::add_particle(const ParticleType &p) {
   }
 }
 
+template<bool haloOnly>
+autopas::ParticleIteratorWrapper<AutoPasLMP::ParticleType, true>
+AutoPasLMP::particles_by_slab(int dim, double lo, double hi) const {
+
+  // TODO Might not be the correct box values for triclinic domains etc.
+  std::array<double, 3> low{lmp->domain->boxlo[0],
+                            lmp->domain->boxlo[1],
+                            lmp->domain->boxlo[2]};
+  std::array<double, 3> high{lmp->domain->boxhi[0],
+                             lmp->domain->boxhi[1],
+                             lmp->domain->boxhi[2]};
+
+  low[dim] = lo;
+  high[dim] = hi;
+
+  if constexpr (haloOnly) {
+    return _autopas->getRegionIterator(low, high, autopas::haloOnly);
+  } else {
+    return _autopas->getRegionIterator(low, high);
+  }
+}
+
 #pragma clang diagnostic pop
 
 template void AutoPasLMP::add_particle<false>(const ParticleType &p);
 
 template void AutoPasLMP::add_particle<true>(const ParticleType &p);
+
+template
+autopas::ParticleIteratorWrapper<AutoPasLMP::ParticleType, true>
+AutoPasLMP::particles_by_slab<true>(int dim, double lo, double hi) const;
+
+template
+autopas::ParticleIteratorWrapper<AutoPasLMP::ParticleType, true>
+AutoPasLMP::particles_by_slab<false>(int dim, double lo, double hi) const;

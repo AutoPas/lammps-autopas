@@ -5,7 +5,9 @@
 #include "domain.h"
 #include "atom_vec_autopas.h"
 
-LAMMPS_NS::CommAutoPas::CommAutoPas(LAMMPS_NS::LAMMPS *lmp) : CommBrick(lmp) {
+using namespace LAMMPS_NS;
+
+CommAutoPas::CommAutoPas(LAMMPS_NS::LAMMPS *lmp) : CommBrick(lmp) {
 
 }
 
@@ -14,7 +16,7 @@ LAMMPS_NS::CommAutoPas::CommAutoPas(LAMMPS_NS::LAMMPS *lmp) : CommBrick(lmp) {
    other per-atom attributes may also be sent via pack/unpack routines
 ------------------------------------------------------------------------- */
 
-void LAMMPS_NS::CommAutoPas::forward_comm(int /*dummy*/) {
+void CommAutoPas::forward_comm(int /*dummy*/) {
   //TODO Fixme
   // Currently not called?
   std::cout << "Forward comm missing" << "\n";
@@ -88,7 +90,7 @@ void LAMMPS_NS::CommAutoPas::forward_comm(int /*dummy*/) {
    other per-atom attributes may also be sent via pack/unpack routines
 ------------------------------------------------------------------------- */
 
-void LAMMPS_NS::CommAutoPas::reverse_comm() {
+void CommAutoPas::reverse_comm() {
   //TODO Fixme (Only used when newton3 is true)
   std::cout << "Reverse comm missing" << "\n";
   return;
@@ -151,7 +153,7 @@ void LAMMPS_NS::CommAutoPas::reverse_comm() {
    for triclinic, atoms must be in lamda coords (0-1) before exchange is called
 ------------------------------------------------------------------------- */
 
-void LAMMPS_NS::CommAutoPas::exchange() {
+void CommAutoPas::exchange() {
 
   int i, m, nsend, nrecv, nrecv1, nrecv2, nlocal;
   double lo, hi, value;
@@ -204,7 +206,7 @@ void LAMMPS_NS::CommAutoPas::exchange() {
     nsend = 0;
 
     for (auto &p : lmp->autopas->_leavingParticles) {
-      auto &x  = p.getR();
+      auto &x = p.getR();
       if (x[dim] < lo || x[dim] >= hi) {
         if (nsend > maxsend) grow_send(nsend, 1);
         nsend += avec->pack_exchange(p, &buf_send[nsend]);
@@ -279,13 +281,9 @@ void LAMMPS_NS::CommAutoPas::exchange() {
    for triclinic, atoms must be in lamda coords (0-1) before borders is called
 ------------------------------------------------------------------------- */
 
-void LAMMPS_NS::CommAutoPas::borders() {
+void CommAutoPas::borders() {
 
-  // TODO Only search in outer regions?
-  // TODO Do not use index based access
-
-  int i, n, itype, iswap, dim, ineed, twoneed;
-  int nsend, nrecv, sendflag, nfirst, nlast, ngroup;
+  int nrecv, sendflag, nfirst, nlast;
   double lo, hi;
   int *type;
   double *buf, *mlo, *mhi;
@@ -294,13 +292,13 @@ void LAMMPS_NS::CommAutoPas::borders() {
 
   // do swaps over all 3 dimensions
 
-  iswap = 0;
+  int iswap = 0;
   smax = rmax = 0;
 
-  for (dim = 0; dim < 3; dim++) {
+  for (int dim = 0; dim < 3; dim++) {
     nlast = 0;
-    twoneed = 2 * maxneed[dim];
-    for (ineed = 0; ineed < twoneed; ineed++) {
+    int twoneed = 2 * maxneed[dim];
+    for (int ineed = 0; ineed < twoneed; ineed++) {
 
       // find atoms within slab boundaries lo/hi using <= and >=
       // check atoms between nfirst and nlast
@@ -321,8 +319,6 @@ void LAMMPS_NS::CommAutoPas::borders() {
         nlast = atom->nlocal + atom->nghost;
       }
 
-      nsend = 0;
-
       // sendflag = 0 if I do not send on this swap
       // sendneed test indicates receiver no longer requires data
       // e.g. due to non-PBC or non-uniform sub-domains
@@ -335,74 +331,38 @@ void LAMMPS_NS::CommAutoPas::borders() {
       // can only limit loop to bordergroup for first sends (ineed < 2)
       // on these sends, break loop in two: owned (in group) and ghost
 
+      std::vector<AutoPasLMP::ParticleType *> sendparticles;
+
       if (sendflag) {
         if (!bordergroup || ineed >= 2) {
           if (mode == Comm::SINGLE) {
-            for (i = nfirst; i < nlast; i++) {
-              auto &x = lmp->autopas->particle_by_index(i)->getR();
-              if (x[dim] >= lo && x[dim] <= hi) {
-                if (nsend == maxsendlist[iswap]) grow_list(iswap, nsend);
-                sendlist[iswap][nsend++] = i;
-              }
-            }
+            border_impl(nfirst, nlast, lo, hi, dim, sendparticles);
           } else {
-            for (i = nfirst; i < nlast; i++) {
-              itype = type[i];
-              auto &x = lmp->autopas->particle_by_index(i)->getR();
-              if (x[dim] >= mlo[itype] && x[dim] <= mhi[itype]) {
-                if (nsend == maxsendlist[iswap]) grow_list(iswap, nsend);
-                sendlist[iswap][nsend++] = i;
-              }
-            }
+            border_impl(nfirst, nlast, mlo, mhi, dim, sendparticles);
           }
-
         } else {
           if (mode == Comm::SINGLE) {
-            ngroup = atom->nfirst;
-            for (i = 0; i < ngroup; i++) {
-              auto &x = lmp->autopas->particle_by_index(i)->getR();
-              if (x[dim] >= lo && x[dim] <= hi) {
-                if (nsend == maxsendlist[iswap]) grow_list(iswap, nsend);
-                sendlist[iswap][nsend++] = i;
-              }
-            }
-            for (i = atom->nlocal; i < nlast; i++) { // can only be halo
-              auto &x = lmp->autopas->particle_by_index(i)->getR();
-              if (x[dim] >= lo && x[dim] <= hi) {
-                if (nsend == maxsendlist[iswap]) grow_list(iswap, nsend);
-                sendlist[iswap][nsend++] = i;
-              }
-            }
+            border_impl(0, atom->nfirst, lo, hi, dim, sendparticles);
+            border_impl</*haloOnly*/ true>(atom->nlocal, nlast, lo, hi, dim,
+                                           sendparticles);
           } else {
-            ngroup = atom->nfirst;
-            for (i = 0; i < ngroup; i++) {
-              itype = type[i];
-              auto &x = lmp->autopas->particle_by_index(i)->getR();
-              if (x[dim] >= mlo[itype] && x[dim] <= mhi[itype]) {
-                if (nsend == maxsendlist[iswap]) grow_list(iswap, nsend);
-                sendlist[iswap][nsend++] = i;
-              }
-            }
-            for (i = atom->nlocal; i < nlast; i++) { // can only be halo
-              itype = type[i];
-              auto &x = lmp->autopas->particle_by_index(i)->getR();
-              if (x[dim] >= mlo[itype] && x[dim] <= mhi[itype]) {
-                if (nsend == maxsendlist[iswap]) grow_list(iswap, nsend);
-                sendlist[iswap][nsend++] = i;
-              }
-            }
+            border_impl(0, atom->nfirst, mlo, mhi, dim, sendparticles);
+            border_impl</*haloOnly*/ true>(atom->nlocal, nlast, mlo, mhi, dim,
+                                           sendparticles);
           }
         }
       }
 
       // pack up list of border atoms
 
+      int nsend = sendparticles.size();
+      int n;
       if (nsend * size_border > maxsend) grow_send(nsend * size_border, 0);
       if (ghost_velocity)
-        n = avec->pack_border_vel(nsend, sendlist[iswap], buf_send,
+        n = avec->pack_border_vel_autopas(sendparticles, buf_send,
                                   pbc_flag[iswap], pbc[iswap]);
       else
-        n = avec->pack_border(nsend, sendlist[iswap], buf_send,
+        n = avec->pack_border_autopas(sendparticles, buf_send,
                               pbc_flag[iswap], pbc[iswap]);
 
       // swap atoms with other proc
@@ -458,4 +418,38 @@ void LAMMPS_NS::CommAutoPas::borders() {
   // reset global->local map
 
   if (map_style) atom->map_set();
+}
+
+template<bool haloOnly>
+void CommAutoPas::border_impl(int idxfirst, int idxlast, double lo, double hi,
+                              int dim,
+                              std::vector<AutoPasLMP::ParticleType *> &sendparticles) const {
+  for (auto iter = this->lmp->autopas->particles_by_slab(
+      dim, lo, hi); iter.isValid(); ++iter) {
+    auto &p = *iter;
+    auto idx = this->lmp->autopas->idx(p);
+    if (idx >= idxfirst && idx < idxlast) {
+      sendparticles.push_back(&p);
+    }
+  }
+}
+
+template<bool haloOnly>
+void
+CommAutoPas::border_impl(int idxfirst, int idxlast, double *mlo, double *mhi,
+                         int dim,
+                         std::vector<AutoPasLMP::ParticleType *> &sendparticles) const {
+  double mlo_min = *std::min_element(mlo, mlo + atom->ntypes);
+  double mhi_max = *std::max_element(mhi, mhi + atom->ntypes);
+  for (auto iter = lmp->autopas->particles_by_slab(
+      dim, mlo_min, mhi_max); iter.isValid(); ++iter) {
+    auto &p = *iter;
+    auto idx = lmp->autopas->idx(p);
+    auto &x = p.getR();
+    int itype = atom->type[idx];
+    if (idx >= idxfirst && idx < idxlast && x[dim] >= mlo[itype] &&
+        x[dim] <= mhi[itype]) {
+      sendparticles.push_back(&p);
+    }
+  }
 }
