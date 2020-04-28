@@ -44,8 +44,10 @@ public:
 
 private:
   std::unordered_map<int,AutoPasLMP::ParticleType *> index_map;
-  bool index_map_valid;
-  void update_index_map();
+  std::vector<AutoPasLMP::ParticleType *> index_vector;
+  bool use_index_map = false;
+  bool index_structure_valid = false;
+  void update_index_structure();
 
 };
 

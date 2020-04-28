@@ -50,7 +50,8 @@ void AutoPasLMP::init_autopas(double cutoff, double **epsilon, double **sigma) {
 
   _autopas->setAllowedContainers({autopas::ContainerOption::linkedCells});
   _autopas->setAllowedDataLayouts({autopas::DataLayoutOption::soa});
-  _autopas->setAllowedNewton3Options({autopas::Newton3Option::disabled}); //TODO Newton based on lammps settings
+  _autopas->setAllowedNewton3Options(
+      {autopas::Newton3Option::disabled}); //TODO Newton based on lammps settings
   _autopas->setAllowedTraversals({autopas::TraversalOption::c04});
 
   FloatVecType boxMax{}, boxMin{};
@@ -97,11 +98,15 @@ void AutoPasLMP::init_autopas(double cutoff, double **epsilon, double **sigma) {
 
 AutoPasLMP::ParticleType *AutoPasLMP::particle_by_index(int idx) {
 
-  if(!index_map_valid){
-    update_index_map();
+  if (!index_structure_valid) {
+    update_index_structure();
   }
 
-  return index_map.at(idx);
+  if (use_index_map) {
+    return index_map.at(idx);
+  } else {
+    return index_vector.at(idx);
+  }
 
 }
 
@@ -112,18 +117,19 @@ unsigned long AutoPasLMP::idx(const AutoPasLMP::ParticleType &p) {
 void AutoPasLMP::update_autopas() {
   auto&&[invalidParticles, updated] = _autopas->updateContainer();
   _leavingParticles = std::move(invalidParticles);
-  index_map_valid = false;
+  index_structure_valid = false;
 }
 
 void AutoPasLMP::copy_back() {
   auto nmax = _autopas->getNumberOfParticles();
-  atom->x = memory->grow(atom->x,nmax,3,"atom:x");
-  atom->v = memory->grow(atom->v,nmax,3,"atom:v");
-  atom->f = memory->grow(atom->f,nmax,3,"atom:f");
+  atom->x = memory->grow(atom->x, nmax, 3, "atom:x");
+  atom->v = memory->grow(atom->v, nmax, 3, "atom:v");
+  atom->f = memory->grow(atom->f, nmax, 3, "atom:f");
   // auto &f = memory->grow(atom->f,nmax*comm->nthreads,3,"atom:f");
 
 #pragma omp parallel default(none)
-  for (auto iter = _autopas->begin(autopas::ownedOnly); iter.isValid(); ++iter) {
+  for (auto iter = _autopas->begin(
+      autopas::ownedOnly); iter.isValid(); ++iter) {
     auto &p = *iter;
     auto idx = this->idx(p);
     std::copy_n(p.getR().begin(), 3, atom->x[idx]);
@@ -132,32 +138,47 @@ void AutoPasLMP::copy_back() {
   }
 }
 
-void AutoPasLMP::update_index_map() {
-  index_map.clear();
-  for(auto &p: *lmp->autopas->_autopas){ // owned and halo
-    auto idx = lmp->autopas->idx(p);
-    index_map.emplace(idx, &p);
+void AutoPasLMP::update_index_structure() {
+  auto n = _autopas->getNumberOfParticles(autopas::haloAndOwned);
+  if (use_index_map) {
+    index_map.clear();
+    index_map.reserve(n);
+  } else {
+    index_vector.clear();
+    index_vector.resize(n);
   }
-  index_map_valid = true;
+
+  for (auto &p: *lmp->autopas->_autopas) { // owned and halo
+    auto idx = lmp->autopas->idx(p);
+    if (use_index_map) {
+      index_map.emplace(idx, &p);
+    } else {
+      index_vector.at(idx) = &p;
+    }
+  }
+  index_structure_valid = true;
 }
 
 #pragma clang diagnostic push
 #pragma ide diagnostic ignored "UnreachableCode"
+
 template<bool halo>
 void AutoPasLMP::add_particle(const ParticleType &p) {
 
-  if constexpr (halo){
+  if constexpr (halo) {
     _autopas->addOrUpdateHaloParticle(p);
   } else {
     _autopas->addParticle(p);
   }
 
-  if(index_map_valid){
-    index_map_valid = false;
+  if (index_structure_valid) {
+    index_structure_valid = false;
     //std::cout << "Invalidate map\n";
   }
 }
+
 #pragma clang diagnostic pop
 
 template void AutoPasLMP::add_particle<false>(const ParticleType &p);
+
 template void AutoPasLMP::add_particle<true>(const ParticleType &p);
