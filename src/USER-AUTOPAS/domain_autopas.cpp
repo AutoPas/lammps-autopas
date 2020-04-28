@@ -78,7 +78,7 @@ void DomainAutoPas::pbc() {
        iter != lmp->autopas->_leavingParticles.end();) {
     bool wasTouched = pbc(*iter, lo, hi, period);
     if (wasTouched) {
-      autopas.addParticle(*iter); // Particle is in the domain again
+      lmp->autopas->add_particle(*iter); // Particle is in the domain again
       // No longer part of the leaving particles
       iter = lmp->autopas->_leavingParticles.erase(iter);
       // TODO This is not correct for multiple processes

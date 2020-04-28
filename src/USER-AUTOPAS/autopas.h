@@ -33,12 +33,20 @@ public:
   void init_autopas(double cutoff, double** epsilon, double** sigma);
   void update_autopas();
 
-  template<bool owned=true, bool halo=false>
   [[nodiscard]] ParticleType* particle_by_index(int idx);
 
   unsigned long idx(const ParticleType &p);
 
   void copy_back();
+
+  template<bool halo=false>
+  void add_particle(const ParticleType &p);
+
+private:
+  std::unordered_map<int,AutoPasLMP::ParticleType *> index_map;
+  bool index_map_valid;
+  void update_index_map();
+
 };
 
 }

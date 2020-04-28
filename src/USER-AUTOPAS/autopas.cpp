@@ -87,7 +87,7 @@ void AutoPasLMP::init_autopas(double cutoff, double **epsilon, double **sigma) {
     unsigned long moleculeId = i;
     unsigned long typeId = atom->type[i];
 
-    _autopas->addParticle(ParticleType(pos, vel, moleculeId, typeId));
+    add_particle(ParticleType(pos, vel, moleculeId, typeId));
   }
 
   memory->destroy(atom->x);
@@ -95,35 +95,15 @@ void AutoPasLMP::init_autopas(double cutoff, double **epsilon, double **sigma) {
   // TODO When to copy back?
 }
 
-#pragma clang diagnostic push
-#pragma ide diagnostic ignored "UnreachableCode" // constexpr-if makes function unreachable?
-template<bool owned, bool halo>
 AutoPasLMP::ParticleType *AutoPasLMP::particle_by_index(int idx) {
-  // TODO Global to local mapping?
 
-  auto iteratorBehavior = autopas::IteratorBehavior::ownedOnly;
-  if constexpr (halo) {
-    iteratorBehavior = autopas::IteratorBehavior::haloOnly;
-    if constexpr (owned) {
-      iteratorBehavior = autopas::IteratorBehavior::haloAndOwned;
-    }
+  if(!index_map_valid){
+    update_index_map();
   }
 
-  ParticleType *particle = nullptr;
-
-  // Assuming the particle ids are unique, no reduction is necessary
-#pragma omp parallel default(none) shared(idx, particle, iteratorBehavior)
-  for (auto iter = _autopas->begin(iteratorBehavior); iter.isValid(); ++iter) {
-    auto &p = *iter;
-    if (this->idx(p) == idx) {
-      particle = &p;
-    }
-  }
-
-  return particle;
+  return index_map.at(idx);
 
 }
-#pragma clang diagnostic pop
 
 unsigned long AutoPasLMP::idx(const AutoPasLMP::ParticleType &p) {
   return p.getID(); // TODO Global to local particle mapping // TODO Halo particles?
@@ -132,6 +112,7 @@ unsigned long AutoPasLMP::idx(const AutoPasLMP::ParticleType &p) {
 void AutoPasLMP::update_autopas() {
   auto&&[invalidParticles, updated] = _autopas->updateContainer();
   _leavingParticles = std::move(invalidParticles);
+  index_map_valid = false;
 }
 
 void AutoPasLMP::copy_back() {
@@ -151,7 +132,32 @@ void AutoPasLMP::copy_back() {
   }
 }
 
+void AutoPasLMP::update_index_map() {
+  index_map.clear();
+  for(auto &p: *lmp->autopas->_autopas){ // owned and halo
+    auto idx = lmp->autopas->idx(p);
+    index_map.emplace(idx, &p);
+  }
+  index_map_valid = true;
+}
 
-template AutoPasLMP::ParticleType *AutoPasLMP::particle_by_index<true, true>(int idx);
-template AutoPasLMP::ParticleType *AutoPasLMP::particle_by_index<true, false>(int idx);
-template AutoPasLMP::ParticleType *AutoPasLMP::particle_by_index<false, true>(int idx);
+#pragma clang diagnostic push
+#pragma ide diagnostic ignored "UnreachableCode"
+template<bool halo>
+void AutoPasLMP::add_particle(const ParticleType &p) {
+
+  if constexpr (halo){
+    _autopas->addOrUpdateHaloParticle(p);
+  } else {
+    _autopas->addParticle(p);
+  }
+
+  if(index_map_valid){
+    index_map_valid = false;
+    //std::cout << "Invalidate map\n";
+  }
+}
+#pragma clang diagnostic pop
+
+template void AutoPasLMP::add_particle<false>(const ParticleType &p);
+template void AutoPasLMP::add_particle<true>(const ParticleType &p);
