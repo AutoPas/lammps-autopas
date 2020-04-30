@@ -5,6 +5,8 @@
 #include "memory.h"
 #include "neighbor.h"
 
+#include <limits>
+
 using namespace LAMMPS_NS;
 
 AutoPasLMP::AutoPasLMP(class LAMMPS *lmp, int narg, char **args) : Pointers(
@@ -181,13 +183,11 @@ template<bool haloOnly>
 autopas::ParticleIteratorWrapper<AutoPasLMP::ParticleType, true>
 AutoPasLMP::particles_by_slab(int dim, double lo, double hi) const {
 
-  // TODO Might not be the correct box values for triclinic domains etc.
-  std::array<double, 3> low{lmp->domain->boxlo[0],
-                            lmp->domain->boxlo[1],
-                            lmp->domain->boxlo[2]};
-  std::array<double, 3> high{lmp->domain->boxhi[0],
-                             lmp->domain->boxhi[1],
-                             lmp->domain->boxhi[2]};
+  std::array<double, 3> low{};
+  std::array<double, 3> high{};
+
+  low.fill(- std::numeric_limits<double>::max());
+  high.fill(std::numeric_limits<double>::max());
 
   low[dim] = lo;
   high[dim] = hi;
