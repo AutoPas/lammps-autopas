@@ -283,12 +283,10 @@ void CommAutoPas::exchange() {
 
 void CommAutoPas::borders() {
 
-  int nrecv, sendflag, nfirst, nlast;
+  int sendflag, nfirst;
   double lo, hi;
-  int *type;
   double *buf, *mlo, *mhi;
-  MPI_Request request;
-  AtomVecAutopas *avec = dynamic_cast<AtomVecAutopas *>(atom->avec);
+  auto *avec = dynamic_cast<AtomVecAutopas *>(atom->avec);
 
   // do swaps over all 3 dimensions
 
@@ -296,7 +294,7 @@ void CommAutoPas::borders() {
   smax = rmax = 0;
 
   for (int dim = 0; dim < 3; dim++) {
-    nlast = 0;
+    int nlast = 0;
     int twoneed = 2 * maxneed[dim];
     for (int ineed = 0; ineed < twoneed; ineed++) {
 
@@ -310,7 +308,6 @@ void CommAutoPas::borders() {
         lo = slablo[iswap];
         hi = slabhi[iswap];
       } else {
-        type = atom->type;
         mlo = multilo[iswap];
         mhi = multihi[iswap];
       }
@@ -370,7 +367,9 @@ void CommAutoPas::borders() {
       // put incoming ghosts at end of my atom arrays
       // if swapping with self, simply copy, no messages
 
+      int nrecv;
       if (sendproc[iswap] != me) {
+        MPI_Request request;
         MPI_Sendrecv(&nsend, 1, MPI_INT, sendproc[iswap], 0,
                      &nrecv, 1, MPI_INT, recvproc[iswap], 0, world,
                      MPI_STATUS_IGNORE);
@@ -424,7 +423,7 @@ template<bool haloOnly>
 void CommAutoPas::border_impl(int idxfirst, int idxlast, double lo, double hi,
                               int dim,
                               std::vector<AutoPasLMP::ParticleType *> &sendparticles) const {
-  for (auto iter = this->lmp->autopas->particles_by_slab(
+  for (auto iter = this->lmp->autopas->particles_by_slab<haloOnly>(
       dim, lo, hi); iter.isValid(); ++iter) {
     auto &p = *iter;
     auto idx = this->lmp->autopas->idx(p);
@@ -441,7 +440,7 @@ CommAutoPas::border_impl(int idxfirst, int idxlast, double *mlo, double *mhi,
                          std::vector<AutoPasLMP::ParticleType *> &sendparticles) const {
   double mlo_min = *std::min_element(mlo, mlo + atom->ntypes);
   double mhi_max = *std::max_element(mhi, mhi + atom->ntypes);
-  for (auto iter = lmp->autopas->particles_by_slab(
+  for (auto iter = lmp->autopas->particles_by_slab<haloOnly>(
       dim, mlo_min, mhi_max); iter.isValid(); ++iter) {
     auto &p = *iter;
     auto idx = lmp->autopas->idx(p);
