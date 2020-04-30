@@ -314,43 +314,45 @@ void CommAutoPas::borders() {
       if (ineed / 2 >= sendneed[dim][ineed % 2]) sendflag = 0;
       else sendflag = 1;
 
+      // Free sendlist buffer from last communication
+
+      _sendlist_particles.at(iswap).clear();
+
       // find send atoms according to SINGLE vs MULTI
       // all atoms eligible versus only atoms in bordergroup
       // can only limit loop to bordergroup for first sends (ineed < 2)
       // on these sends, break loop in two: owned (in group) and ghost
 
-      std::vector<AutoPasLMP::ParticleType *> sendparticles;
-
       if (sendflag) {
         if (!bordergroup || ineed >= 2) {
           if (mode == Comm::SINGLE) {
-            border_impl(nfirst, nlast, lo, hi, dim, sendparticles);
+            border_impl(nfirst, nlast, lo, hi, dim, _sendlist_particles[iswap]);
           } else {
-            border_impl(nfirst, nlast, mlo, mhi, dim, sendparticles);
+            border_impl(nfirst, nlast, mlo, mhi, dim, _sendlist_particles[iswap]);
           }
         } else {
           if (mode == Comm::SINGLE) {
-            border_impl(0, atom->nfirst, lo, hi, dim, sendparticles);
+            border_impl(0, atom->nfirst, lo, hi, dim, _sendlist_particles[iswap]);
             border_impl</*haloOnly*/ true>(atom->nlocal, nlast, lo, hi, dim,
-                                           sendparticles);
+                                           _sendlist_particles[iswap]);
           } else {
-            border_impl(0, atom->nfirst, mlo, mhi, dim, sendparticles);
+            border_impl(0, atom->nfirst, mlo, mhi, dim, _sendlist_particles[iswap]);
             border_impl</*haloOnly*/ true>(atom->nlocal, nlast, mlo, mhi, dim,
-                                           sendparticles);
+                                           _sendlist_particles[iswap]);
           }
         }
       }
 
       // pack up list of border atoms
 
-      int nsend = sendparticles.size();
+      int nsend = _sendlist_particles[iswap].size();
       int n;
       if (nsend * size_border > maxsend) grow_send(nsend * size_border, 0);
       if (ghost_velocity)
-        n = avec->pack_border_vel_autopas(sendparticles, buf_send,
+        n = avec->pack_border_vel_autopas(_sendlist_particles[iswap], buf_send,
                                           pbc_flag[iswap], pbc[iswap]);
       else
-        n = avec->pack_border_autopas(sendparticles, buf_send,
+        n = avec->pack_border_autopas(_sendlist_particles[iswap], buf_send,
                                       pbc_flag[iswap], pbc[iswap]);
 
       // swap atoms with other proc
@@ -442,4 +444,9 @@ CommAutoPas::border_impl(int idxfirst, int idxlast, double *mlo, double *mhi,
       sendparticles.push_back(&p);
     }
   }
+}
+
+void CommAutoPas::setup() {
+  CommBrick::setup();
+  _sendlist_particles.resize(nswap);
 }

@@ -21,6 +21,8 @@ public:
 
   void borders() override;
 
+  void setup() override;
+
 private:
 
   template<bool haloOnly = false>
@@ -31,6 +33,7 @@ private:
   void border_impl(int idxfirst, int idxlast, double *mlo, double *mhi, int dim,
                    std::vector<AutoPasLMP::ParticleType *> &sendparticles) const;
 
+  std::vector<std::vector<AutoPasLMP::ParticleType *>> _sendlist_particles;
 };
 }
 
