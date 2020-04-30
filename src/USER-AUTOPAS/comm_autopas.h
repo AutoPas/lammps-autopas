@@ -33,6 +33,11 @@ private:
   void border_impl(int idxfirst, int idxlast, double *mlo, double *mhi, int dim,
                    std::vector<AutoPasLMP::ParticleType *> &sendparticles) const;
 
+
+  void reverse_comm_impl_self(int iswap) const;
+
+  void reverse_comm_impl_other(int iswap) const;
+
   std::vector<std::vector<AutoPasLMP::ParticleType *>> _sendlist_particles;
 };
 }

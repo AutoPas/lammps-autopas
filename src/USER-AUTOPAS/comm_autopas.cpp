@@ -3,7 +3,6 @@
 #include "atom.h"
 #include "atom_vec.h"
 #include "atom_vec_autopas.h"
-#include "autopas.h"
 #include "domain.h"
 
 using namespace LAMMPS_NS;
@@ -92,54 +91,59 @@ void CommAutoPas::forward_comm(int /*dummy*/) {
 ------------------------------------------------------------------------- */
 
 void CommAutoPas::reverse_comm() {
-  //TODO Fixme (Only used when newton3 is true)
-  std::cout << "Reverse comm missing" << "\n";
-  return;
-
-  int n;
-  MPI_Request request;
-  AtomVec *avec = atom->avec;
-  double *buf;
-
-  // exchange data with another proc
-  // if other proc is self, just copy
-  // if comm_f_only set, exchange or copy directly from f, don't pack
-
   for (int iswap = nswap - 1; iswap >= 0; iswap--) {
     if (sendproc[iswap] != me) {
-      if (comm_f_only) {
-        if (size_reverse_recv[iswap])
-          MPI_Irecv(buf_recv, size_reverse_recv[iswap], MPI_DOUBLE,
-                    sendproc[iswap], 0, world, &request);
-        if (size_reverse_send[iswap]) {
-          auto f = lmp->autopas->particle_by_index(firstrecv[iswap])->getF();
-          buf = f.data();
-          MPI_Send(buf, size_reverse_send[iswap], MPI_DOUBLE,
-                   recvproc[iswap], 0, world);
-        }
-        if (size_reverse_recv[iswap]) MPI_Wait(&request, MPI_STATUS_IGNORE);
-      } else {
-        if (size_reverse_recv[iswap])
-          MPI_Irecv(buf_recv, size_reverse_recv[iswap], MPI_DOUBLE,
-                    sendproc[iswap], 0, world, &request);
-        n = avec->pack_reverse(recvnum[iswap], firstrecv[iswap], buf_send);
-        if (n) MPI_Send(buf_send, n, MPI_DOUBLE, recvproc[iswap], 0, world);
-        if (size_reverse_recv[iswap]) MPI_Wait(&request, MPI_STATUS_IGNORE);
-      }
-      avec->unpack_reverse(sendnum[iswap], sendlist[iswap], buf_recv);
-
+      // exchange data with another proc
+      reverse_comm_impl_other(iswap);
     } else {
-      if (comm_f_only) {
-        if (sendnum[iswap]) {
-          auto f = lmp->autopas->particle_by_index(firstrecv[iswap])->getF();
-          avec->unpack_reverse(sendnum[iswap], sendlist[iswap],
-                               f.data());
-        }
-      } else {
-        avec->pack_reverse(recvnum[iswap], firstrecv[iswap], buf_send);
-        avec->unpack_reverse(sendnum[iswap], sendlist[iswap], buf_send);
-      }
+      // exchange data with own process
+      reverse_comm_impl_self(iswap);
     }
+  }
+}
+
+void
+CommAutoPas::reverse_comm_impl_other(int iswap) const {
+  auto *avec = dynamic_cast<AtomVecAutopas *>(atom->avec);
+
+  MPI_Request request;
+  if (comm_f_only) {
+    if (size_reverse_recv[iswap])
+      MPI_Irecv(buf_recv, size_reverse_recv[iswap], MPI_DOUBLE,
+                sendproc[iswap], 0, world, &request);
+    if (size_reverse_send[iswap]) {
+      auto f = lmp->autopas->particle_by_index(firstrecv[iswap])->getF();
+      double *buf = f.data();
+      MPI_Send(buf, size_reverse_send[iswap], MPI_DOUBLE,
+               recvproc[iswap], 0, world);
+    }
+    if (size_reverse_recv[iswap]) MPI_Wait(&request, MPI_STATUS_IGNORE);
+  } else {
+    if (size_reverse_recv[iswap])
+      MPI_Irecv(buf_recv, size_reverse_recv[iswap], MPI_DOUBLE,
+                sendproc[iswap], 0, world, &request);
+    int n = avec->pack_reverse(recvnum[iswap], firstrecv[iswap], buf_send);
+    if (n) MPI_Send(buf_send, n, MPI_DOUBLE, recvproc[iswap], 0, world);
+    if (size_reverse_recv[iswap]) MPI_Wait(&request, MPI_STATUS_IGNORE);
+  }
+  avec->unpack_reverse(sendnum[iswap], sendlist[iswap], buf_recv);
+}
+
+void
+CommAutoPas::reverse_comm_impl_self(int iswap) const {
+  auto *avec = dynamic_cast<AtomVecAutopas *>(atom->avec);
+
+  // if other proc is self, just copy
+  // if comm_f_only set, exchange or copy directly from f, don't pack
+  if (comm_f_only) {
+    if (sendnum[iswap]) {
+      auto f = lmp->autopas->particle_by_index(firstrecv[iswap])->getF();
+      avec->unpack_reverse(sendnum[iswap], sendlist[iswap],
+                           f.data());
+    }
+  } else {
+    avec->pack_reverse(recvnum[iswap], firstrecv[iswap], buf_send);
+    avec->unpack_reverse(sendnum[iswap], sendlist[iswap], buf_send);
   }
 }
 
