@@ -69,12 +69,15 @@ void AutoPasLMP::init_autopas(double cutoff, double **epsilon, double **sigma) {
   _autopas->setTuningInterval(1000);
   _autopas->setTuningStrategyOption(autopas::TuningStrategyOption::fullSearch);
 
-  neighbor->every = 1; //TODO AutoPas cant handle adding particles that are out of bounds
+  //neighbor->every = 1; //TODO AutoPas cant handle adding particles that are out of bounds
   //_autopas.setVerletClusterSize(_config->verletClusterSize);
-  _autopas->setVerletRebuildFrequency(neighbor->every);
-  std::cout << neighbor->skin << "\n";
-  // _autopas.setVerletSkin(neighbor->skin);
-  _autopas->setVerletSkin(0); // No skin needed when rebuilding every step
+  //_autopas->setVerletRebuildFrequency(neighbor->every);
+  //std::cout << neighbor->skin << "\n";
+
+  _autopas->setVerletRebuildFrequency(std::max(neighbor->every, neighbor->delay)); // TODO Check if value correct
+  _autopas->setVerletSkin(neighbor->skin);
+
+  //_autopas->setVerletSkin(0); // No skin needed when rebuilding every step
 
   autopas::Logger::create();
   autopas::Logger::get()->set_level(autopas::Logger::LogLevel::warn);
