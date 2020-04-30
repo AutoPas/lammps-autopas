@@ -156,11 +156,7 @@ void CommAutoPas::reverse_comm() {
 
 void CommAutoPas::exchange() {
 
-  int i, m, nsend, nrecv, nrecv1, nrecv2, nlocal;
-  double lo, hi, value;
-  double *sublo, *subhi;
-  MPI_Request request;
-  AtomVecAutopas *avec = dynamic_cast<AtomVecAutopas *>(atom->avec);
+  auto *avec = dynamic_cast<AtomVecAutopas *>(atom->avec);
 
   // clear global->local map for owned and ghost atoms
   // b/c atoms migrate to new procs in exchange() and
@@ -182,29 +178,19 @@ void CommAutoPas::exchange() {
   }
 
   // subbox bounds for orthogonal or triclinic
-
-  if (triclinic == 0) {
-    sublo = domain->sublo;
-    subhi = domain->subhi;
-  } else {
-    sublo = domain->sublo_lamda;
-    subhi = domain->subhi_lamda;
-  }
+  const double *sublo {triclinic == 0 ? domain->sublo : domain->sublo_lamda};
+  const double *subhi {triclinic == 0 ? domain->subhi : domain->subhi_lamda};
 
   // loop over dimensions
-
-  int dimension = domain->dimension;
-
-  for (int dim = 0; dim < dimension; dim++) {
-
+  for (int dim = 0; dim < domain->dimension; dim++) {
 
     // fill buffer with atoms leaving my box, using < and >=
     // when atom is deleted, fill it in with last atom
 
-    lo = sublo[dim];
-    hi = subhi[dim];
-    nlocal = atom->nlocal;
-    nsend = 0;
+    double lo = sublo[dim];
+    double hi = subhi[dim];
+    int nlocal = atom->nlocal;
+    int nsend = 0;
 
     for (const auto &p : lmp->autopas->get_leaving_particles()) {
       auto &x = p.getR();
@@ -213,7 +199,7 @@ void CommAutoPas::exchange() {
         nsend += avec->pack_exchange(p, &buf_send[nsend]);
         /////////////////
         // Autopas already removed particles //TODO But: Gaps in other arrays?
-        auto idx{lmp->autopas->particle_to_index(p)};
+        auto idx{AutoPasLMP::particle_to_index(p)};
         avec->copy(nlocal - 1, idx, 1);
         nlocal--;
         //////////////////
@@ -229,12 +215,15 @@ void CommAutoPas::exchange() {
     // if 2 procs in dimension, single send/recv
     // if more than 2 procs in dimension, send/recv to both neighbors
 
+    int nrecv;
     if (procgrid[dim] == 1) nrecv = 0;
     else {
+      int nrecv1;
       MPI_Sendrecv(&nsend, 1, MPI_INT, procneigh[dim][0], 0,
                    &nrecv1, 1, MPI_INT, procneigh[dim][1], 0, world,
                    MPI_STATUS_IGNORE);
       nrecv = nrecv1;
+      int nrecv2;
       if (procgrid[dim] > 2) {
         MPI_Sendrecv(&nsend, 1, MPI_INT, procneigh[dim][1], 0,
                      &nrecv2, 1, MPI_INT, procneigh[dim][0], 0, world,
@@ -243,6 +232,7 @@ void CommAutoPas::exchange() {
       }
       if (nrecv > maxrecv) grow_recv(nrecv);
 
+      MPI_Request request;
       MPI_Irecv(buf_recv, nrecv1, MPI_DOUBLE, procneigh[dim][1], 0,
                 world, &request);
       MPI_Send(buf_send, nsend, MPI_DOUBLE, procneigh[dim][0], 0, world);
@@ -261,9 +251,9 @@ void CommAutoPas::exchange() {
     // box check is only for this dimension,
     //   atom may be passed to another proc in later dims
 
-    m = 0;
+    int m = 0;
     while (m < nrecv) {
-      value = buf_recv[m + dim + 1];
+      double value = buf_recv[m + dim + 1];
       if (value >= lo && value < hi) m += avec->unpack_exchange(&buf_recv[m]);
       else m += static_cast<int> (buf_recv[m]);
     }
