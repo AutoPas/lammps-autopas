@@ -1,12 +1,14 @@
 #include "compute_temp_autopas.h"
+
 #include <mpi.h>
+
 #include "atom.h"
 #include "autopas.h"
-#include "update.h"
-#include "force.h"
 #include "domain.h"
-#include "group.h"
 #include "error.h"
+#include "force.h"
+#include "group.h"
+#include "update.h"
 
 LAMMPS_NS::ComputeTempAutoPas::ComputeTempAutoPas(
     LAMMPS *lmp, int narg, char **arg) : ComputeTemp(lmp, narg, arg) {
@@ -26,8 +28,8 @@ double LAMMPS_NS::ComputeTempAutoPas::compute_scalar() {
 
 #pragma omp parallel default(none) shared(autopas, mask, rmass, mass, type) reduction(+: t)
   for (auto iter = lmp->autopas->const_iterate<autopas::IteratorBehavior::ownedOnly>(); iter.isValid(); ++iter) {
-    auto &v {iter->getV()};
-    auto idx {AutoPasLMP::particle_to_index(*iter)};
+    auto &v{iter->getV()};
+    auto idx{AutoPasLMP::particle_to_index(*iter)};
     if (mask[idx] & groupbit) {
       auto tmp = (v[0] * v[0] + v[1] * v[1] + v[2] * v[2]);
 
@@ -66,8 +68,8 @@ void LAMMPS_NS::ComputeTempAutoPas::compute_vector() {
   {
     double t_private[6] = {0};
     for (auto iter = lmp->autopas->const_iterate<autopas::IteratorBehavior::ownedOnly>(); iter.isValid(); ++iter) {
-      auto &v {iter->getV()};
-      auto idx {AutoPasLMP::particle_to_index(*iter)};
+      auto &v{iter->getV()};
+      auto idx{AutoPasLMP::particle_to_index(*iter)};
 
       if (mask[idx] & groupbit) {
         if (rmass) massone = rmass[idx];

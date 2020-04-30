@@ -16,8 +16,6 @@ class FixNVEAutoPas : public FixNVE {
 public:
   FixNVEAutoPas(class LAMMPS *, int, char **);
 
-  ~FixNVEAutoPas() override = default;
-
   void initial_integrate(int) override;
 
   void final_integrate() override;

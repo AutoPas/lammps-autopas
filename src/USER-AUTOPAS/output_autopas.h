@@ -1,14 +1,13 @@
-#pragma once
+#ifndef LMP_OUTPUT_AUTOPAS_H
+#define LMP_OUTPUT_AUTOPAS_H
 
 #include "output.h"
 
 namespace LAMMPS_NS {
 
 class OutputAutoPas : public Output {
-
 public:
   explicit OutputAutoPas(class LAMMPS *);
-  ~OutputAutoPas() override = default;
 
   void setup(int memflag) override;
 
@@ -21,3 +20,5 @@ public:
 };
 
 }
+
+#endif

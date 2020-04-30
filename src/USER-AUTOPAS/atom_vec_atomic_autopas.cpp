@@ -1,11 +1,12 @@
 #include "atom_vec_atomic_autopas.h"
+
 #include "atom.h"
 #include "comm.h"
 #include "domain.h"
-#include "modify.h"
+#include "error.h"
 #include "fix.h"
 #include "memory.h"
-#include "error.h"
+#include "modify.h"
 #include "utils.h"
 
 using namespace LAMMPS_NS;
@@ -104,7 +105,7 @@ AtomVecAtomicAutopas::pack_border_autopas(
   int m = 0;
 
   for (const auto p : particles) {
-    auto idx {AutoPasLMP::particle_to_index(*p)};
+    auto idx{AutoPasLMP::particle_to_index(*p)};
     auto &_x = p->getR();
     buf[m++] = _x[0] + dx;
     buf[m++] = _x[1] + dy;
@@ -115,7 +116,7 @@ AtomVecAtomicAutopas::pack_border_autopas(
   }
 
   if (atom->nextra_border) {
-    auto list {AutoPasLMP::particle_to_index(particles)};
+    auto list{AutoPasLMP::particle_to_index(particles)};
     for (int iextra = 0; iextra < atom->nextra_border; iextra++)
       m += modify->fix[atom->extra_border[iextra]]->pack_border(list.size(),
                                                                 list.data(),
@@ -160,7 +161,7 @@ AtomVecAtomicAutopas::pack_border_vel_autopas(
 
   for (const auto p : particles) {
 
-    auto idx {AutoPasLMP::particle_to_index(*p)};
+    auto idx{AutoPasLMP::particle_to_index(*p)};
     auto &x_{p->getR()};
     auto &v_{p->getV()};
     buf[m++] = x_[0] + dx;
@@ -182,7 +183,7 @@ AtomVecAtomicAutopas::pack_border_vel_autopas(
   }
 
   if (atom->nextra_border) {
-    auto list {AutoPasLMP::particle_to_index(particles)};
+    auto list{AutoPasLMP::particle_to_index(particles)};
     for (int iextra = 0; iextra < atom->nextra_border; iextra++)
       m += modify->fix[atom->extra_border[iextra]]->pack_border(list.size(),
                                                                 list.data(),
@@ -506,4 +507,3 @@ int AtomVecAtomicAutopas::pack_exchange(
   buf[0] = m;
   return m;
 }
-

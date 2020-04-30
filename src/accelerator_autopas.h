@@ -37,63 +37,48 @@ class AutoPasLMP {
   int autopas_exists;
 
   AutoPasLMP(class LAMMPS *, int, char **) {autopas_exists = 0;}
-  ~AutoPasLMP() {}
-  void accelerator(int, char **) {}
-  int neigh_list_autopas(int) {return 0;}
-  int neigh_count(int) {return 0;}
 };
 
 class AtomAutoPas : public Atom {
  public:
   tagint **k_special;
   AtomAutoPas(class LAMMPS *lmp) : Atom(lmp) {}
-  ~AtomAutoPas() {}
-  void sync(const ExecutionSpace /*space*/, unsigned int /*mask*/) {}
-  void modified(const ExecutionSpace /*space*/, unsigned int /*mask*/) {}
 };
 
 class CommAutoPas : public CommBrick {
  public:
   CommAutoPas(class LAMMPS *lmp) : CommBrick(lmp) {}
-  ~CommAutoPas() {}
 };
 
 class CommTiledAutoPas : public CommTiled {
  public:
   CommTiledAutoPas(class LAMMPS *lmp) : CommTiled(lmp) {}
   CommTiledAutoPas(class LAMMPS *lmp, Comm *oldcomm) : CommTiled(lmp,oldcomm) {}
-  ~CommTiledAutoPas() {}
 };
 
 class DomainAutoPas : public Domain {
  public:
   DomainAutoPas(class LAMMPS *lmp) : Domain(lmp) {}
-  ~DomainAutoPas() {}
 };
 
 class NeighborAutoPas : public Neighbor {
  public:
   NeighborAutoPas(class LAMMPS *lmp) : Neighbor(lmp) {}
-  ~NeighborAutoPas() {}
 };
 
 class MemoryAutoPas : public Memory {
  public:
   MemoryAutoPas(class LAMMPS *lmp) : Memory(lmp) {}
-  ~MemoryAutoPas() {}
-  void grow_autopas(tagint **, tagint **, int, int, const char*) {}
 };
 
 class ModifyAutoPas : public Modify {
  public:
   ModifyAutoPas(class LAMMPS *lmp) : Modify(lmp) {}
-  ~ModifyAutoPas() {}
 };
 
 class OutputAutoPas : public Output {
  public:
   OutputAutoPas(class LAMMPS *lmp) : Output(lmp) {}
-  ~OutputAutoPas() {}
 };
 
 }

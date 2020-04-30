@@ -1,6 +1,8 @@
-#pragma once
+#ifndef LMP_DOMAIN_AUTOPAS_H
+#define LMP_DOMAIN_AUTOPAS_H
 
 #include "domain.h"
+
 #include "autopas.h"
 
 namespace LAMMPS_NS {
@@ -8,8 +10,6 @@ namespace LAMMPS_NS {
 class DomainAutoPas : public Domain {
 public:
   explicit DomainAutoPas(class LAMMPS *);
-
-  ~DomainAutoPas() override = default;
 
   void pbc() override;
 
@@ -19,7 +19,7 @@ public:
 
   int closest_image(int, int) override;
 
-  int closest_image(const double *const, int) override;
+  int closest_image(const double *, int) override;
 
   void lamda2x(int) override;
 
@@ -30,8 +30,11 @@ public:
    */
 
 protected:
-  virtual bool pbc(AutoPasLMP::ParticleType &, double *lo, double *hi, double *period);
+  virtual bool
+  pbc(AutoPasLMP::ParticleType &, double *lo, double *hi, double *period);
 
 };
 
 }
+
+#endif

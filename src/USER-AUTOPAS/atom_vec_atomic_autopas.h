@@ -16,8 +16,6 @@ class AtomVecAtomicAutopas : public AtomVecAutopas {
 public:
   explicit AtomVecAtomicAutopas(class LAMMPS *);
 
-  ~AtomVecAtomicAutopas() override = default;
-
   void grow(int i) override;
 
   void grow_reset() override;
@@ -59,10 +57,13 @@ public:
   int pack_exchange(const AutoPasLMP::ParticleType &, double *) override;
 
 
-  int pack_border_autopas(const std::vector<AutoPasLMP::ParticleType *> &, double *,
-                          int, const int *) override;
-  int pack_border_vel_autopas(const std::vector<AutoPasLMP::ParticleType *> &, double *,
-                                      int, const int *) override;
+  int
+  pack_border_autopas(const std::vector<AutoPasLMP::ParticleType *> &, double *,
+                      int, const int *) override;
+
+  int pack_border_vel_autopas(const std::vector<AutoPasLMP::ParticleType *> &,
+                              double *,
+                              int, const int *) override;
 
 protected:
   tagint *tag;

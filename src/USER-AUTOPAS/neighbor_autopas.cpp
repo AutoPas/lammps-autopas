@@ -1,25 +1,27 @@
 #include "neighbor_autopas.h"
+
 #include <cmath>
-#include "neigh_list.h"
-#include "neigh_request.h"
-#include "nbin.h"
-#include "nstencil.h"
-#include "npair.h"
+
+#include "autopas.h"
 #include "atom.h"
 #include "atom_vec.h"
 #include "comm.h"
-#include "force.h"
-#include "pair.h"
-#include "domain.h"
-#include "group.h"
-#include "modify.h"
-#include "fix.h"
 #include "compute.h"
-#include "update.h"
-#include "memory.h"
+#include "domain.h"
 #include "error.h"
+#include "fix.h"
+#include "force.h"
+#include "group.h"
+#include "memory.h"
+#include "modify.h"
+#include "nbin.h"
+#include "neigh_list.h"
+#include "neigh_request.h"
+#include "npair.h"
+#include "nstencil.h"
+#include "pair.h"
+#include "update.h"
 
-#include "autopas.h"
 
 LAMMPS_NS::NeighborAutoPas::NeighborAutoPas(LAMMPS_NS::LAMMPS *lmp) : Neighbor(
     lmp) {
@@ -66,8 +68,8 @@ int LAMMPS_NS::NeighborAutoPas::check_distance() {
 #pragma omp parallel default(none) shared(nlocal, deltasq) private(delx, dely, delz, rsq) reduction(max: flag)
 
   for (auto iter = lmp->autopas->const_iterate<autopas::IteratorBehavior::ownedOnly>(); iter.isValid(); ++iter) {
-    auto &x {iter->getR()};
-    auto idx {AutoPasLMP::particle_to_index(*iter)};
+    auto &x{iter->getR()};
+    auto idx{AutoPasLMP::particle_to_index(*iter)};
     if (idx < nlocal) {
       delx = x[0] - xhold[idx][0];
       dely = x[1] - xhold[idx][1];
@@ -113,8 +115,8 @@ void LAMMPS_NS::NeighborAutoPas::build(int topoflag) {
 
 #pragma omp parallel default(none) shared(nlocal)
     for (auto iter = lmp->autopas->const_iterate<autopas::IteratorBehavior::ownedOnly>(); iter.isValid(); ++iter) {
-      auto &x {iter->getR()};
-      auto idx {AutoPasLMP::particle_to_index(*iter)};
+      auto &x{iter->getR()};
+      auto idx{AutoPasLMP::particle_to_index(*iter)};
       if (idx < nlocal) {
         xhold[idx][0] = x[0];
         xhold[idx][1] = x[1];

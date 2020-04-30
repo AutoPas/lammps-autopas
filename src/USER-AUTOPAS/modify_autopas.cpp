@@ -1,23 +1,23 @@
 #include "modify_autopas.h"
+
 #include "atom_autopas.h"
-#include "update.h"
-#include "fix.h"
-#include "compute.h"
 #include "autopas.h"
+#include "compute.h"
+#include "fix.h"
+#include "update.h"
 
 using namespace LAMMPS_NS;
 
-ModifyAutoPas::ModifyAutoPas(LAMMPS *lmp) : Modify(lmp)
-{
+ModifyAutoPas::ModifyAutoPas(LAMMPS *lmp) : Modify(lmp) {
   // atomKK = (AtomKokkos *) atom;
 }
+
 /* ----------------------------------------------------------------------
    setup for run, calls setup() of all fixes and computes
    called from Verlet, RESPA, Min
 ------------------------------------------------------------------------- */
 
-void ModifyAutoPas::setup(int vflag)
-{
+void ModifyAutoPas::setup(int vflag) {
   throw "Not implemented";
 }
 
@@ -26,8 +26,7 @@ void ModifyAutoPas::setup(int vflag)
    called from Verlet, RESPA, Min, and WriteRestart with whichflag = 0
 ------------------------------------------------------------------------- */
 
-void ModifyAutoPas::setup_pre_exchange()
-{
+void ModifyAutoPas::setup_pre_exchange() {
   throw "Not implemented";
 }
 
@@ -36,8 +35,7 @@ void ModifyAutoPas::setup_pre_exchange()
    called from Verlet, RESPA
 ------------------------------------------------------------------------- */
 
-void ModifyAutoPas::setup_pre_neighbor()
-{
+void ModifyAutoPas::setup_pre_neighbor() {
   throw "Not implemented";
 }
 
@@ -46,8 +44,7 @@ void ModifyAutoPas::setup_pre_neighbor()
    called from Verlet, RESPA, Min
 ------------------------------------------------------------------------- */
 
-void ModifyAutoPas::setup_pre_force(int vflag)
-{
+void ModifyAutoPas::setup_pre_force(int vflag) {
   throw "Not implemented";
 }
 
@@ -56,8 +53,7 @@ void ModifyAutoPas::setup_pre_force(int vflag)
    called from Verlet, RESPA, Min
 ------------------------------------------------------------------------- */
 
-void ModifyAutoPas::setup_pre_reverse(int eflag, int vflag)
-{
+void ModifyAutoPas::setup_pre_reverse(int eflag, int vflag) {
   throw "Not implemented";
 }
 
@@ -65,8 +61,7 @@ void ModifyAutoPas::setup_pre_reverse(int eflag, int vflag)
    1st half of integrate call, only for relevant fixes
 ------------------------------------------------------------------------- */
 
-void ModifyAutoPas::initial_integrate(int vflag)
-{
+void ModifyAutoPas::initial_integrate(int vflag) {
   throw "Not implemented";
 }
 
@@ -74,8 +69,7 @@ void ModifyAutoPas::initial_integrate(int vflag)
    post_integrate call, only for relevant fixes
 ------------------------------------------------------------------------- */
 
-void ModifyAutoPas::post_integrate()
-{
+void ModifyAutoPas::post_integrate() {
   throw "Not implemented";
 }
 
@@ -83,8 +77,7 @@ void ModifyAutoPas::post_integrate()
    pre_exchange call, only for relevant fixes
 ------------------------------------------------------------------------- */
 
-void ModifyAutoPas::pre_exchange()
-{
+void ModifyAutoPas::pre_exchange() {
   throw "Not implemented";
 }
 
@@ -92,8 +85,7 @@ void ModifyAutoPas::pre_exchange()
    pre_neighbor call, only for relevant fixes
 ------------------------------------------------------------------------- */
 
-void ModifyAutoPas::pre_neighbor()
-{
+void ModifyAutoPas::pre_neighbor() {
   throw "Not implemented";
 }
 
@@ -101,8 +93,7 @@ void ModifyAutoPas::pre_neighbor()
    pre_force call, only for relevant fixes
 ------------------------------------------------------------------------- */
 
-void ModifyAutoPas::pre_force(int vflag)
-{
+void ModifyAutoPas::pre_force(int vflag) {
   throw "Not implemented";
 }
 
@@ -110,8 +101,7 @@ void ModifyAutoPas::pre_force(int vflag)
    pre_reverse call, only for relevant fixes
 ------------------------------------------------------------------------- */
 
-void ModifyAutoPas::pre_reverse(int eflag, int vflag)
-{
+void ModifyAutoPas::pre_reverse(int eflag, int vflag) {
   throw "Not implemented";
 }
 
@@ -119,8 +109,7 @@ void ModifyAutoPas::pre_reverse(int eflag, int vflag)
    post_force call, only for relevant fixes
 ------------------------------------------------------------------------- */
 
-void ModifyAutoPas::post_force(int vflag)
-{
+void ModifyAutoPas::post_force(int vflag) {
   throw "Not implemented";
 }
 
@@ -128,8 +117,7 @@ void ModifyAutoPas::post_force(int vflag)
    2nd half of integrate call, only for relevant fixes
 ------------------------------------------------------------------------- */
 
-void ModifyAutoPas::final_integrate()
-{
+void ModifyAutoPas::final_integrate() {
   throw "Not implemented";
 }
 
@@ -138,8 +126,7 @@ void ModifyAutoPas::final_integrate()
    only call fix->end_of_step() on timesteps that are multiples of nevery
 ------------------------------------------------------------------------- */
 
-void ModifyAutoPas::end_of_step()
-{
+void ModifyAutoPas::end_of_step() {
   throw "Not implemented";
 }
 
@@ -149,8 +136,7 @@ void ModifyAutoPas::end_of_step()
    compute_scalar() is fix call to return energy
 ------------------------------------------------------------------------- */
 
-double ModifyAutoPas::thermo_energy()
-{
+double ModifyAutoPas::thermo_energy() {
   throw "Not implemented";
   return 0;
 }
@@ -159,8 +145,7 @@ double ModifyAutoPas::thermo_energy()
    post_run call
 ------------------------------------------------------------------------- */
 
-void ModifyAutoPas::post_run()
-{
+void ModifyAutoPas::post_run() {
   throw "Not implemented";
 }
 
@@ -168,8 +153,7 @@ void ModifyAutoPas::post_run()
    setup rRESPA pre_force call, only for relevant fixes
 ------------------------------------------------------------------------- */
 
-void ModifyAutoPas::setup_pre_force_respa(int vflag, int ilevel)
-{
+void ModifyAutoPas::setup_pre_force_respa(int vflag, int ilevel) {
   throw "Not implemented";
 }
 
@@ -177,8 +161,7 @@ void ModifyAutoPas::setup_pre_force_respa(int vflag, int ilevel)
    1st half of rRESPA integrate call, only for relevant fixes
 ------------------------------------------------------------------------- */
 
-void ModifyAutoPas::initial_integrate_respa(int vflag, int ilevel, int iloop)
-{
+void ModifyAutoPas::initial_integrate_respa(int vflag, int ilevel, int iloop) {
   throw "Not implemented";
 }
 
@@ -186,8 +169,7 @@ void ModifyAutoPas::initial_integrate_respa(int vflag, int ilevel, int iloop)
    rRESPA post_integrate call, only for relevant fixes
 ------------------------------------------------------------------------- */
 
-void ModifyAutoPas::post_integrate_respa(int ilevel, int iloop)
-{
+void ModifyAutoPas::post_integrate_respa(int ilevel, int iloop) {
   throw "Not implemented";
 }
 
@@ -195,8 +177,7 @@ void ModifyAutoPas::post_integrate_respa(int ilevel, int iloop)
    rRESPA pre_force call, only for relevant fixes
 ------------------------------------------------------------------------- */
 
-void ModifyAutoPas::pre_force_respa(int vflag, int ilevel, int iloop)
-{
+void ModifyAutoPas::pre_force_respa(int vflag, int ilevel, int iloop) {
   throw "Not implemented";
 }
 
@@ -204,8 +185,7 @@ void ModifyAutoPas::pre_force_respa(int vflag, int ilevel, int iloop)
    rRESPA post_force call, only for relevant fixes
 ------------------------------------------------------------------------- */
 
-void ModifyAutoPas::post_force_respa(int vflag, int ilevel, int iloop)
-{
+void ModifyAutoPas::post_force_respa(int vflag, int ilevel, int iloop) {
   throw "Not implemented";
 }
 
@@ -213,8 +193,7 @@ void ModifyAutoPas::post_force_respa(int vflag, int ilevel, int iloop)
    2nd half of rRESPA integrate call, only for relevant fixes
 ------------------------------------------------------------------------- */
 
-void ModifyAutoPas::final_integrate_respa(int ilevel, int iloop)
-{
+void ModifyAutoPas::final_integrate_respa(int ilevel, int iloop) {
   throw "Not implemented";
 }
 
@@ -222,8 +201,7 @@ void ModifyAutoPas::final_integrate_respa(int ilevel, int iloop)
    minimizer pre-exchange call, only for relevant fixes
 ------------------------------------------------------------------------- */
 
-void ModifyAutoPas::min_pre_exchange()
-{
+void ModifyAutoPas::min_pre_exchange() {
   throw "Not implemented";
 }
 
@@ -231,8 +209,7 @@ void ModifyAutoPas::min_pre_exchange()
    minimizer pre-neighbor call, only for relevant fixes
 ------------------------------------------------------------------------- */
 
-void ModifyAutoPas::min_pre_neighbor()
-{
+void ModifyAutoPas::min_pre_neighbor() {
   throw "Not implemented";
 }
 
@@ -240,8 +217,7 @@ void ModifyAutoPas::min_pre_neighbor()
    minimizer pre-force call, only for relevant fixes
 ------------------------------------------------------------------------- */
 
-void ModifyAutoPas::min_pre_force(int vflag)
-{
+void ModifyAutoPas::min_pre_force(int vflag) {
   throw "Not implemented";
 }
 
@@ -249,8 +225,7 @@ void ModifyAutoPas::min_pre_force(int vflag)
    minimizer pre-reverse call, only for relevant fixes
 ------------------------------------------------------------------------- */
 
-void ModifyAutoPas::min_pre_reverse(int eflag, int vflag)
-{
+void ModifyAutoPas::min_pre_reverse(int eflag, int vflag) {
   throw "Not implemented";
 }
 
@@ -258,8 +233,7 @@ void ModifyAutoPas::min_pre_reverse(int eflag, int vflag)
    minimizer force adjustment call, only for relevant fixes
 ------------------------------------------------------------------------- */
 
-void ModifyAutoPas::min_post_force(int vflag)
-{
+void ModifyAutoPas::min_post_force(int vflag) {
   throw "Not implemented";
 }
 
@@ -268,8 +242,7 @@ void ModifyAutoPas::min_post_force(int vflag)
    return energy and forces on extra degrees of freedom
 ------------------------------------------------------------------------- */
 
-double ModifyAutoPas::min_energy(double *fextra)
-{
+double ModifyAutoPas::min_energy(double *fextra) {
   throw "Not implemented";
   return 0;
 }
@@ -278,8 +251,7 @@ double ModifyAutoPas::min_energy(double *fextra)
    store current state of extra dof, only for relevant fixes
 ------------------------------------------------------------------------- */
 
-void ModifyAutoPas::min_store()
-{
+void ModifyAutoPas::min_store() {
   throw "Not implemented";
 }
 
@@ -287,18 +259,15 @@ void ModifyAutoPas::min_store()
    mange state of extra dof on a stack, only for relevant fixes
 ------------------------------------------------------------------------- */
 
-void ModifyAutoPas::min_clearstore()
-{
+void ModifyAutoPas::min_clearstore() {
   throw "Not implemented";
 }
 
-void ModifyAutoPas::min_pushstore()
-{
+void ModifyAutoPas::min_pushstore() {
   throw "Not implemented";
 }
 
-void ModifyAutoPas::min_popstore()
-{
+void ModifyAutoPas::min_popstore() {
   throw "Not implemented";
 }
 
@@ -306,8 +275,7 @@ void ModifyAutoPas::min_popstore()
    displace extra dof along vector hextra, only for relevant fixes
 ------------------------------------------------------------------------- */
 
-void ModifyAutoPas::min_step(double alpha, double *hextra)
-{
+void ModifyAutoPas::min_step(double alpha, double *hextra) {
   throw "Not implemented";
 }
 
@@ -315,8 +283,7 @@ void ModifyAutoPas::min_step(double alpha, double *hextra)
    compute max allowed step size along vector hextra, only for relevant fixes
 ------------------------------------------------------------------------- */
 
-double ModifyAutoPas::max_alpha(double *hextra)
-{
+double ModifyAutoPas::max_alpha(double *hextra) {
   throw "Not implemented";
   return 0;
 }
@@ -325,8 +292,7 @@ double ModifyAutoPas::max_alpha(double *hextra)
    extract extra dof for minimization, only for relevant fixes
 ------------------------------------------------------------------------- */
 
-int ModifyAutoPas::min_dof()
-{
+int ModifyAutoPas::min_dof() {
   throw "Not implemented";
   return 0;
 }
@@ -335,8 +301,7 @@ int ModifyAutoPas::min_dof()
    reset reference state of fix, only for relevant fixes
 ------------------------------------------------------------------------- */
 
-int ModifyAutoPas::min_reset_ref()
-{
+int ModifyAutoPas::min_reset_ref() {
   throw "Not implemented";
   return 0;
 }

@@ -1,22 +1,22 @@
 #include "domain_autopas.h"
-#include "style_region.h"
+
 #include "atom.h"
 #include "atom_vec.h"
-#include "molecule.h"
-#include "force.h"
-#include "kspace.h"
-#include "update.h"
-#include "modify.h"
+#include "comm.h"
+#include "error.h"
 #include "fix.h"
 #include "fix_deform.h"
+#include "force.h"
+#include "kspace.h"
 #include "lattice.h"
-#include "comm.h"
+#include "memory.h"
+#include "modify.h"
+#include "molecule.h"
 #include "output.h"
+#include "style_region.h"
 #include "thermo.h"
 #include "universe.h"
-#include "memory.h"
-#include "error.h"
-#include "autopas.h"
+#include "update.h"
 
 using namespace LAMMPS_NS;
 
@@ -35,8 +35,9 @@ void DomainAutoPas::pbc() {
   bool flag = true;
 #pragma omp parallel default(none) reduction(&& : flag)
   for (auto iter = lmp->autopas->const_iterate<autopas::IteratorBehavior::ownedOnly>(); iter.isValid(); ++iter) {
-    auto &x {iter->getR()};
-    flag = std::all_of(x.begin(), x.end(), [](auto _){return std::isfinite(_);});
+    auto &x{iter->getR()};
+    flag = std::all_of(x.begin(), x.end(),
+                       [](auto _) { return std::isfinite(_); });
   }
 
   if (!flag) error->one(FLERR, "Non-numeric atom coords - simulation unstable");
@@ -90,10 +91,10 @@ DomainAutoPas::pbc(AutoPasLMP::ParticleType &particle, double *lo, double *hi,
   int *mask = atom->mask;
   imageint *image = atom->image;
 
-  auto x {particle.getR()};
-  auto v {particle.getV()};
+  auto x{particle.getR()};
+  auto v{particle.getV()};
 
-  auto idx {AutoPasLMP::particle_to_index(particle)};
+  auto idx{AutoPasLMP::particle_to_index(particle)};
   bool was_touched = false;
 
   if (xperiodic) {
@@ -268,7 +269,7 @@ void DomainAutoPas::lamda2x(int n) {
   for (auto iter = lmp->autopas->iterate<autopas::IteratorBehavior::ownedOnly>(); iter.isValid(); ++iter) {
 
     if (AutoPasLMP::particle_to_index(*iter) < n) {
-      auto x {iter->getR()};
+      auto x{iter->getR()};
 
       x[0] = h[0] * x[0] + h[5] * x[1] + h[4] * x[2] + boxlo[0];
       x[1] = h[1] * x[1] + h[3] * x[2] + boxlo[1];
@@ -287,7 +288,7 @@ void DomainAutoPas::x2lamda(int n) {
   for (auto iter = lmp->autopas->iterate<autopas::IteratorBehavior::ownedOnly>(); iter.isValid(); ++iter) {
 
     if (AutoPasLMP::particle_to_index(*iter) < n) {
-      auto x {iter->getR()};
+      auto x{iter->getR()};
 
       delta[0] = x[0] - boxlo[0];
       delta[1] = x[1] - boxlo[1];

@@ -1,4 +1,5 @@
 #include "output_autopas.h"
+
 #include "autopas.h"
 
 using namespace LAMMPS_NS;

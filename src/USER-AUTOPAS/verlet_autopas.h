@@ -1,4 +1,3 @@
-
 #ifdef INTEGRATE_CLASS
 
 IntegrateStyle(verlet/autopas,VerletAutoPas)
@@ -16,8 +15,6 @@ class VerletAutoPas : public Verlet {
 public:
   explicit VerletAutoPas(class LAMMPS *, int, char **);
 
-  ~VerletAutoPas() override = default;
-
   void setup(int flag) override;
 
   void setup_minimal(int i) override;
@@ -28,7 +25,6 @@ protected:
   void force_clear() override;
 
 };
-
 
 }
 #endif

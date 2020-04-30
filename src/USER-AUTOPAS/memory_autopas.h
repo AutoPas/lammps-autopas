@@ -1,12 +1,12 @@
-#pragma once
+#ifndef LMP_MEMORY_AUTOPAS_H
+#define LMP_MEMORY_AUTOPAS_H
 
 #include "memory.h"
-// #include "autopas_type.h"
 
 namespace LAMMPS_NS {
 
 class MemoryAutoPas : public Memory {
- public:
+public:
   explicit MemoryAutoPas(class LAMMPS *lmp) : Memory(lmp) {}
 
 /* ----------------------------------------------------------------------
@@ -281,3 +281,5 @@ class MemoryAutoPas : public Memory {
 };
 
 }
+
+#endif

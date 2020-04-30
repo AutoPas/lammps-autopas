@@ -1,11 +1,13 @@
-#pragma once
-
-#include <autopas/molecularDynamics/MoleculeLJ.h>
-#include <autopas/cells/FullParticleCell.h>
-#include <autopas/AutoPas.h>
-#include <autopas/molecularDynamics/ParticlePropertiesLibrary.h>
+#ifndef LMP_AUTOPAS_H
+#define LMP_AUTOPAS_H
 
 #include "pointers.h"
+
+#include <autopas/AutoPas.h>
+#include <autopas/cells/FullParticleCell.h>
+#include <autopas/molecularDynamics/MoleculeLJ.h>
+#include <autopas/molecularDynamics/ParticlePropertiesLibrary.h>
+
 #include "autopas_lj_functor.h"
 
 namespace LAMMPS_NS {
@@ -92,3 +94,5 @@ private:
 
 };
 }
+
+#endif

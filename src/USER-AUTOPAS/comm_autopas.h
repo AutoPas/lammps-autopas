@@ -1,13 +1,17 @@
-#pragma once
+#ifndef LMP_COMM_BRICK_AUTOPAS_H
+#define LMP_COMM_BRICK_AUTOPAS_H
 
 #include "comm_brick.h"
+
+#include <vector>
+
+#include "autopas.h"
 
 namespace LAMMPS_NS {
 
 class CommAutoPas : public CommBrick {
 public:
   explicit CommAutoPas(class LAMMPS *);
-  ~CommAutoPas() override = default;
 
   void forward_comm(int) override;
 
@@ -19,10 +23,15 @@ public:
 
 private:
 
-  template<bool haloOnly=false>
-  void border_impl(int idxfirst, int idxlast, double lo, double hi, int dim, std::vector<AutoPasLMP::ParticleType *> &sendparticles) const;
-  template<bool haloOnly=false>
-  void border_impl(int idxfirst, int idxlast, double *mlo, double *mhi, int dim, std::vector<AutoPasLMP::ParticleType *> &sendparticles) const;
+  template<bool haloOnly = false>
+  void border_impl(int idxfirst, int idxlast, double lo, double hi, int dim,
+                   std::vector<AutoPasLMP::ParticleType *> &sendparticles) const;
+
+  template<bool haloOnly = false>
+  void border_impl(int idxfirst, int idxlast, double *mlo, double *mhi, int dim,
+                   std::vector<AutoPasLMP::ParticleType *> &sendparticles) const;
 
 };
 }
+
+#endif

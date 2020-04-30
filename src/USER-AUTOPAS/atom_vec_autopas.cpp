@@ -1,5 +1,5 @@
 #include "atom_vec_autopas.h"
-// #include <iterator>     // std::next
+
 #include "domain.h"
 #include "error.h"
 

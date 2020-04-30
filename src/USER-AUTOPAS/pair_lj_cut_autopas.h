@@ -22,14 +22,9 @@ PairStyle(lj/cut/autopas,PairLJCutAutoPas)
 
 #include "pair_lj_cut.h"
 
-#include "autopas/AutoPas.h"
-#include "autopas_lj_functor.h"
-#include "autopas/molecularDynamics/MoleculeLJ.h"
-
 namespace LAMMPS_NS {
 
 class PairLJCutAutoPas : public PairLJCut {
-
 public:
   explicit PairLJCutAutoPas(class LAMMPS *);
 

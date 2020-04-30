@@ -15,8 +15,6 @@ class ComputeTempAutoPas : public ComputeTemp {
 public:
   ComputeTempAutoPas(class LAMMPS *, int, char **);
 
-  ~ComputeTempAutoPas() override = default;
-
   double compute_scalar() override;
 
   void compute_vector() override;

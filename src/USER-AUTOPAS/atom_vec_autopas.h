@@ -1,4 +1,5 @@
-#pragma once
+#ifndef LMP_ATOM_VEC_AUTOPAS_H
+#define LMP_ATOM_VEC_AUTOPAS_H
 
 #include "atom_vec.h"
 #include "autopas.h"
@@ -9,13 +10,17 @@ class AtomVecAutopas : public AtomVec {
 
 public:
   explicit AtomVecAutopas(class LAMMPS *);
-  ~AtomVecAutopas() override = default;
 
   int pack_comm(int, int *, double *, int, int *) override;
+
   int pack_comm_vel(int, int *, double *, int, int *) override;
+
   void unpack_comm(int, int, double *) override;
+
   void unpack_comm_vel(int, int, double *) override;
+
   int pack_reverse(int, int, double *) override;
+
   void unpack_reverse(int, int *, double *) override;
 
   virtual int pack_exchange(const AutoPasLMP::ParticleType &, double *) = 0;
@@ -24,13 +29,19 @@ public:
    * AutoPas versions
    */
 
-  virtual int pack_border_autopas(const std::vector<AutoPasLMP::ParticleType *> &, double *,
-                                  int, const int *) = 0;
-  virtual int pack_border_vel_autopas(const std::vector<AutoPasLMP::ParticleType *> &, double *,
-                                  int, const int *) = 0;
+  virtual int
+  pack_border_autopas(const std::vector<AutoPasLMP::ParticleType *> &, double *,
+                      int, const int *) = 0;
+
+  virtual int
+  pack_border_vel_autopas(const std::vector<AutoPasLMP::ParticleType *> &,
+                          double *,
+                          int, const int *) = 0;
 
 protected:
-  int *mask;
+  int *mask{};
 
 };
 }
+
+#endif

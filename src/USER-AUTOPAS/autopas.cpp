@@ -1,12 +1,14 @@
 #include "autopas.h"
+
+#include <algorithm>
+#include <limits>
+
 #include "atom.h"
 #include "domain.h"
 #include "error.h"
 #include "memory.h"
 #include "neighbor.h"
 
-#include <limits>
-#include <algorithm>
 
 using namespace LAMMPS_NS;
 
@@ -204,7 +206,8 @@ bool AutoPasLMP::is_initialized() {
 
 
 std::vector<int>
-AutoPasLMP::particle_to_index(const std::vector<AutoPasLMP::ParticleType*> &particles) {
+AutoPasLMP::particle_to_index(
+    const std::vector<AutoPasLMP::ParticleType *> &particles) {
   std::vector<int> list(particles.size());
   std::transform(particles.begin(),
                  particles.end(), list.begin(),
@@ -216,7 +219,7 @@ AutoPasLMP::FloatType AutoPasLMP::get_cutoff() {
   return _autopas->getCutoff();
 }
 
-bool AutoPasLMP::iterate_pairwise(AutoPasLMP::PairFunctorType* functor){
+bool AutoPasLMP::iterate_pairwise(AutoPasLMP::PairFunctorType *functor) {
   return _autopas->iteratePairwise(functor);
 }
 

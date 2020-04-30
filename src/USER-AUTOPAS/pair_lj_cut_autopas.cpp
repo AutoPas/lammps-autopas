@@ -1,15 +1,15 @@
-#include <cmath>
-#include <domain.h>
 #include "pair_lj_cut_autopas.h"
+
 #include "atom.h"
+#include "autopas.h"
 #include "comm.h"
 #include "force.h"
 #include "neighbor.h"
 #include "neigh_list.h"
-#include "timer.h"
-#include "autopas.h"
-
 #include "suffix.h"
+#include "timer.h"
+
+#include <domain.h>
 
 using namespace LAMMPS_NS;
 

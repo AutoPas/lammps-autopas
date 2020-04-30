@@ -1,12 +1,10 @@
 #include "fix_nve_autopas.h"
+
 #include "atom.h"
 #include "autopas.h"
-#include <autopas/utils/ArrayMath.h>
-
 
 LAMMPS_NS::FixNVEAutoPas::FixNVEAutoPas(LAMMPS *lmp, int narg, char **arg) :
     FixNVE(lmp, narg, arg) {
-
 }
 
 void LAMMPS_NS::FixNVEAutoPas::initial_integrate(int /*vflag*/) {
@@ -44,4 +42,3 @@ void LAMMPS_NS::FixNVEAutoPas::do_integrate() {
     }
   }
 }
-

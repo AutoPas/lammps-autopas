@@ -1,9 +1,10 @@
-#include "autopas.h"
+#include "comm_autopas.h"
+
 #include "atom.h"
 #include "atom_vec.h"
-#include "comm_autopas.h"
-#include "domain.h"
 #include "atom_vec_autopas.h"
+#include "autopas.h"
+#include "domain.h"
 
 using namespace LAMMPS_NS;
 
@@ -212,7 +213,7 @@ void CommAutoPas::exchange() {
         nsend += avec->pack_exchange(p, &buf_send[nsend]);
         /////////////////
         // Autopas already removed particles //TODO But: Gaps in other arrays?
-        auto idx {lmp->autopas->particle_to_index(p)};
+        auto idx{lmp->autopas->particle_to_index(p)};
         avec->copy(nlocal - 1, idx, 1);
         nlocal--;
         //////////////////
@@ -357,10 +358,10 @@ void CommAutoPas::borders() {
       if (nsend * size_border > maxsend) grow_send(nsend * size_border, 0);
       if (ghost_velocity)
         n = avec->pack_border_vel_autopas(sendparticles, buf_send,
-                                  pbc_flag[iswap], pbc[iswap]);
+                                          pbc_flag[iswap], pbc[iswap]);
       else
         n = avec->pack_border_autopas(sendparticles, buf_send,
-                              pbc_flag[iswap], pbc[iswap]);
+                                      pbc_flag[iswap], pbc[iswap]);
 
       // swap atoms with other proc
       // no MPI calls except SendRecv if nsend/nrecv = 0
@@ -425,8 +426,8 @@ void CommAutoPas::border_impl(int idxfirst, int idxlast, double lo, double hi,
                               std::vector<AutoPasLMP::ParticleType *> &sendparticles) const {
   for (auto iter = this->lmp->autopas->particles_by_slab<haloOnly>(
       dim, lo, hi); iter.isValid(); ++iter) {
-    auto &p {*iter};
-    auto idx {AutoPasLMP::particle_to_index(p)};
+    auto &p{*iter};
+    auto idx{AutoPasLMP::particle_to_index(p)};
     if (idx >= idxfirst && idx < idxlast) {
       sendparticles.push_back(&p);
     }
@@ -442,9 +443,9 @@ CommAutoPas::border_impl(int idxfirst, int idxlast, double *mlo, double *mhi,
   double mhi_max = *std::max_element(mhi, mhi + atom->ntypes);
   for (auto iter = lmp->autopas->particles_by_slab<haloOnly>(
       dim, mlo_min, mhi_max); iter.isValid(); ++iter) {
-    auto &p {*iter};
-    auto idx {AutoPasLMP::particle_to_index(p)};
-    auto &x {p.getR()};
+    auto &p{*iter};
+    auto idx{AutoPasLMP::particle_to_index(p)};
+    auto &x{p.getR()};
     int itype = atom->type[idx];
     if (idx >= idxfirst && idx < idxlast && x[dim] >= mlo[itype] &&
         x[dim] <= mhi[itype]) {
