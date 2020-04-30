@@ -205,14 +205,14 @@ void CommAutoPas::exchange() {
     nlocal = atom->nlocal;
     nsend = 0;
 
-    for (auto &p : lmp->autopas->_leavingParticles) {
+    for (const auto &p : lmp->autopas->get_leaving_particles()) {
       auto &x = p.getR();
       if (x[dim] < lo || x[dim] >= hi) {
         if (nsend > maxsend) grow_send(nsend, 1);
         nsend += avec->pack_exchange(p, &buf_send[nsend]);
         /////////////////
         // Autopas already removed particles //TODO But: Gaps in other arrays?
-        auto idx = lmp->autopas->idx(p);
+        auto idx {lmp->autopas->particle_to_index(p)};
         avec->copy(nlocal - 1, idx, 1);
         nlocal--;
         //////////////////
@@ -425,8 +425,8 @@ void CommAutoPas::border_impl(int idxfirst, int idxlast, double lo, double hi,
                               std::vector<AutoPasLMP::ParticleType *> &sendparticles) const {
   for (auto iter = this->lmp->autopas->particles_by_slab<haloOnly>(
       dim, lo, hi); iter.isValid(); ++iter) {
-    auto &p = *iter;
-    auto idx = this->lmp->autopas->idx(p);
+    auto &p {*iter};
+    auto idx {AutoPasLMP::particle_to_index(p)};
     if (idx >= idxfirst && idx < idxlast) {
       sendparticles.push_back(&p);
     }
@@ -442,9 +442,9 @@ CommAutoPas::border_impl(int idxfirst, int idxlast, double *mlo, double *mhi,
   double mhi_max = *std::max_element(mhi, mhi + atom->ntypes);
   for (auto iter = lmp->autopas->particles_by_slab<haloOnly>(
       dim, mlo_min, mhi_max); iter.isValid(); ++iter) {
-    auto &p = *iter;
-    auto idx = lmp->autopas->idx(p);
-    auto &x = p.getR();
+    auto &p {*iter};
+    auto idx {AutoPasLMP::particle_to_index(p)};
+    auto &x {p.getR()};
     int itype = atom->type[idx];
     if (idx >= idxfirst && idx < idxlast && x[dim] >= mlo[itype] &&
         x[dim] <= mhi[itype]) {

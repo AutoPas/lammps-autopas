@@ -37,7 +37,7 @@ void AtomVecAtomicAutopas::grow(int n) {
   mask = memory->grow(atom->mask, nmax, "atom:mask");
   image = memory->grow(atom->image, nmax, "atom:image");
 
-  if (!lmp->autopas->_autopas) { // Only used for startup
+  if (!lmp->autopas->is_initialized()) { // Only used for startup
     x = memory->grow(atom->x, nmax, 3, "atom:x");
     v = memory->grow(atom->v, nmax, 3, "atom:v");
     // f = memory->grow(atom->f,nmax*comm->nthreads,3,"atom:f");
@@ -77,7 +77,7 @@ void AtomVecAtomicAutopas::copy(int i, int j, int delflag) {
 
 int
 AtomVecAtomicAutopas::pack_border(int n, int *list, double *buf,
-                                             int pbc_flag, int *pbc) {
+                                  int pbc_flag, int *pbc) {
   error->all(FLERR,
              "Function pack_border not supported, use pack_border_autopas instead");
   return 0;
@@ -104,7 +104,7 @@ AtomVecAtomicAutopas::pack_border_autopas(
   int m = 0;
 
   for (const auto p : particles) {
-    auto idx = lmp->autopas->idx(*p);
+    auto idx {AutoPasLMP::particle_to_index(*p)};
     auto &_x = p->getR();
     buf[m++] = _x[0] + dx;
     buf[m++] = _x[1] + dy;
@@ -115,11 +115,7 @@ AtomVecAtomicAutopas::pack_border_autopas(
   }
 
   if (atom->nextra_border) {
-    std::vector<int> list(particles.size());
-    for (const auto &p : particles) {
-      list.push_back(p->getID());
-    }
-
+    auto list {AutoPasLMP::particle_to_index(particles)};
     for (int iextra = 0; iextra < atom->nextra_border; iextra++)
       m += modify->fix[atom->extra_border[iextra]]->pack_border(list.size(),
                                                                 list.data(),
@@ -132,7 +128,7 @@ AtomVecAtomicAutopas::pack_border_autopas(
 
 int
 AtomVecAtomicAutopas::pack_border_vel(int n, int *list, double *buf,
-                                                 int pbc_flag, int *pbc) {
+                                      int pbc_flag, int *pbc) {
   error->all(FLERR,
              "Function pack_border_vel not supported, use pack_border_vel_autopas instead");
   return 0;
@@ -163,33 +159,30 @@ AtomVecAtomicAutopas::pack_border_vel_autopas(
   int m = 0;
 
   for (const auto p : particles) {
-    auto idx = lmp->autopas->idx(*p);
-    auto &_x = p->getR();
-    auto &_v = p->getV();
-    buf[m++] = _x[0] + dx;
-    buf[m++] = _x[1] + dy;
-    buf[m++] = _x[2] + dz;
+
+    auto idx {AutoPasLMP::particle_to_index(*p)};
+    auto &x_{p->getR()};
+    auto &v_{p->getV()};
+    buf[m++] = x_[0] + dx;
+    buf[m++] = x_[1] + dy;
+    buf[m++] = x_[2] + dz;
     buf[m++] = ubuf(tag[idx]).d;
     buf[m++] = ubuf(type[idx]).d;
     buf[m++] = ubuf(mask[idx]).d;
 
     if (deform_vremap && (mask[idx] & deform_groupbit)) {
-      buf[m++] = _v[0] + dvx;
-      buf[m++] = _v[1] + dvy;
-      buf[m++] = _v[2] + dvz;
+      buf[m++] = v_[0] + dvx;
+      buf[m++] = v_[1] + dvy;
+      buf[m++] = v_[2] + dvz;
     } else {
-      buf[m++] = _v[0];
-      buf[m++] = _v[1];
-      buf[m++] = _v[2];
+      buf[m++] = v_[0];
+      buf[m++] = v_[1];
+      buf[m++] = v_[2];
     }
   }
 
   if (atom->nextra_border) {
-    std::vector<int> list(particles.size());
-    for (const auto &p : particles) {
-      list.push_back(p->getID());
-    }
-
+    auto list {AutoPasLMP::particle_to_index(particles)};
     for (int iextra = 0; iextra < atom->nextra_border; iextra++)
       m += modify->fix[atom->extra_border[iextra]]->pack_border(list.size(),
                                                                 list.data(),
@@ -202,24 +195,22 @@ AtomVecAtomicAutopas::pack_border_vel_autopas(
 void
 AtomVecAtomicAutopas::unpack_border(int n, int first, double *buf) {
 
-  int i, m, last;
-
-  m = 0;
-  last = first + n;
-  for (i = first; i < last; i++) {
+  int m = 0;
+  int last = first + n;
+  for (int i = first; i < last; i++) {
     if (i == nmax) grow(0);
 
-    AutoPasLMP::FloatVecType x;
+    AutoPasLMP::FloatVecType x_{};
 
-    x[0] = buf[m++];
-    x[1] = buf[m++];
-    x[2] = buf[m++];
+    x_[0] = buf[m++];
+    x_[1] = buf[m++];
+    x_[2] = buf[m++];
     tag[i] = (tagint) ubuf(buf[m++]).i;
     type[i] = (int) ubuf(buf[m++]).i;
     mask[i] = (int) ubuf(buf[m++]).i;
 
     // Always halo particles
-    AutoPasLMP::ParticleType pi(x, {0, 0, 0}, static_cast<unsigned long>(i),
+    AutoPasLMP::ParticleType pi(x_, {0, 0, 0}, static_cast<unsigned long>(i),
                                 static_cast<unsigned long>(type[i]));
     lmp->autopas->add_particle</*halo*/ true>(pi);
 
@@ -232,30 +223,28 @@ AtomVecAtomicAutopas::unpack_border(int n, int first, double *buf) {
 }
 
 void AtomVecAtomicAutopas::unpack_border_vel(int n, int first,
-                                                        double *buf) {
+                                             double *buf) {
 
-  int i, m, last;
-
-  m = 0;
-  last = first + n;
-  for (i = first; i < last; i++) {
+  int m = 0;
+  int last = first + n;
+  for (int i = first; i < last; i++) {
     if (i == nmax) grow(0);
 
-    AutoPasLMP::FloatVecType x;
-    AutoPasLMP::FloatVecType v;
+    AutoPasLMP::FloatVecType x_{};
+    AutoPasLMP::FloatVecType v_{};
 
-    x[0] = buf[m++];
-    x[1] = buf[m++];
-    x[2] = buf[m++];
+    x_[0] = buf[m++];
+    x_[1] = buf[m++];
+    x_[2] = buf[m++];
     tag[i] = (tagint) ubuf(buf[m++]).i;
     type[i] = (int) ubuf(buf[m++]).i;
     mask[i] = (int) ubuf(buf[m++]).i;
-    v[0] = buf[m++];
-    v[1] = buf[m++];
-    v[2] = buf[m++];
+    v_[0] = buf[m++];
+    v_[1] = buf[m++];
+    v_[2] = buf[m++];
 
     // Always halo particles
-    AutoPasLMP::ParticleType pi(x, v, static_cast<unsigned long>(i),
+    AutoPasLMP::ParticleType pi(x_, v_, static_cast<unsigned long>(i),
                                 static_cast<unsigned long>(type[i]));
     lmp->autopas->add_particle</*halo*/ true>(pi);
 
@@ -269,17 +258,17 @@ void AtomVecAtomicAutopas::unpack_border_vel(int n, int first,
 
 int AtomVecAtomicAutopas::pack_exchange(int i, double *buf) {
 
-  auto *pi = lmp->autopas->particle_by_index(i);
-  auto &x = pi->getR();
-  auto &v = pi->getV();
+  auto *pi{lmp->autopas->particle_by_index(i)};
+  auto &x_{pi->getR()};
+  auto &v_{pi->getV()};
 
   int m = 1;
-  buf[m++] = x[0];
-  buf[m++] = x[1];
-  buf[m++] = x[2];
-  buf[m++] = v[0];
-  buf[m++] = v[1];
-  buf[m++] = v[2];
+  buf[m++] = x_[0];
+  buf[m++] = x_[1];
+  buf[m++] = x_[2];
+  buf[m++] = v_[0];
+  buf[m++] = v_[1];
+  buf[m++] = v_[2];
   buf[m++] = ubuf(tag[i]).d;
   buf[m++] = ubuf(type[i]).d;
   buf[m++] = ubuf(mask[i]).d;
@@ -298,24 +287,23 @@ int AtomVecAtomicAutopas::unpack_exchange(double *buf) {
   int nlocal = atom->nlocal;
   if (nlocal == nmax) grow(0);
 
-
-  AutoPasLMP::FloatVecType x;
-  AutoPasLMP::FloatVecType v;
+  AutoPasLMP::FloatVecType x_{};
+  AutoPasLMP::FloatVecType v_{};
 
   int m = 1;
-  x[0] = buf[m++];
-  x[1] = buf[m++];
-  x[2] = buf[m++];
-  v[0] = buf[m++];
-  v[1] = buf[m++];
-  v[2] = buf[m++];
+  x_[0] = buf[m++];
+  x_[1] = buf[m++];
+  x_[2] = buf[m++];
+  v_[0] = buf[m++];
+  v_[1] = buf[m++];
+  v_[2] = buf[m++];
   tag[nlocal] = (tagint) ubuf(buf[m++]).i;
   type[nlocal] = (int) ubuf(buf[m++]).i;
   mask[nlocal] = (int) ubuf(buf[m++]).i;
   image[nlocal] = (imageint) ubuf(buf[m++]).i;
 
   // Always new particle from other process
-  AutoPasLMP::ParticleType pi(x, v, static_cast<unsigned long>(nlocal),
+  AutoPasLMP::ParticleType pi(x_, v_, static_cast<unsigned long>(nlocal),
                               static_cast<unsigned long>(type[nlocal]));
   lmp->autopas->add_particle(pi);
 
@@ -329,14 +317,13 @@ int AtomVecAtomicAutopas::unpack_exchange(double *buf) {
 }
 
 int AtomVecAtomicAutopas::size_restart() {
-  int i;
 
   int nlocal = atom->nlocal;
   int n = 11 * nlocal;
 
   if (atom->nextra_restart)
     for (int iextra = 0; iextra < atom->nextra_restart; iextra++)
-      for (i = 0; i < nlocal; i++)
+      for (int i = 0; i < nlocal; i++)
         n += modify->fix[atom->extra_restart[iextra]]->size_restart(i);
 
   return n;
@@ -344,21 +331,21 @@ int AtomVecAtomicAutopas::size_restart() {
 
 int AtomVecAtomicAutopas::pack_restart(int i, double *buf) {
 
-  auto *pi = lmp->autopas->particle_by_index(i);
-  auto &x = pi->getR();
-  auto &v = pi->getV();
+  auto *pi{lmp->autopas->particle_by_index(i)};
+  auto &x_{pi->getR()};
+  auto &v_{pi->getV()};
 
   int m = 1;
-  buf[m++] = x[0];
-  buf[m++] = x[1];
-  buf[m++] = x[2];
+  buf[m++] = x_[0];
+  buf[m++] = x_[1];
+  buf[m++] = x_[2];
   buf[m++] = ubuf(tag[i]).d;
   buf[m++] = ubuf(type[i]).d;
   buf[m++] = ubuf(mask[i]).d;
   buf[m++] = ubuf(image[i]).d;
-  buf[m++] = v[0];
-  buf[m++] = v[1];
-  buf[m++] = v[2];
+  buf[m++] = v_[0];
+  buf[m++] = v_[1];
+  buf[m++] = v_[2];
 
   if (atom->nextra_restart)
     for (int iextra = 0; iextra < atom->nextra_restart; iextra++)
@@ -420,19 +407,11 @@ void AtomVecAtomicAutopas::create_atom(int itype, double *coord) {
 
   atom->nlocal++;
 
-  /*
-  AutoPasLMP::FloatVecType pos{coord[0], coord[1], coord[2]};
-  AutoPasLMP::FloatVecType  vel{0};
-  unsigned long moleculeId = nlocal;
-  unsigned long typeId = itype;
-
-  lmp->autopas->addParticle(AutoPasLMP::ParticleType(pos, vel, moleculeId, typeId));*/
-
 }
 
 void
 AtomVecAtomicAutopas::data_atom(double *coord, imageint imagetmp,
-                                           char **values) {
+                                char **values) {
   // Probably only used on startup / from commands -> use original arrays
 
   int nlocal = atom->nlocal;
@@ -461,15 +440,14 @@ AtomVecAtomicAutopas::data_atom(double *coord, imageint imagetmp,
 void AtomVecAtomicAutopas::pack_data(double **buf) {
 
 #pragma omp parallel default(none) shared(buf)
-  for (auto iter = lmp->autopas->_autopas->begin(
-      autopas::IteratorBehavior::ownedOnly); iter.isValid(); ++iter) {
-    unsigned long idx = iter->getID();
-    auto &x = iter->getR();
+  for (auto iter = lmp->autopas->const_iterate<autopas::IteratorBehavior::ownedOnly>(); iter.isValid(); ++iter) {
+    auto &x_{iter->getR()};
+    auto idx{AutoPasLMP::particle_to_index(*iter)};
     buf[idx][0] = ubuf(tag[idx]).d;
     buf[idx][1] = ubuf(type[idx]).d;
-    buf[idx][2] = x[0];
-    buf[idx][3] = x[1];
-    buf[idx][4] = x[2];
+    buf[idx][2] = x_[0];
+    buf[idx][3] = x_[1];
+    buf[idx][4] = x_[2];
     buf[idx][5] = ubuf((image[idx] & IMGMASK) - IMGMAX).d;
     buf[idx][6] = ubuf((image[idx] >> IMGBITS & IMGMASK) - IMGMAX).d;
     buf[idx][7] = ubuf((image[idx] >> IMG2BITS) - IMGMAX).d;
@@ -505,17 +483,17 @@ bigint AtomVecAtomicAutopas::memory_usage() {
 
 int AtomVecAtomicAutopas::pack_exchange(
     const AutoPasLMP::ParticleType &p, double *buf) {
-  auto idx = lmp->autopas->idx(p);
-  auto &x = p.getR();
-  auto &v = p.getV();
+  auto idx{AutoPasLMP::particle_to_index(p)};
+  auto &x_ = p.getR();
+  auto &v_ = p.getV();
 
   int m = 1;
-  buf[m++] = x[0];
-  buf[m++] = x[1];
-  buf[m++] = x[2];
-  buf[m++] = v[0];
-  buf[m++] = v[1];
-  buf[m++] = v[2];
+  buf[m++] = x_[0];
+  buf[m++] = x_[1];
+  buf[m++] = x_[2];
+  buf[m++] = v_[0];
+  buf[m++] = v_[1];
+  buf[m++] = v_[2];
   buf[m++] = ubuf(tag[idx]).d;
   buf[m++] = ubuf(type[idx]).d;
   buf[m++] = ubuf(mask[idx]).d;

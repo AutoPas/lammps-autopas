@@ -21,30 +21,20 @@ template<bool initial>
 void LAMMPS_NS::FixNVEAutoPas::do_integrate() {
   using autopas::utils::ArrayMath::mulScalar;
 
-  double dtfm;
-
   // update v and x of atoms in group
 
   double *rmass = atom->rmass;
   double *mass = atom->mass;
   int *type = atom->type;
   int *mask = atom->mask;
-  auto &autopas = *lmp->autopas->_autopas;
-  // int nlocal = atom->nlocal;
-  // if (igroup == atom->firstgroup) nlocal = atom->nfirst;
 
-#pragma omp parallel default(none) shared(autopas, rmass, mass, type, mask) private(dtfm)
-  for (auto iter = autopas.begin(
-      autopas::IteratorBehavior::ownedOnly); iter.isValid(); ++iter) {
+#pragma omp parallel default(none) shared(rmass, mass, type, mask)
+  for (auto iter = lmp->autopas->iterate<autopas::IteratorBehavior::ownedOnly>(); iter.isValid(); ++iter) {
     auto &particle = *iter;
-    int idx = particle.getID(); // TODO Handle global index to local mapping?
+    int idx = AutoPasLMP::particle_to_index(particle);
     if (mask[idx] & groupbit) {
 
-      if (rmass) {
-        dtfm = dtf / rmass[idx];
-      } else {
-        dtfm = dtf / mass[type[idx]];
-      }
+      const double dtfm = dtf / (rmass ? rmass[idx] : mass[type[idx]]);
 
       particle.addV(mulScalar(particle.getF(), dtfm));
 

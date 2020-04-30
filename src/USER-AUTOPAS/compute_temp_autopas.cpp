@@ -25,10 +25,9 @@ double LAMMPS_NS::ComputeTempAutoPas::compute_scalar() {
   double t = 0.0;
 
 #pragma omp parallel default(none) shared(autopas, mask, rmass, mass, type) reduction(+: t)
-  for (auto iter = autopas->_autopas->begin(
-      autopas::IteratorBehavior::ownedOnly); iter.isValid(); ++iter) {
-    auto idx = autopas->idx(*iter);
-    auto &v = iter->getV();
+  for (auto iter = lmp->autopas->const_iterate<autopas::IteratorBehavior::ownedOnly>(); iter.isValid(); ++iter) {
+    auto &v {iter->getV()};
+    auto idx {AutoPasLMP::particle_to_index(*iter)};
     if (mask[idx] & groupbit) {
       auto tmp = (v[0] * v[0] + v[1] * v[1] + v[2] * v[2]);
 
@@ -66,10 +65,10 @@ void LAMMPS_NS::ComputeTempAutoPas::compute_vector() {
 #pragma omp parallel default(none) shared(autopas, mask, rmass, mass, type, massone, t)
   {
     double t_private[6] = {0};
-    for (auto iter = autopas->_autopas->begin(
-        autopas::IteratorBehavior::ownedOnly); iter.isValid(); ++iter) {
-      auto idx = autopas->idx(*iter);
-      auto &v = iter->getV();
+    for (auto iter = lmp->autopas->const_iterate<autopas::IteratorBehavior::ownedOnly>(); iter.isValid(); ++iter) {
+      auto &v {iter->getV()};
+      auto idx {AutoPasLMP::particle_to_index(*iter)};
+
       if (mask[idx] & groupbit) {
         if (rmass) massone = rmass[idx];
         else massone = mass[type[idx]];
