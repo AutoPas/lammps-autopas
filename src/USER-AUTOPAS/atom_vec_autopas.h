@@ -4,6 +4,8 @@
 #include "atom_vec.h"
 #include "autopas.h"
 
+#include <vector>
+
 namespace LAMMPS_NS {
 
 class AtomVecAutopas : public AtomVec {
@@ -40,7 +42,7 @@ public:
 
   virtual void
   unpack_reverse_autopas(const std::vector<AutoPasLMP::ParticleType *> &,
-                         double *);
+                         const double *);
 
 protected:
   int *mask{};

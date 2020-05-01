@@ -184,7 +184,7 @@ void LAMMPS_NS::AtomVecAutopas::unpack_reverse(int n, int *list, double *buf) {
 }
 
 void AtomVecAutopas::unpack_reverse_autopas(
-    const std::vector<AutoPasLMP::ParticleType *> &list, double *buf) {
+    const std::vector<AutoPasLMP::ParticleType *> &list, const double *buf) {
   int m = 0;
   for (auto p : list) {
     auto f_{p->getF()};

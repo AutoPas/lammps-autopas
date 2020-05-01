@@ -91,6 +91,17 @@ void CommAutoPas::forward_comm(int /*dummy*/) {
 ------------------------------------------------------------------------- */
 
 void CommAutoPas::reverse_comm() {
+  if (comm_f_only) {
+    // Using force buffer
+    force_buf.resize(atom->nlocal + atom->nghost);
+#pragma omp parallel default(none)
+    for (auto iter = lmp->autopas->const_iterate<autopas::haloAndOwned>(); iter.isValid(); ++iter) {
+      auto idx{lmp->autopas->particle_to_index(*iter)};
+      auto &f{iter->getF()};
+      std::copy(f.begin(), f.end(), force_buf[idx].begin());
+    }
+  }
+
   for (int iswap = nswap - 1; iswap >= 0; iswap--) {
     if (sendproc[iswap] != me) {
       // exchange data with another proc
@@ -112,8 +123,7 @@ CommAutoPas::reverse_comm_impl_other(int iswap) const {
       MPI_Irecv(buf_recv, size_reverse_recv[iswap], MPI_DOUBLE,
                 sendproc[iswap], 0, world, &request);
     if (size_reverse_send[iswap]) {
-      auto f = lmp->autopas->particle_by_index(firstrecv[iswap])->getF();
-      double *buf = f.data();
+      const double *buf = force_buf[firstrecv[iswap]].data();
       MPI_Send(buf, size_reverse_send[iswap], MPI_DOUBLE,
                recvproc[iswap], 0, world);
     }
@@ -137,7 +147,8 @@ CommAutoPas::reverse_comm_impl_self(int iswap) const {
   // if comm_f_only set, exchange or copy directly from f, don't pack
   if (comm_f_only) {
     if (sendnum[iswap]) {
-      avec->unpack_reverse_autopas(_sendlist_particles[iswap], f[firstrecv[iswap]]);
+      avec->unpack_reverse_autopas(_sendlist_particles[iswap],
+                                   force_buf[firstrecv[iswap]].data());
     }
   } else {
     avec->pack_reverse(recvnum[iswap], firstrecv[iswap], buf_send);
@@ -180,8 +191,8 @@ void CommAutoPas::exchange() {
   }
 
   // subbox bounds for orthogonal or triclinic
-  const double *sublo {triclinic == 0 ? domain->sublo : domain->sublo_lamda};
-  const double *subhi {triclinic == 0 ? domain->subhi : domain->subhi_lamda};
+  const double *sublo{triclinic == 0 ? domain->sublo : domain->sublo_lamda};
+  const double *subhi{triclinic == 0 ? domain->subhi : domain->subhi_lamda};
 
   // loop over dimensions
   for (int dim = 0; dim < domain->dimension; dim++) {
@@ -330,15 +341,18 @@ void CommAutoPas::borders() {
           if (mode == Comm::SINGLE) {
             border_impl(nfirst, nlast, lo, hi, dim, _sendlist_particles[iswap]);
           } else {
-            border_impl(nfirst, nlast, mlo, mhi, dim, _sendlist_particles[iswap]);
+            border_impl(nfirst, nlast, mlo, mhi, dim,
+                        _sendlist_particles[iswap]);
           }
         } else {
           if (mode == Comm::SINGLE) {
-            border_impl(0, atom->nfirst, lo, hi, dim, _sendlist_particles[iswap]);
+            border_impl(0, atom->nfirst, lo, hi, dim,
+                        _sendlist_particles[iswap]);
             border_impl</*haloOnly*/ true>(atom->nlocal, nlast, lo, hi, dim,
                                            _sendlist_particles[iswap]);
           } else {
-            border_impl(0, atom->nfirst, mlo, mhi, dim, _sendlist_particles[iswap]);
+            border_impl(0, atom->nfirst, mlo, mhi, dim,
+                        _sendlist_particles[iswap]);
             border_impl</*haloOnly*/ true>(atom->nlocal, nlast, mlo, mhi, dim,
                                            _sendlist_particles[iswap]);
           }

@@ -6,6 +6,7 @@
 #include "atom.h"
 #include "domain.h"
 #include "error.h"
+#include "force.h"
 #include "memory.h"
 #include "neighbor.h"
 
@@ -52,9 +53,12 @@ void AutoPasLMP::init_autopas(double cutoff, double **epsilon, double **sigma) {
 
   _autopas->setAllowedContainers({autopas::ContainerOption::linkedCells});
   _autopas->setAllowedDataLayouts({autopas::DataLayoutOption::soa});
-  _autopas->setAllowedNewton3Options(
-      {autopas::Newton3Option::disabled}); //TODO Newton based on lammps settings
   _autopas->setAllowedTraversals({autopas::TraversalOption::c04});
+
+  const std::set<autopas::Newton3Option> newtonOptions{
+      force->newton ? autopas::Newton3Option::enabled
+                    : autopas::Newton3Option::disabled};
+  _autopas->setAllowedNewton3Options(newtonOptions);
 
   FloatVecType boxMax{}, boxMin{};
   std::copy(std::begin(domain->boxhi), std::end(domain->boxhi), boxMax.begin());
@@ -74,7 +78,9 @@ void AutoPasLMP::init_autopas(double cutoff, double **epsilon, double **sigma) {
   //_autopas->setVerletRebuildFrequency(neighbor->every);
   //std::cout << neighbor->skin << "\n";
 
-  _autopas->setVerletRebuildFrequency(std::max(neighbor->every, neighbor->delay)); // TODO Check if value correct
+  // TODO Check if value correct
+  _autopas->setVerletRebuildFrequency(
+      std::max(neighbor->every, neighbor->delay));
   _autopas->setVerletSkin(neighbor->skin);
 
   //_autopas->setVerletSkin(0); // No skin needed when rebuilding every step
