@@ -65,6 +65,13 @@ public:
     return _autopas->cbegin(iterateBehavior);
   }
 
+  AutoPasLMP::AutoPasType::const_iterator_t
+  const_iterate_auto(int first, int last);
+
+  AutoPasLMP::AutoPasType::iterator_t
+  iterate_auto(int first, int last);
+
+
   bool iterate_pairwise(PairFunctorType *functor);
 
 

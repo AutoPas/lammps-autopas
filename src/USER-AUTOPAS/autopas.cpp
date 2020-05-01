@@ -226,6 +226,31 @@ bool AutoPasLMP::iterate_pairwise(AutoPasLMP::PairFunctorType *functor) {
   return _autopas->iteratePairwise(functor);
 }
 
+AutoPasLMP::AutoPasType::const_iterator_t
+AutoPasLMP::const_iterate_auto(int first, int last) {
+  auto nlocal{atom->nlocal};
+  if (last < nlocal) {
+    return const_iterate<autopas::ownedOnly>();
+  } else if (first >= nlocal) {
+    return const_iterate<autopas::haloOnly>();
+  } else {
+    return const_iterate<autopas::haloAndOwned>();
+  }
+
+}
+
+AutoPasLMP::AutoPasType::iterator_t
+AutoPasLMP::iterate_auto(int first, int last) {
+  auto nlocal{atom->nlocal};
+  if (last < nlocal) {
+    return iterate<autopas::ownedOnly>();
+  } else if (first >= nlocal) {
+    return iterate<autopas::haloOnly>();
+  } else {
+    return iterate<autopas::haloAndOwned>();
+  }
+}
+
 
 template void AutoPasLMP::add_particle<false>(const ParticleType &p);
 

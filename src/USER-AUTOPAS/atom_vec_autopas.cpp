@@ -1,5 +1,7 @@
 #include "atom_vec_autopas.h"
 
+#include "atom.h"
+#include "autopas.h"
 #include "domain.h"
 #include "error.h"
 
@@ -118,50 +120,60 @@ int LAMMPS_NS::AtomVecAutopas::pack_comm_vel(int n, int *list, double *buf,
 }
 
 void LAMMPS_NS::AtomVecAutopas::unpack_comm(int n, int first, double *buf) {
-  int i, m, last;
 
-  m = 0;
-  last = first + n;
-  for (i = first; i < last; i++) {
-    auto *pi = lmp->autopas->particle_by_index(i);
-    AutoPasLMP::FloatVecType x;
-    x[0] = buf[m++];
-    x[1] = buf[m++];
-    x[2] = buf[m++];
-    pi->setR(x);
+  int m = 0;
+  int last = first + n;
+
+  for (auto iter = lmp->autopas->iterate_auto(first, last);
+       iter.isValid(); ++iter) {
+    auto idx{AutoPasLMP::particle_to_index(*iter)};
+    if (idx >= first && idx < last) {
+      AutoPasLMP::FloatVecType x_;
+      x_[0] = buf[m++];
+      x_[1] = buf[m++];
+      x_[2] = buf[m++];
+      iter->setR(x_);
+    }
   }
 }
 
 void LAMMPS_NS::AtomVecAutopas::unpack_comm_vel(int n, int first, double *buf) {
-  int i, m, last;
 
-  m = 0;
-  last = first + n;
-  for (i = first; i < last; i++) {
-    auto *pi = lmp->autopas->particle_by_index(i);
-    AutoPasLMP::FloatVecType x;
-    AutoPasLMP::FloatVecType v;
-    x[0] = buf[m++];
-    x[1] = buf[m++];
-    x[2] = buf[m++];
-    v[0] = buf[m++];
-    v[1] = buf[m++];
-    v[2] = buf[m++];
-    pi->setR(x);
-    pi->setV(v);
+  int m = 0;
+  int last = first + n;
+
+  for (auto iter = lmp->autopas->iterate_auto(first, last);
+       iter.isValid(); ++iter) {
+    auto idx{AutoPasLMP::particle_to_index(*iter)};
+    if (idx >= first && idx < last) {
+      AutoPasLMP::FloatVecType x_;
+      AutoPasLMP::FloatVecType v_;
+      x_[0] = buf[m++];
+      x_[1] = buf[m++];
+      x_[2] = buf[m++];
+      v_[0] = buf[m++];
+      v_[1] = buf[m++];
+      v_[2] = buf[m++];
+      iter->setR(x_);
+      iter->setV(v_);
+    }
   }
 }
 
 int LAMMPS_NS::AtomVecAutopas::pack_reverse(int n, int first, double *buf) {
-  int i, m, last;
 
-  m = 0;
-  last = first + n;
-  for (i = first; i < last; i++) {
-    auto &f = lmp->autopas->particle_by_index(i)->getF();
-    buf[m++] = f[0];
-    buf[m++] = f[1];
-    buf[m++] = f[2];
+  int m = 0;
+  int last = first + n;
+
+  for (auto iter = lmp->autopas->const_iterate_auto(first, last);
+       iter.isValid(); ++iter) {
+    auto idx{AutoPasLMP::particle_to_index(*iter)};
+    if (idx >= first && idx < last) {
+      auto &f_ = iter->getF();
+      buf[m++] = f_[0];
+      buf[m++] = f_[1];
+      buf[m++] = f_[2];
+    }
   }
   return m;
 }
