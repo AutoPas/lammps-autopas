@@ -38,6 +38,10 @@ public:
                           double *,
                           int, const int *) = 0;
 
+  virtual void
+  unpack_reverse_autopas(const std::vector<AutoPasLMP::ParticleType *> &,
+                         double *);
+
 protected:
   int *mask{};
 

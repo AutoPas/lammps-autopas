@@ -126,7 +126,7 @@ CommAutoPas::reverse_comm_impl_other(int iswap) const {
     if (n) MPI_Send(buf_send, n, MPI_DOUBLE, recvproc[iswap], 0, world);
     if (size_reverse_recv[iswap]) MPI_Wait(&request, MPI_STATUS_IGNORE);
   }
-  avec->unpack_reverse(sendnum[iswap], sendlist[iswap], buf_recv);
+  avec->unpack_reverse_autopas(_sendlist_particles[iswap], buf_recv);
 }
 
 void
@@ -137,13 +137,11 @@ CommAutoPas::reverse_comm_impl_self(int iswap) const {
   // if comm_f_only set, exchange or copy directly from f, don't pack
   if (comm_f_only) {
     if (sendnum[iswap]) {
-      auto f = lmp->autopas->particle_by_index(firstrecv[iswap])->getF();
-      avec->unpack_reverse(sendnum[iswap], sendlist[iswap],
-                           f.data());
+      avec->unpack_reverse_autopas(_sendlist_particles[iswap], f[firstrecv[iswap]]);
     }
   } else {
     avec->pack_reverse(recvnum[iswap], firstrecv[iswap], buf_send);
-    avec->unpack_reverse(sendnum[iswap], sendlist[iswap], buf_send);
+    avec->unpack_reverse_autopas(_sendlist_particles[iswap], buf_send);
   }
 }
 

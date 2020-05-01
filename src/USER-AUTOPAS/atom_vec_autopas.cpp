@@ -167,16 +167,19 @@ int LAMMPS_NS::AtomVecAutopas::pack_reverse(int n, int first, double *buf) {
 }
 
 void LAMMPS_NS::AtomVecAutopas::unpack_reverse(int n, int *list, double *buf) {
-  int i, j, m;
+  error->all(FLERR,
+             "Function unpack_reverse not supported, use unpack_reverse_autopas instead");
+}
 
-  m = 0;
-  for (i = 0; i < n; i++) {
-    AutoPasLMP::FloatVecType f;
-    j = list[i];
-    auto *pj = lmp->autopas->particle_by_index(j);
-    f[0] += buf[m++];
-    f[1] += buf[m++];
-    f[2] += buf[m++];
-    pj->setF(f);
+void AtomVecAutopas::unpack_reverse_autopas(
+    const std::vector<AutoPasLMP::ParticleType *> &list, double *buf) {
+  int m = 0;
+  for (auto p : list) {
+    auto f_{p->getF()};
+    f_[0] += buf[m++];
+    f_[1] += buf[m++];
+    f_[2] += buf[m++];
+    p->setF(f_);
   }
+
 }
