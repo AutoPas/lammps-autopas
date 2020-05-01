@@ -148,7 +148,7 @@ CommAutoPas::reverse_comm_impl_self(int iswap) const {
   if (comm_f_only) {
     if (sendnum[iswap]) {
       avec->unpack_reverse_autopas(_sendlist_particles[iswap],
-                                   force_buf[firstrecv[iswap]].data());
+                                   force_buf, firstrecv[iswap]);
     }
   } else {
     avec->pack_reverse(recvnum[iswap], firstrecv[iswap], buf_send);

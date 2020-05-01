@@ -195,3 +195,13 @@ void AtomVecAutopas::unpack_reverse_autopas(
   }
 
 }
+
+void AtomVecAutopas::unpack_reverse_autopas(
+    const std::vector<AutoPasLMP::ParticleType *>& sendlist,
+    const std::vector<std::array<double, 3>>& force_buf, int firstrecv) {
+
+  int m = 0;
+  for (auto p : sendlist) {
+    p->addF(force_buf.at(firstrecv + m++));
+  }
+}
