@@ -136,7 +136,7 @@ CommAutoPas::reverse_comm_impl_other(int iswap) const {
     if (n) MPI_Send(buf_send, n, MPI_DOUBLE, recvproc[iswap], 0, world);
     if (size_reverse_recv[iswap]) MPI_Wait(&request, MPI_STATUS_IGNORE);
   }
-  avec->unpack_reverse_autopas(_sendlist_particles[iswap], buf_recv);
+  avec->unpack_reverse(sendnum[iswap], sendlist[iswap], buf_recv);
 }
 
 void
@@ -147,12 +147,12 @@ CommAutoPas::reverse_comm_impl_self(int iswap) const {
   // if comm_f_only set, exchange or copy directly from f, don't pack
   if (comm_f_only) {
     if (sendnum[iswap]) {
-      avec->unpack_reverse_autopas(_sendlist_particles[iswap],
-                                   force_buf, firstrecv[iswap]);
+      avec->unpack_reverse_autopas(sendnum[iswap], sendlist[iswap], force_buf,
+                                   firstrecv[iswap]);
     }
   } else {
     avec->pack_reverse(recvnum[iswap], firstrecv[iswap], buf_send);
-    avec->unpack_reverse_autopas(_sendlist_particles[iswap], buf_send);
+    avec->unpack_reverse(sendnum[iswap], sendlist[iswap], buf_send);
   }
 }
 
@@ -358,10 +358,16 @@ void CommAutoPas::borders() {
           }
         }
       }
+      int nsend = _sendlist_particles[iswap].size();
+
+      // set original index send list
+      if (nsend > maxsendlist[iswap]) grow_list(iswap, nsend);
+      for (int i = 0; i < nsend; ++i) {
+        sendlist[iswap][i] = AutoPasLMP::particle_to_index(
+            *_sendlist_particles[iswap][i]);
+      }
 
       // pack up list of border atoms
-
-      int nsend = _sendlist_particles[iswap].size();
       int n;
       if (nsend * size_border > maxsend) grow_send(nsend * size_border, 0);
       if (ghost_velocity)

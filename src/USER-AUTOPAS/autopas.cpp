@@ -93,7 +93,6 @@ void AutoPasLMP::init_autopas(double cutoff, double **epsilon, double **sigma) {
   // Handle particles that got added before AutoPas was initialized
   int nlocal = atom->nlocal;
   for (int i = 0; i < nlocal; i++) {
-
     FloatVecType pos{atom->x[i][0], atom->x[i][1], atom->x[i][2]};
     FloatVecType vel{atom->v[i][0], atom->v[i][1], atom->v[i][2]};
     unsigned long moleculeId = i;
@@ -154,12 +153,14 @@ void AutoPasLMP::update_index_structure() {
     _index_vector.resize(n);
   }
 
+#pragma omp parallel default(none)
   for (auto &p: *lmp->autopas->_autopas) { // owned and halo
     auto idx = particle_to_index(p);
     if (_use_index_map) {
       _index_map.emplace(idx, &p);
+      // TODO Test if no race when emplacing in map
     } else {
-      _index_vector.at(idx) = &p;
+      _index_vector[idx] = &p;
     }
   }
   _index_structure_valid = true;
@@ -201,7 +202,7 @@ AutoPasLMP::particles_by_slab(int dim, double lo, double hi) const {
   if constexpr (haloOnly) {
     return _autopas->getRegionIterator(low, high, autopas::haloOnly);
   } else {
-    return _autopas->getRegionIterator(low, high);
+    return _autopas->getRegionIterator(low, high, autopas::haloAndOwned);
   }
 }
 

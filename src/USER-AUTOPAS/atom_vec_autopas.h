@@ -40,12 +40,9 @@ public:
                           double *,
                           int, const int *) = 0;
 
-  virtual void
-  unpack_reverse_autopas(const std::vector<AutoPasLMP::ParticleType *> &,
-                         const double *);
-
   void unpack_reverse_autopas(
-      const std::vector<autopas::MoleculeLJ<double> *>& sendlist,
+      int sendnum,
+      const int* sendlist,
       const std::vector<std::array<double, 3>>& force_buf, int firstrecv);
 
 protected:

@@ -179,29 +179,26 @@ int LAMMPS_NS::AtomVecAutopas::pack_reverse(int n, int first, double *buf) {
 }
 
 void LAMMPS_NS::AtomVecAutopas::unpack_reverse(int n, int *list, double *buf) {
-  error->all(FLERR,
-             "Function unpack_reverse not supported, use unpack_reverse_autopas instead");
-}
-
-void AtomVecAutopas::unpack_reverse_autopas(
-    const std::vector<AutoPasLMP::ParticleType *> &list, const double *buf) {
   int m = 0;
-  for (auto p : list) {
+  for (int i = 0; i < n; i++) {
+    int j = list[i];
+    auto *p{lmp->autopas->particle_by_index(j)};
     auto f_{p->getF()};
     f_[0] += buf[m++];
     f_[1] += buf[m++];
     f_[2] += buf[m++];
     p->setF(f_);
   }
-
 }
 
 void AtomVecAutopas::unpack_reverse_autopas(
-    const std::vector<AutoPasLMP::ParticleType *>& sendlist,
-    const std::vector<std::array<double, 3>>& force_buf, int firstrecv) {
+    int n,
+    const int *list,
+    const std::vector<std::array<double, 3>> &force_buf, int firstrecv) {
 
-  int m = 0;
-  for (auto p : sendlist) {
-    p->addF(force_buf.at(firstrecv + m++));
+  for (int i = 0; i < n; i++) {
+    int j = list[i];
+    auto *p{lmp->autopas->particle_by_index(j)};
+    p->addF(force_buf.at(firstrecv + i));
   }
 }

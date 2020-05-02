@@ -27,7 +27,7 @@ void LAMMPS_NS::FixNVEAutoPas::do_integrate() {
   int *mask = atom->mask;
 
 #pragma omp parallel default(none) shared(rmass, mass, type, mask)
-  for (auto iter = lmp->autopas->iterate<autopas::IteratorBehavior::ownedOnly>(); iter.isValid(); ++iter) {
+  for (auto iter = lmp->autopas->iterate<autopas::ownedOnly>(); iter.isValid(); ++iter) {
     auto &particle = *iter;
     int idx = AutoPasLMP::particle_to_index(particle);
     if (mask[idx] & groupbit) {
