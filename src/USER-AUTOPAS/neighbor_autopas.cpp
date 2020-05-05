@@ -69,7 +69,7 @@ int LAMMPS_NS::NeighborAutoPas::check_distance() {
 
   for (auto iter = lmp->autopas->const_iterate<autopas::IteratorBehavior::ownedOnly>(); iter.isValid(); ++iter) {
     auto &x{iter->getR()};
-    auto idx{AutoPasLMP::particle_to_index(*iter)};
+    auto idx{lmp->autopas->particle_to_index(*iter)};
     if (idx < nlocal) {
       delx = x[0] - xhold[idx][0];
       dely = x[1] - xhold[idx][1];
@@ -116,7 +116,7 @@ void LAMMPS_NS::NeighborAutoPas::build(int topoflag) {
 #pragma omp parallel default(none) shared(nlocal)
     for (auto iter = lmp->autopas->const_iterate<autopas::IteratorBehavior::ownedOnly>(); iter.isValid(); ++iter) {
       auto &x{iter->getR()};
-      auto idx{AutoPasLMP::particle_to_index(*iter)};
+      auto idx{lmp->autopas->particle_to_index(*iter)};
       if (idx < nlocal) {
         xhold[idx][0] = x[0];
         xhold[idx][1] = x[1];

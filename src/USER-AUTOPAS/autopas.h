@@ -2,7 +2,9 @@
 #define LMP_AUTOPAS_H
 
 #include "pointers.h"
+#include "atom.h"
 
+#include <assert.h>
 #include <autopas/AutoPas.h>
 #include <autopas/cells/FullParticleCell.h>
 #include <autopas/molecularDynamics/MoleculeLJ.h>
@@ -79,13 +81,14 @@ public:
 
   FloatType get_cutoff();
 
-  static std::vector<int>
+  std::vector<int>
   particle_to_index(const std::vector<ParticleType *> &particles);
 
-  static constexpr int particle_to_index(const ParticleType &particle) {
-    return particle.getID(); // TODO Global id to local index mapping
+  inline int particle_to_index(const ParticleType &particle) {
+    auto idx {atom->map(particle.getID())};
+    assert(idx != -1);
+    return idx;
   }
-
 
 private:
   std::unique_ptr<AutoPasType> _autopas;

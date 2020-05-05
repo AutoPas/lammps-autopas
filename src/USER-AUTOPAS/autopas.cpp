@@ -20,6 +20,14 @@ AutoPasLMP::AutoPasLMP(class LAMMPS *lmp, int narg, char **args) : Pointers(
 
 void AutoPasLMP::init_autopas(double cutoff, double **epsilon, double **sigma) {
 
+  if(!lmp->atom->tag_enable){
+    error->one(FLERR, "AutoPas requires particle IDs");
+  }
+
+  if(!lmp->atom->map_user){
+    error->one(FLERR, "AutoPas requires global id mapping");
+  }
+
   // TODO SUPPORT FOR: pair_modify shift yes
 
   _autopas = std::make_unique<AutoPasType>();
@@ -37,7 +45,7 @@ void AutoPasLMP::init_autopas(double cutoff, double **epsilon, double **sigma) {
   }
 
   // TODO Reenable mixings
-  if(atom->ntypes > 1){
+  if (atom->ntypes > 1) {
     error->warning(FLERR, "Mixings are currently disabled with AutoPas");
   }
 
@@ -112,7 +120,7 @@ void AutoPasLMP::init_autopas(double cutoff, double **epsilon, double **sigma) {
   for (int i = 0; i < nlocal; i++) {
     FloatVecType pos{atom->x[i][0], atom->x[i][1], atom->x[i][2]};
     FloatVecType vel{atom->v[i][0], atom->v[i][1], atom->v[i][2]};
-    unsigned long moleculeId = i;
+    unsigned long moleculeId = atom->tag[i];
     unsigned long typeId = atom->type[i];
 
     add_particle(ParticleType(pos, vel, moleculeId, typeId));
@@ -153,7 +161,7 @@ void AutoPasLMP::copy_back() {
 #pragma omp parallel default(none)
   for (auto iter = const_iterate<autopas::ownedOnly>(); iter.isValid(); ++iter) {
     auto &p = *iter;
-    auto idx = particle_to_index(p);
+    auto idx{particle_to_index(p)};
     std::copy_n(p.getR().begin(), 3, atom->x[idx]);
     std::copy_n(p.getV().begin(), 3, atom->v[idx]);
     std::copy_n(p.getF().begin(), 3, atom->f[idx]);
@@ -172,7 +180,7 @@ void AutoPasLMP::update_index_structure() {
 
 #pragma omp parallel default(none)
   for (auto &p: *lmp->autopas->_autopas) { // owned and halo
-    auto idx = particle_to_index(p);
+    auto idx{particle_to_index(p)};
     if (_use_index_map) {
       _index_map.emplace(idx, &p);
       // TODO Test if no race when emplacing in map
@@ -238,7 +246,7 @@ AutoPasLMP::particle_to_index(
   std::vector<int> list(particles.size());
   std::transform(particles.begin(),
                  particles.end(), list.begin(),
-                 [](auto *p) { return particle_to_index(*p); });
+                 [this](auto *p) { return this->particle_to_index(*p); });
   return list;
 }
 
