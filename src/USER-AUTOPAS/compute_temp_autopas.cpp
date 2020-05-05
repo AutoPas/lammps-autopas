@@ -10,13 +10,11 @@
 #include "group.h"
 #include "update.h"
 
-LAMMPS_NS::ComputeTempAutoPas::ComputeTempAutoPas(
-    LAMMPS *lmp, int narg, char **arg) : ComputeTemp(lmp, narg, arg) {
-
-}
-
 double LAMMPS_NS::ComputeTempAutoPas::compute_scalar() {
-  auto autopas = lmp->autopas;
+  if (!lmp->autopas->is_initialized()) {
+    return ComputeTemp::compute_scalar();
+  }
+
   invoked_scalar = update->ntimestep;
 
   double *mass = atom->mass;
@@ -26,7 +24,7 @@ double LAMMPS_NS::ComputeTempAutoPas::compute_scalar() {
 
   double t = 0.0;
 
-#pragma omp parallel default(none) shared(autopas, mask, rmass, mass, type) reduction(+: t)
+#pragma omp parallel default(none) shared(mask, rmass, mass, type) reduction(+: t)
   for (auto iter = lmp->autopas->const_iterate<autopas::IteratorBehavior::ownedOnly>(); iter.isValid(); ++iter) {
     auto &v{iter->getV()};
     auto idx{AutoPasLMP::particle_to_index(*iter)};
@@ -53,7 +51,9 @@ double LAMMPS_NS::ComputeTempAutoPas::compute_scalar() {
 }
 
 void LAMMPS_NS::ComputeTempAutoPas::compute_vector() {
-  auto autopas = lmp->autopas;
+  if (!lmp->autopas->is_initialized()) {
+    return ComputeTemp::compute_vector();
+  }
 
   invoked_vector = update->ntimestep;
 
@@ -64,7 +64,7 @@ void LAMMPS_NS::ComputeTempAutoPas::compute_vector() {
 
   double massone, t[6] = {0};
 
-#pragma omp parallel default(none) shared(autopas, mask, rmass, mass, type, massone, t)
+#pragma omp parallel default(none) shared(mask, rmass, mass, type, massone, t)
   {
     double t_private[6] = {0};
     for (auto iter = lmp->autopas->const_iterate<autopas::IteratorBehavior::ownedOnly>(); iter.isValid(); ++iter) {

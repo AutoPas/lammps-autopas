@@ -20,11 +20,10 @@
 
 using namespace LAMMPS_NS;
 
-DomainAutoPas::DomainAutoPas(LAMMPS_NS::LAMMPS *lmp) : Domain(lmp) {
-
-}
-
 void DomainAutoPas::pbc() {
+  if (!lmp->autopas->is_initialized()) {
+    return Domain::pbc();
+  }
 
   // Update leaving particles
   lmp->autopas->update_autopas();
@@ -87,6 +86,7 @@ void DomainAutoPas::pbc() {
 bool
 DomainAutoPas::pbc(AutoPasLMP::ParticleType &particle, double *lo, double *hi,
                    double *period) {
+
   imageint idim, otherdims;
   int *mask = atom->mask;
   imageint *image = atom->image;
@@ -202,6 +202,10 @@ void DomainAutoPas::box_too_small_check() {
 }
 
 int DomainAutoPas::closest_image(int i, int j) {
+  if (!lmp->autopas->is_initialized()) {
+    return Domain::closest_image(i, j);
+  }
+
   //TODO This method is only used for ntopo_* -> untested
   if (j < 0) return j;
 
@@ -233,6 +237,10 @@ int DomainAutoPas::closest_image(int i, int j) {
 }
 
 int DomainAutoPas::closest_image(const double *const pos, int j) {
+  if (!lmp->autopas->is_initialized()) {
+    return Domain::closest_image(pos, j);
+  }
+
   //TODO This method is not used? -> untested
 
   if (j < 0) return j;
@@ -264,6 +272,9 @@ int DomainAutoPas::closest_image(const double *const pos, int j) {
 }
 
 void DomainAutoPas::lamda2x(int n) {
+  if (!lmp->autopas->is_initialized()) {
+    return Domain::lamda2x(n);
+  }
 
 #pragma omp parallel default(none) shared(n)
   for (auto iter = lmp->autopas->iterate<autopas::IteratorBehavior::ownedOnly>(); iter.isValid(); ++iter) {
@@ -282,6 +293,10 @@ void DomainAutoPas::lamda2x(int n) {
 }
 
 void DomainAutoPas::x2lamda(int n) {
+  if (!lmp->autopas->is_initialized()) {
+    return Domain::x2lamda(n);
+  }
+
   double delta[3];
 
 #pragma omp parallel default(none) shared(n) private(delta)

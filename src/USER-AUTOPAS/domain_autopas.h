@@ -9,7 +9,7 @@ namespace LAMMPS_NS {
 
 class DomainAutoPas : public Domain {
 public:
-  explicit DomainAutoPas(class LAMMPS *);
+  using Domain::Domain;
 
   void pbc() override;
 

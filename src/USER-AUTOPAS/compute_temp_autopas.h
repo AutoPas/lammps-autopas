@@ -13,7 +13,7 @@ namespace LAMMPS_NS {
 
 class ComputeTempAutoPas : public ComputeTemp {
 public:
-  ComputeTempAutoPas(class LAMMPS *, int, char **);
+  using ComputeTemp::ComputeTemp;
 
   double compute_scalar() override;
 
