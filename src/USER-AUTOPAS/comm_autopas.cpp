@@ -4,6 +4,7 @@
 #include "atom_vec.h"
 #include "atom_vec_autopas.h"
 #include "domain.h"
+#include "error.h"
 
 using namespace LAMMPS_NS;
 
@@ -19,7 +20,7 @@ CommAutoPas::CommAutoPas(LAMMPS_NS::LAMMPS *lmp) : CommBrick(lmp) {
 void CommAutoPas::forward_comm(int /*dummy*/) {
   //TODO Fixme
   // Currently not called?
-  std::cout << "Forward comm missing" << "\n";
+  error->all(FLERR, "Forward comm missing");
   return;
 
   int n;
@@ -91,6 +92,8 @@ void CommAutoPas::forward_comm(int /*dummy*/) {
 ------------------------------------------------------------------------- */
 
 void CommAutoPas::reverse_comm() {
+  error->warning(FLERR, "AutoPas pair functors do not support force exchange");
+
   if (comm_f_only) {
     // Using force buffer
     force_buf.resize(atom->nlocal + atom->nghost);

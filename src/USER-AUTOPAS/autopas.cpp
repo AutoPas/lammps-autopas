@@ -20,6 +20,8 @@ AutoPasLMP::AutoPasLMP(class LAMMPS *lmp, int narg, char **args) : Pointers(
 
 void AutoPasLMP::init_autopas(double cutoff, double **epsilon, double **sigma) {
 
+  // TODO SUPPORT FOR: pair_modify shift yes
+
   _autopas = std::make_unique<AutoPasType>();
 
   // Initialize particle properties
@@ -32,6 +34,11 @@ void AutoPasLMP::init_autopas(double cutoff, double **epsilon, double **sigma) {
     _particlePropertiesLibrary->addType(
         i, epsilon[i][i], sigma[i][i], atom->mass[i]
     );
+  }
+
+  // TODO Reenable mixings
+  if(atom->ntypes > 1){
+    error->warning(FLERR, "Mixings are currently disabled with AutoPas");
   }
 
   // _autopas.setAllowedCellSizeFactors(*cellSizeFactors);
@@ -55,10 +62,20 @@ void AutoPasLMP::init_autopas(double cutoff, double **epsilon, double **sigma) {
   _autopas->setAllowedDataLayouts({autopas::DataLayoutOption::soa});
   _autopas->setAllowedTraversals({autopas::TraversalOption::c04});
 
-  const std::set<autopas::Newton3Option> newtonOptions{
+  // TODO AutoPas always calculates FullShell.
+  //  Turn LAMMPS newton setting off to disable force exchange?
+  //  Or just leave reverse_comm empty? What about other forces?
+  force->newton = force->newton_pair = force->newton_bond = false;
+
+  /*const std::set<autopas::Newton3Option> newtonOptions{
       force->newton ? autopas::Newton3Option::enabled
                     : autopas::Newton3Option::disabled};
-  _autopas->setAllowedNewton3Options(newtonOptions);
+
+  _autopas->setAllowedNewton3Options(newtonOptions);*/
+
+  _autopas->setAllowedNewton3Options(
+      {autopas::Newton3Option::enabled, autopas::Newton3Option::disabled});
+
 
   FloatVecType boxMax{}, boxMin{};
   std::copy(std::begin(domain->boxhi), std::end(domain->boxhi), boxMax.begin());
