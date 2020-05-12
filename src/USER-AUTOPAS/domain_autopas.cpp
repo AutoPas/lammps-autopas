@@ -27,16 +27,27 @@ void DomainAutoPas::pbc() {
 
   // Update leaving particles
   lmp->autopas->update_autopas();
+  auto &leavingParticles = lmp->autopas->get_leaving_particles();
 
   // verify owned atoms have valid numerical coords
   // may not if computed pairwise force between 2 atoms at same location
 
   bool flag = true;
-#pragma omp parallel default(none) reduction(&& : flag)
-  for (auto iter = lmp->autopas->const_iterate<autopas::IteratorBehavior::ownedOnly>(); iter.isValid(); ++iter) {
-    auto &x{iter->getR()};
-    flag = std::all_of(x.begin(), x.end(),
-                       [](auto _) { return std::isfinite(_); });
+#pragma omp parallel default(none) shared(leavingParticles) reduction(&& : flag)
+  {
+    for (auto iter = lmp->autopas->const_iterate<autopas::IteratorBehavior::ownedOnly>(); iter.isValid(); ++iter) {
+      auto &x{iter->getR()};
+      flag &= std::all_of(x.begin(), x.end(),
+                         [](auto _) { return std::isfinite(_); });
+    }
+
+#pragma omp for
+    for (auto iter = leavingParticles.cbegin();
+         iter < leavingParticles.cend(); ++iter) {
+      auto &x{iter->getR()};
+      flag &= std::all_of(x.begin(), x.end(),
+                         [](auto _) { return std::isfinite(_); });
+    }
   }
 
   if (!flag) error->one(FLERR, "Non-numeric atom coords - simulation unstable");
