@@ -123,7 +123,7 @@ void AutoPasLMP::init_autopas(double cutoff, double **epsilon, double **sigma) {
     unsigned long moleculeId = atom->tag[i];
     unsigned long typeId = atom->type[i];
 
-    add_particle(ParticleType(pos, vel, moleculeId, typeId));
+    add_particle(ParticleType(pos, vel, moleculeId, i, typeId));
   }
 
   memory->destroy(atom->x);

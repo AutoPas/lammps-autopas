@@ -22,7 +22,7 @@ public:
       : autopas::MoleculeLJ<floatType>(pos, v, moleculeId, typeId),
         _localId(localId) {}
 
-  [[nodiscard]] int getLocalID() {
+  [[nodiscard]] int getLocalID() const {
     return _localId;
   }
 

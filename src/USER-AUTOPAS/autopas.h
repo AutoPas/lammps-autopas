@@ -86,7 +86,8 @@ public:
   particle_to_index(const std::vector<ParticleType *> &particles);
 
   inline int particle_to_index(const ParticleType &particle) {
-    auto idx {atom->map(particle.getID())};
+    //auto idx {atom->map(particle.getID())};
+    auto idx{particle.getLocalID()};
     assert(idx != -1);
     return idx;
   }

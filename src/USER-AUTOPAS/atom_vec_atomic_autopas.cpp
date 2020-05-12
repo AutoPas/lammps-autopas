@@ -211,7 +211,7 @@ AtomVecAtomicAutopas::unpack_border(int n, int first, double *buf) {
     mask[i] = (int) ubuf(buf[m++]).i;
 
     // Always halo particles
-    AutoPasLMP::ParticleType pi(x_, {0, 0, 0}, static_cast<unsigned long>(tag[i]),
+    AutoPasLMP::ParticleType pi(x_, {0, 0, 0}, static_cast<unsigned long>(tag[i]), i,
                                 static_cast<unsigned long>(type[i]));
     lmp->autopas->add_particle</*halo*/ true>(pi);
 
@@ -245,7 +245,7 @@ void AtomVecAtomicAutopas::unpack_border_vel(int n, int first,
     v_[2] = buf[m++];
 
     // Always halo particles
-    AutoPasLMP::ParticleType pi(x_, v_, static_cast<unsigned long>(tag[i]),
+    AutoPasLMP::ParticleType pi(x_, v_, static_cast<unsigned long>(tag[i]), i,
                                 static_cast<unsigned long>(type[i]));
     lmp->autopas->add_particle</*halo*/ true>(pi);
 
@@ -304,7 +304,7 @@ int AtomVecAtomicAutopas::unpack_exchange(double *buf) {
   image[nlocal] = (imageint) ubuf(buf[m++]).i;
 
   // Always new particle from other process
-  AutoPasLMP::ParticleType pi(x_, v_, static_cast<unsigned long>(tag[nlocal]),
+  AutoPasLMP::ParticleType pi(x_, v_, static_cast<unsigned long>(tag[nlocal]), nlocal,
                               static_cast<unsigned long>(type[nlocal]));
   lmp->autopas->add_particle(pi);
 
