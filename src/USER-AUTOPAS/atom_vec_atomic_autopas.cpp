@@ -61,14 +61,11 @@ void AtomVecAtomicAutopas::copy(int i, int j, int delflag) {
   mask[j] = mask[i];
   image[j] = image[i];
 
-  // TODO Copy is only used for sorting, which we will not support, or for deleting particles -> no need to handle x and v
-  /*
-  auto *pj = lmp->autopas->particle_by_index(j);
-  auto *pi = lmp->autopas->particle_by_index(i);
+  // Copy is only used for sorting, which we will not support, or for deleting particles -> no need to handle x and v
 
-  pj->setR(pi->getR());
-  pj->setV(pi->getV());
-   */
+  // Data for particle i was "copied" (moved) to index j -> update local index
+  auto *pi = lmp->autopas->particle_by_index(i);
+  pi->setLocalID(j);
 
   if (atom->nextra_grow)
     for (int iextra = 0; iextra < atom->nextra_grow; iextra++)

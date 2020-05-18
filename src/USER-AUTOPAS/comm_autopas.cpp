@@ -211,14 +211,18 @@ void CommAutoPas::exchange() {
     for (const auto &p : lmp->autopas->get_leaving_particles()) {
       auto &x = p.getR();
       if (x[dim] < lo || x[dim] >= hi) {
+        // Particle must be sent
         if (nsend > maxsend) grow_send(nsend, 1);
         nsend += avec->pack_exchange(p, &buf_send[nsend]);
         /////////////////
-        // Autopas already removed particles
+        // Autopas already removed particles from container
         auto idx{lmp->autopas->particle_to_index(p)};
         avec->copy(nlocal - 1, idx, 1);
         nlocal--;
         //////////////////
+      } else {
+        // Particle stays in box -> insert back into particle container
+        lmp->autopas->add_particle(p);
       }
     }
 

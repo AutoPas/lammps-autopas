@@ -38,7 +38,7 @@ void DomainAutoPas::pbc() {
     for (auto iter = lmp->autopas->const_iterate<autopas::IteratorBehavior::ownedOnly>(); iter.isValid(); ++iter) {
       auto &x{iter->getR()};
       flag &= std::all_of(x.begin(), x.end(),
-                         [](auto _) { return std::isfinite(_); });
+                          [](auto _) { return std::isfinite(_); });
     }
 
 #pragma omp for
@@ -46,7 +46,7 @@ void DomainAutoPas::pbc() {
          iter < leavingParticles.cend(); ++iter) {
       auto &x{iter->getR()};
       flag &= std::all_of(x.begin(), x.end(),
-                         [](auto _) { return std::isfinite(_); });
+                          [](auto _) { return std::isfinite(_); });
     }
   }
 
@@ -67,31 +67,20 @@ void DomainAutoPas::pbc() {
   }
 
   // apply PBC to each owned atom
+  //TODO Is ownedOnly even required when having leavingParticles? No?
 
-  // TODO Do we need owned atoms as well or are leaving particles enough?
-  // Probably not
+#pragma omp parallel default(none) shared(hi, lo, period, leavingParticles)
+  {
+    for (auto iter = lmp->autopas->iterate<autopas::IteratorBehavior::ownedOnly>(); iter.isValid(); ++iter) {
+      pbc(*iter, lo, hi, period);
+    }
 
-#pragma omp parallel default(none) shared(hi, lo, period)
-  for (auto iter = lmp->autopas->iterate<autopas::IteratorBehavior::ownedOnly>(); iter.isValid(); ++iter) {
-    pbc(*iter, lo, hi, period);
-  }
-
-  auto &leavingParticles = lmp->autopas->get_leaving_particles();
-  for (auto iter = leavingParticles.begin();
-       iter != leavingParticles.end();) {
-    bool wasTouched = pbc(*iter, lo, hi, period);
-    if (wasTouched) {
-      lmp->autopas->add_particle(*iter); // Particle is in the domain again
-      // No longer part of the leaving particles
-      iter = leavingParticles.erase(iter);
-      // TODO This is not correct for multiple processes
-      //  Instead of adding the particle to self, it might need to be sent
-      //  Do the adding in the communication class?
-    } else {
-      ++iter;
+#pragma omp for
+    for (auto iter = leavingParticles.begin();
+         iter < leavingParticles.end(); ++iter) {
+      pbc(*iter, lo, hi, period);
     }
   }
-
 }
 
 bool
