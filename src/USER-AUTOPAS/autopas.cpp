@@ -151,7 +151,7 @@ void AutoPasLMP::move_back() {
 }
 
 void AutoPasLMP::copy_back() const {
-  auto nmax = _autopas->getNumberOfParticles();
+  auto nmax = atom->nlocal;
   atom->x = memory->grow(atom->x, nmax, 3, "atom:x");
   atom->v = memory->grow(atom->v, nmax, 3, "atom:v");
   atom->f = memory->grow(atom->f, nmax, 3, "atom:f");
@@ -159,6 +159,13 @@ void AutoPasLMP::copy_back() const {
 #pragma omp parallel default(none)
   for (auto iter = const_iterate<autopas::ownedOnly>(); iter.isValid(); ++iter) {
     auto &p = *iter;
+    auto idx = particle_to_index(p);
+    std::copy_n(p.getR().begin(), 3, atom->x[idx]);
+    std::copy_n(p.getV().begin(), 3, atom->v[idx]);
+    std::copy_n(p.getF().begin(), 3, atom->f[idx]);
+  }
+
+  for (auto &p: _leavingParticles) {
     auto idx = particle_to_index(p);
     std::copy_n(p.getR().begin(), 3, atom->x[idx]);
     std::copy_n(p.getV().begin(), 3, atom->v[idx]);
@@ -229,7 +236,8 @@ AutoPasLMP::particles_by_slab(int dim, double lo, double hi) const {
   }
 }
 
-std::vector<AutoPasLMP::ParticleType> &AutoPasLMP::get_leaving_particles() {
+std::vector<AutoPasLMP::ParticleType> &
+AutoPasLMP::get_leaving_particles() {
   return _leavingParticles;
 }
 
