@@ -18,73 +18,59 @@ CommAutoPas::CommAutoPas(LAMMPS_NS::LAMMPS *lmp) : CommBrick(lmp) {
 ------------------------------------------------------------------------- */
 
 void CommAutoPas::forward_comm(int /*dummy*/) {
-  //TODO Fixme
-  // Currently not called?
-  error->all(FLERR, "Forward comm missing");
-  return;
-
-  int n;
-  MPI_Request request;
-  AtomVec *avec = atom->avec;
-
-  double *buf;
-
   // exchange data with another proc
   // if other proc is self, just copy
   // if comm_x_only set, exchange or copy directly to x, don't unpack
 
   for (int iswap = 0; iswap < nswap; iswap++) {
     if (sendproc[iswap] != me) {
-      if (comm_x_only) {
-        if (size_forward_recv[iswap]) {
-          auto x = lmp->autopas->particle_by_index(firstrecv[iswap])->getR();
-          buf = x.data();
-          MPI_Irecv(buf, size_forward_recv[iswap], MPI_DOUBLE,
-                    recvproc[iswap], 0, world, &request);
-        }
-        n = avec->pack_comm(sendnum[iswap], sendlist[iswap],
-                            buf_send, pbc_flag[iswap], pbc[iswap]);
-        if (n) MPI_Send(buf_send, n, MPI_DOUBLE, sendproc[iswap], 0, world);
-        if (size_forward_recv[iswap]) MPI_Wait(&request, MPI_STATUS_IGNORE);
-      } else if (ghost_velocity) {
-        if (size_forward_recv[iswap])
-          MPI_Irecv(buf_recv, size_forward_recv[iswap], MPI_DOUBLE,
-                    recvproc[iswap], 0, world, &request);
-        n = avec->pack_comm_vel(sendnum[iswap], sendlist[iswap],
-                                buf_send, pbc_flag[iswap], pbc[iswap]);
-        if (n) MPI_Send(buf_send, n, MPI_DOUBLE, sendproc[iswap], 0, world);
-        if (size_forward_recv[iswap]) MPI_Wait(&request, MPI_STATUS_IGNORE);
-        avec->unpack_comm_vel(recvnum[iswap], firstrecv[iswap], buf_recv);
-      } else {
-        if (size_forward_recv[iswap])
-          MPI_Irecv(buf_recv, size_forward_recv[iswap], MPI_DOUBLE,
-                    recvproc[iswap], 0, world, &request);
-        n = avec->pack_comm(sendnum[iswap], sendlist[iswap],
-                            buf_send, pbc_flag[iswap], pbc[iswap]);
-        if (n) MPI_Send(buf_send, n, MPI_DOUBLE, sendproc[iswap], 0, world);
-        if (size_forward_recv[iswap]) MPI_Wait(&request, MPI_STATUS_IGNORE);
-        avec->unpack_comm(recvnum[iswap], firstrecv[iswap], buf_recv);
-      }
-
+      forward_comm_impl_other(iswap);
     } else {
-      if (comm_x_only) {
-        if (sendnum[iswap]) {
-          auto x = lmp->autopas->particle_by_index(firstrecv[iswap])->getR();
-          avec->pack_comm(sendnum[iswap], sendlist[iswap],
-                          x.data(), pbc_flag[iswap], pbc[iswap]);
-        }
-      } else if (ghost_velocity) {
-        avec->pack_comm_vel(sendnum[iswap], sendlist[iswap],
-                            buf_send, pbc_flag[iswap], pbc[iswap]);
-        avec->unpack_comm_vel(recvnum[iswap], firstrecv[iswap], buf_send);
-      } else {
-        avec->pack_comm(sendnum[iswap], sendlist[iswap],
-                        buf_send, pbc_flag[iswap], pbc[iswap]);
-        avec->unpack_comm(recvnum[iswap], firstrecv[iswap], buf_send);
-      }
+      forward_comm_impl_self(iswap);
     }
   }
+
 }
+
+void CommAutoPas::forward_comm_impl_other(int iswap) {
+  auto *avec = dynamic_cast<AtomVecAutopas *>(atom->avec);
+
+  MPI_Request request;
+  if (ghost_velocity) {
+    if (size_forward_recv[iswap])
+      MPI_Irecv(buf_recv, size_forward_recv[iswap], MPI_DOUBLE,
+                recvproc[iswap], 0, world, &request);
+    int n = avec->pack_comm_vel(sendnum[iswap], sendlist[iswap],
+                                buf_send, pbc_flag[iswap], pbc[iswap]);
+    if (n) MPI_Send(buf_send, n, MPI_DOUBLE, sendproc[iswap], 0, world);
+    if (size_forward_recv[iswap]) MPI_Wait(&request, MPI_STATUS_IGNORE);
+    avec->unpack_comm_vel(recvnum[iswap], firstrecv[iswap], buf_recv);
+  } else {
+    if (size_forward_recv[iswap])
+      MPI_Irecv(buf_recv, size_forward_recv[iswap], MPI_DOUBLE,
+                recvproc[iswap], 0, world, &request);
+    int n = avec->pack_comm(sendnum[iswap], sendlist[iswap],
+                            buf_send, pbc_flag[iswap], pbc[iswap]);
+    if (n) MPI_Send(buf_send, n, MPI_DOUBLE, sendproc[iswap], 0, world);
+    if (size_forward_recv[iswap]) MPI_Wait(&request, MPI_STATUS_IGNORE);
+    avec->unpack_comm(recvnum[iswap], firstrecv[iswap], buf_recv);
+  }
+
+}
+
+void CommAutoPas::forward_comm_impl_self(int iswap) {
+  auto *avec = dynamic_cast<AtomVecAutopas *>(atom->avec);
+  if (ghost_velocity) {
+    avec->pack_comm_vel(sendnum[iswap], sendlist[iswap],
+                        buf_send, pbc_flag[iswap], pbc[iswap]);
+    avec->unpack_comm_vel(recvnum[iswap], firstrecv[iswap], buf_send);
+  } else {
+    avec->pack_comm(sendnum[iswap], sendlist[iswap],
+                    buf_send, pbc_flag[iswap], pbc[iswap]);
+    avec->unpack_comm(recvnum[iswap], firstrecv[iswap], buf_send);
+  }
+}
+
 
 /* ----------------------------------------------------------------------
    reverse communication of forces on atoms every timestep

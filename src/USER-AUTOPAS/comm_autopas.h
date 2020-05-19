@@ -40,6 +40,10 @@ private:
 
   std::vector<std::vector<AutoPasLMP::ParticleType *>> _sendlist_particles;
   std::vector<std::array<double, 3>> force_buf;
+
+  void forward_comm_impl_other(int iswap);
+
+  void forward_comm_impl_self(int iswap);
 };
 }
 
