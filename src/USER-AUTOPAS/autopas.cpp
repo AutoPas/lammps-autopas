@@ -58,20 +58,16 @@ void AutoPasLMP::init_autopas(double cutoff, double **epsilon, double **sigma) {
       autopas::TraversalOption::verletClusterCells); // Segfault
   _autopas->setAllowedTraversals(sensibleTraversalOptions);
 
-  _autopas->setAllowedContainers({autopas::ContainerOption::linkedCells});
-  _autopas->setAllowedDataLayouts({autopas::DataLayoutOption::soa});
-  _autopas->setAllowedTraversals({autopas::TraversalOption::c04});
+  {
+  //  _autopas->setAllowedContainers({autopas::ContainerOption::linkedCells});
+  //  _autopas->setAllowedDataLayouts({autopas::DataLayoutOption::soa});
+  //  _autopas->setAllowedTraversals({autopas::TraversalOption::c04});
+  }
 
   // TODO AutoPas always calculates FullShell.
   //  Turn LAMMPS newton setting off to disable force exchange?
   //  Or just leave reverse_comm empty? What about other forces?
   force->newton = force->newton_pair = force->newton_bond = false;
-
-  /*const std::set<autopas::Newton3Option> newtonOptions{
-      force->newton ? autopas::Newton3Option::enabled
-                    : autopas::Newton3Option::disabled};
-
-  _autopas->setAllowedNewton3Options(newtonOptions);*/
 
   _autopas->setAllowedNewton3Options(
       {autopas::Newton3Option::enabled, autopas::Newton3Option::disabled});
@@ -80,26 +76,26 @@ void AutoPasLMP::init_autopas(double cutoff, double **epsilon, double **sigma) {
   _autopas->setBoxMin({domain->boxlo[0], domain->boxlo[1], domain->boxlo[2]});
 
   _autopas->setCutoff(
-      cutoff); // TODO_AUTOPAS Test: cut_global (PairLJCut) or cutforce (Pair)
+      cutoff); // TODO Test: cut_global (PairLJCut) or cutforce (Pair)
   //_autopas.setNumSamples(tuningSamples);
   //_autopas.setSelectorStrategy(selectorStrategy);
   _autopas->setTuningInterval(1000);
   _autopas->setTuningStrategyOption(autopas::TuningStrategyOption::fullSearch);
 
-  //neighbor->every = 1; //TODO AutoPas cant handle adding particles that are out of bounds
   //_autopas.setVerletClusterSize(_config->verletClusterSize);
-  //_autopas->setVerletRebuildFrequency(neighbor->every);
-  //std::cout << neighbor->skin << "\n";
 
-  // TODO Check if value correct
   _autopas->setVerletRebuildFrequency(
       std::max(neighbor->every, neighbor->delay));
   _autopas->setVerletSkin(neighbor->skin);
 
-  //_autopas->setVerletSkin(0); // No skin needed when rebuilding every step
+  { // TODO Necessary until verlet skin works correctly
+    neighbor->every = 1;
+    _autopas->setVerletRebuildFrequency(1);
+    _autopas->setVerletSkin(0); // No skin needed when rebuilding every step
+  }
 
   autopas::Logger::create();
-  autopas::Logger::get()->set_level(autopas::Logger::LogLevel::warn);
+  autopas::Logger::get()->set_level(autopas::Logger::LogLevel::trace);
 
   _autopas->init();
 
