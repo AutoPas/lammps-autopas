@@ -729,6 +729,7 @@ LAMMPS::~LAMMPS()
 
   delete python;
   delete kokkos;
+  delete autopas;
   delete [] suffix;
   delete [] suffix2;
 
