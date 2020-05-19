@@ -25,9 +25,7 @@ public:
 
   void x2lamda(int) override;
 
-  /*
-   * AutoPas only functions
-   */
+  void reset_box() override;
 
 protected:
   virtual bool

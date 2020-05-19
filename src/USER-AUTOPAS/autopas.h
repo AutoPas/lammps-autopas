@@ -44,7 +44,9 @@ public:
   // [[deprecated]]
   [[nodiscard]] ParticleType *particle_by_index(int idx);
 
-  void copy_back();
+  void copy_back() const;
+  void move_back();
+  void move_into();
 
   template<bool halo = false>
   void add_particle(const ParticleType &p);
@@ -61,7 +63,7 @@ public:
   }
 
   template<autopas::IteratorBehavior iterateBehavior>
-  AutoPasLMP::AutoPasType::const_iterator_t const_iterate() {
+  AutoPasLMP::AutoPasType::const_iterator_t const_iterate() const {
     return _autopas->cbegin(iterateBehavior);
   }
 
@@ -86,6 +88,8 @@ public:
     return particle.getID(); // TODO Global id to local index mapping
   }
 
+  void update_domain_size();
+
 
 private:
   std::unique_ptr<AutoPasType> _autopas;
@@ -99,6 +103,7 @@ private:
 
   void update_index_structure();
 
+  bool _initialized;
 };
 }
 

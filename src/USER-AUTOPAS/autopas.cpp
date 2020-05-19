@@ -37,7 +37,7 @@ void AutoPasLMP::init_autopas(double cutoff, double **epsilon, double **sigma) {
   }
 
   // TODO Reenable mixings
-  if(atom->ntypes > 1){
+  if (atom->ntypes > 1) {
     error->warning(FLERR, "Mixings are currently disabled with AutoPas");
   }
 
@@ -76,12 +76,8 @@ void AutoPasLMP::init_autopas(double cutoff, double **epsilon, double **sigma) {
   _autopas->setAllowedNewton3Options(
       {autopas::Newton3Option::enabled, autopas::Newton3Option::disabled});
 
-
-  FloatVecType boxMax{}, boxMin{};
-  std::copy(std::begin(domain->boxhi), std::end(domain->boxhi), boxMax.begin());
-  std::copy(std::begin(domain->boxlo), std::end(domain->boxlo), boxMin.begin());
-  _autopas->setBoxMax(boxMax);
-  _autopas->setBoxMin(boxMin);
+  _autopas->setBoxMax({domain->boxhi[0], domain->boxhi[1], domain->boxhi[2]});
+  _autopas->setBoxMin({domain->boxlo[0], domain->boxlo[1], domain->boxlo[2]});
 
   _autopas->setCutoff(
       cutoff); // TODO_AUTOPAS Test: cut_global (PairLJCut) or cutforce (Pair)
@@ -108,19 +104,9 @@ void AutoPasLMP::init_autopas(double cutoff, double **epsilon, double **sigma) {
   _autopas->init();
 
   // Handle particles that got added before AutoPas was initialized
-  int nlocal = atom->nlocal;
-  for (int i = 0; i < nlocal; i++) {
-    FloatVecType pos{atom->x[i][0], atom->x[i][1], atom->x[i][2]};
-    FloatVecType vel{atom->v[i][0], atom->v[i][1], atom->v[i][2]};
-    unsigned long moleculeId = i;
-    unsigned long typeId = atom->type[i];
+  move_into();
 
-    add_particle(ParticleType(pos, vel, moleculeId, typeId));
-  }
-
-  memory->destroy(atom->x);
-  memory->destroy(atom->v);
-  // TODO When to copy back?
+  // TODO When to move_back()? After run command finished? Destructor?
 }
 
 AutoPasLMP::ParticleType *AutoPasLMP::particle_by_index(int idx) {
@@ -143,12 +129,36 @@ void AutoPasLMP::update_autopas() {
   _index_structure_valid = false;
 }
 
-void AutoPasLMP::copy_back() {
+void AutoPasLMP::move_into() {
+
+#pragma omp parallel for default(none)
+  for (int i = 0; i < atom->nlocal; i++) {
+    FloatVecType pos{atom->x[i][0], atom->x[i][1], atom->x[i][2]};
+    FloatVecType vel{atom->v[i][0], atom->v[i][1], atom->v[i][2]};
+    unsigned long moleculeId = i;
+    unsigned long typeId = atom->type[i];
+
+    add_particle(ParticleType(pos, vel, moleculeId, typeId));
+  }
+
+  // Destroy memory for debugging purposes so we segfault instead of accidentally using the old particles outside of AutoPas
+  memory->destroy(atom->x);
+  memory->destroy(atom->v);
+
+  _initialized = true;
+}
+
+void AutoPasLMP::move_back() {
+  copy_back();
+  _autopas->deleteAllParticles();
+  _initialized = false;
+}
+
+void AutoPasLMP::copy_back() const {
   auto nmax = _autopas->getNumberOfParticles();
   atom->x = memory->grow(atom->x, nmax, 3, "atom:x");
   atom->v = memory->grow(atom->v, nmax, 3, "atom:v");
   atom->f = memory->grow(atom->f, nmax, 3, "atom:f");
-  // auto &f = memory->grow(atom->f,nmax*comm->nthreads,3,"atom:f");
 
 #pragma omp parallel default(none)
   for (auto iter = const_iterate<autopas::ownedOnly>(); iter.isValid(); ++iter) {
@@ -228,7 +238,7 @@ std::vector<AutoPasLMP::ParticleType> &AutoPasLMP::get_leaving_particles() {
 }
 
 bool AutoPasLMP::is_initialized() {
-  return static_cast<bool>(_autopas);
+  return _initialized;
 }
 
 
@@ -275,6 +285,19 @@ AutoPasLMP::iterate_auto(int first, int last) {
   }
 }
 
+void AutoPasLMP::update_domain_size() {
+  // For changing the domain it is necessary to reinitialize AutoPas
+  // All particles will be deleted
+  if (_initialized) {
+    error->one(FLERR,
+               "Loosing all particles, use move_back() before modifying particles outside of AutoPas");
+  }
+
+  _autopas->setBoxMax({domain->boxhi[0], domain->boxhi[1], domain->boxhi[2]});
+  _autopas->setBoxMin({domain->boxlo[0], domain->boxlo[1], domain->boxlo[2]});
+
+  _autopas->init();
+}
 
 template void AutoPasLMP::add_particle<false>(const ParticleType &p);
 

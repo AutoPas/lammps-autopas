@@ -317,3 +317,15 @@ void DomainAutoPas::x2lamda(int n) {
     }
   }
 }
+
+void DomainAutoPas::reset_box() {
+  if (!lmp->autopas->is_initialized()) {
+    return Domain::reset_box();
+  }
+
+  lmp->autopas->move_back();
+  Domain::reset_box();
+  lmp->autopas->update_domain_size();
+  lmp->autopas->move_into();
+
+}
