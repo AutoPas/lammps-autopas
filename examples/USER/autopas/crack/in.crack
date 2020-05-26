@@ -1,5 +1,7 @@
 # 2d LJ crack simulation
 
+variable    t index 5000
+
 dimension	3
 boundary	s s f
 
@@ -76,4 +78,4 @@ dump_modify	2 pad 4
 #		zoom 1.6 adiam 1.5
 #dump_modify	3 pad 4
 
-run		5000
+run		$t

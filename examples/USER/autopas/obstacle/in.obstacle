@@ -1,5 +1,7 @@
 # 2d LJ obstacle flow
 
+variable    t index 5000
+
 dimension	3
 boundary	p s f
 
@@ -79,4 +81,4 @@ dump_modify	2 pad 5
 #		zoom 1.6 adiam 1.5
 #dump_modify	3 pad 5
 
-run		5000
+run		$t
