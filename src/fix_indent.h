@@ -38,7 +38,7 @@ class FixIndent : public Fix {
   double compute_scalar();
   double compute_vector(int);
 
- private:
+ protected:
   int istyle,scaleflag,side;
   double k,k3;
   char *xstr,*ystr,*zstr,*rstr,*pstr;
