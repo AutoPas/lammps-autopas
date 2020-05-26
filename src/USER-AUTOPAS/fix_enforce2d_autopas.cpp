@@ -29,6 +29,7 @@ void FixEnforce2DAutoPas::post_force(int vflag) {
 
   if (atom->omega_flag) {
     double **omega = atom->omega;
+#pragma omp parallel for default(none) shared(nlocal, mask, omega)
     for (int i = 0; i < nlocal; i++)
       if (mask[i] & groupbit) {
         omega[i][0] = 0.0;
@@ -38,6 +39,7 @@ void FixEnforce2DAutoPas::post_force(int vflag) {
 
   if (atom->angmom_flag) {
     double **angmom = atom->angmom;
+#pragma omp parallel for default(none) shared(nlocal, mask, angmom)
     for (int i = 0; i < nlocal; i++)
       if (mask[i] & groupbit) {
         angmom[i][0] = 0.0;
@@ -47,6 +49,7 @@ void FixEnforce2DAutoPas::post_force(int vflag) {
 
   if (atom->torque_flag) {
     double **torque = atom->torque;
+#pragma omp parallel for default(none) shared(nlocal, mask, torque)
     for (int i = 0; i < nlocal; i++)
       if (mask[i] & groupbit) {
         torque[i][0] = 0.0;

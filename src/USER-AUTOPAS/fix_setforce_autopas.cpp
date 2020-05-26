@@ -42,7 +42,7 @@ void FixSetForceAutoPas::post_force(int vflag) {
   force_flag = 0;
 
   if (varflag == CONSTANT) {
-#pragma omp parallel default(none) shared(region)
+#pragma omp parallel default(none) shared(region) reduction(+:foriginal[:3])
     for (auto iter = lmp->autopas->iterate<autopas::ownedOnly>(); iter.isValid(); ++iter) {
       auto &x = iter->getR();
       auto &f = iter->getF();
@@ -78,7 +78,7 @@ void FixSetForceAutoPas::post_force(int vflag) {
 
     modify->addstep_compute(update->ntimestep + 1);
 
-#pragma omp parallel default(none) shared(region)
+#pragma omp parallel default(none) shared(region) reduction(+:foriginal[:3])
     for (auto iter = lmp->autopas->iterate<autopas::ownedOnly>(); iter.isValid(); ++iter) {
       auto &x = iter->getR();
       auto &f = iter->getF();

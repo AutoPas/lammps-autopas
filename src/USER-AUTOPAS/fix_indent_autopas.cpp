@@ -53,7 +53,7 @@ void FixIndentAutoPas::post_force(int vflag) {
     else radius = rvalue;
 
 
-#pragma omp parallel default(none) shared(ctr, radius)
+#pragma omp parallel default(none) shared(ctr, radius) reduction(-:indenter[:3])
     for (auto iter = lmp->autopas->iterate<autopas::ownedOnly>(); iter.isValid(); ++iter) {
       auto &x = iter->getR();
       auto &f = iter->getF();
@@ -119,7 +119,7 @@ void FixIndentAutoPas::post_force(int vflag) {
     else radius = rvalue;
 
 
-#pragma omp parallel default(none) shared(ctr, radius)
+#pragma omp parallel default(none) shared(ctr, radius) reduction(-:indenter[:3])
     for (auto iter = lmp->autopas->iterate<autopas::ownedOnly>(); iter.isValid(); ++iter) {
       auto &x = iter->getR();
       auto &f = iter->getF();
@@ -170,7 +170,7 @@ void FixIndentAutoPas::post_force(int vflag) {
     if (pstr) plane = input->variable->compute_equal(pvar);
     else plane = pvalue;
 
-#pragma omp parallel default(none) shared(plane)
+#pragma omp parallel default(none) shared(plane) reduction(-:indenter[:3])
     for (auto iter = lmp->autopas->iterate<autopas::ownedOnly>(); iter.isValid(); ++iter) {
       auto &x = iter->getR();
       auto &f = iter->getF();

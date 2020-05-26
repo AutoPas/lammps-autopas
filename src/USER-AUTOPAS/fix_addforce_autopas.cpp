@@ -54,7 +54,7 @@ void FixAddForceAutoPas::post_force(int vflag) {
   // potential energy = - x dot f in unwrapped coords
 
   if (varflag == CONSTANT) {
-#pragma omp parallel default(none) shared(region)
+#pragma omp parallel default(none) shared(region) reduction(+:foriginal[:4])
     for (auto iter = lmp->autopas->iterate<autopas::ownedOnly>(); iter.isValid(); ++iter) {
       auto &x = iter->getR();
       auto &f = iter->getF();
@@ -77,6 +77,7 @@ void FixAddForceAutoPas::post_force(int vflag) {
           v[3] = xvalue * unwrap[1];
           v[4] = xvalue * unwrap[2];
           v[5] = yvalue * unwrap[2];
+#pragma omp critical
           v_tally(idx, v);
         }
       }
@@ -105,7 +106,7 @@ void FixAddForceAutoPas::post_force(int vflag) {
 
     modify->addstep_compute(update->ntimestep + 1);
 
-#pragma omp parallel default(none) shared(region)
+#pragma omp parallel default(none) shared(region) reduction(+:foriginal[:3])
     for (auto iter = lmp->autopas->iterate<autopas::ownedOnly>(); iter.isValid(); ++iter) {
       auto &x = iter->getR();
       auto &f = iter->getF();
@@ -145,6 +146,7 @@ void FixAddForceAutoPas::post_force(int vflag) {
           v[3] = xstyle ? xvalue * unwrap[1] : 0.0;
           v[4] = xstyle ? xvalue * unwrap[2] : 0.0;
           v[5] = ystyle ? yvalue * unwrap[2] : 0.0;
+#pragma omp critical
           v_tally(idx, v);
         }
       }
