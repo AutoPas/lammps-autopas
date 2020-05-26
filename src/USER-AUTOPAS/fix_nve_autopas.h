@@ -12,9 +12,8 @@ FixStyle(nve/autopas,FixNVEAutoPas)
 namespace LAMMPS_NS {
 
 class FixNVEAutoPas : public FixNVE {
-
 public:
-  FixNVEAutoPas(class LAMMPS *, int, char **);
+  using FixNVE::FixNVE;
 
   void initial_integrate(int) override;
 

@@ -22,12 +22,6 @@
 #include "pair.h"
 #include "update.h"
 
-
-LAMMPS_NS::NeighborAutoPas::NeighborAutoPas(LAMMPS_NS::LAMMPS *lmp) : Neighbor(
-    lmp) {
-
-}
-
 int LAMMPS_NS::NeighborAutoPas::check_distance() {
 
   double delx, dely, delz, rsq;

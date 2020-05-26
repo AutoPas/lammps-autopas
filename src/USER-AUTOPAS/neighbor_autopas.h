@@ -6,7 +6,7 @@
 namespace LAMMPS_NS {
 class NeighborAutoPas : public Neighbor {
 public:
-  explicit NeighborAutoPas(class LAMMPS *);
+  using Neighbor::Neighbor;
 
   int check_distance() override;
 

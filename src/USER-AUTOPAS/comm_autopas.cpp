@@ -8,10 +8,6 @@
 
 using namespace LAMMPS_NS;
 
-CommAutoPas::CommAutoPas(LAMMPS_NS::LAMMPS *lmp) : CommBrick(lmp) {
-
-}
-
 /* ----------------------------------------------------------------------
    forward communication of atom coords every timestep
    other per-atom attributes may also be sent via pack/unpack routines

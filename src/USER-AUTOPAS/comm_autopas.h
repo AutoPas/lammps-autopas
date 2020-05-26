@@ -11,7 +11,7 @@ namespace LAMMPS_NS {
 
 class CommAutoPas : public CommBrick {
 public:
-  explicit CommAutoPas(class LAMMPS *);
+  using CommBrick::CommBrick;
 
   void forward_comm(int) override;
 

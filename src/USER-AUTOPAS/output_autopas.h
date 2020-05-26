@@ -7,7 +7,7 @@ namespace LAMMPS_NS {
 
 class OutputAutoPas : public Output {
 public:
-  explicit OutputAutoPas(class LAMMPS *);
+  using Output::Output;
 
   void setup(int memflag) override;
 

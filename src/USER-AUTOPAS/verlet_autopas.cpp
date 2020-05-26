@@ -21,10 +21,6 @@
 
 using namespace LAMMPS_NS;
 
-VerletAutoPas::VerletAutoPas(LAMMPS *lmp, int narg, char **arg) :
-    Verlet(lmp, narg, arg) {
-}
-
 void VerletAutoPas::setup(int flag) {
   Verlet::setup(flag);
 }

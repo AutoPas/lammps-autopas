@@ -4,10 +4,6 @@
 
 using namespace LAMMPS_NS;
 
-OutputAutoPas::OutputAutoPas(LAMMPS *lmp) : Output(lmp) {
-
-}
-
 void OutputAutoPas::setup(int memflag) {
   lmp->autopas->copy_back();
   Output::setup(memflag);

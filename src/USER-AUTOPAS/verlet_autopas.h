@@ -13,7 +13,7 @@ namespace LAMMPS_NS {
 
 class VerletAutoPas : public Verlet {
 public:
-  explicit VerletAutoPas(class LAMMPS *, int, char **);
+  using Verlet::Verlet;
 
   void setup(int flag) override;
 

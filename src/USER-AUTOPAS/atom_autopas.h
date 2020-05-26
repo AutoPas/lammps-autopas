@@ -7,7 +7,7 @@ namespace LAMMPS_NS {
 
 class AtomAutoPas : public Atom {
 public:
-  explicit AtomAutoPas(class LAMMPS *);
+  using Atom::Atom;
 
   void sort() override;
 };

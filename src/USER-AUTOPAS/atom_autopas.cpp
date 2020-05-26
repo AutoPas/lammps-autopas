@@ -4,9 +4,6 @@
 
 using namespace LAMMPS_NS;
 
-AtomAutoPas::AtomAutoPas(class LAMMPS *lmp) : Atom(lmp) {
-}
-
 void AtomAutoPas::sort() {
   sortfreq = 0;
   error->warning(FLERR, "Atom sorting is not supported using AutoPas "
