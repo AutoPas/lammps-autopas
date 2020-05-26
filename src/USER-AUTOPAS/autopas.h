@@ -103,7 +103,7 @@ private:
 
   void update_index_structure();
 
-  bool _initialized;
+  bool _initialized = false;
 };
 }
 
