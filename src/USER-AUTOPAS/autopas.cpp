@@ -72,8 +72,8 @@ void AutoPasLMP::init_autopas(double cutoff, double **epsilon, double **sigma) {
   _autopas->setAllowedNewton3Options(
       {autopas::Newton3Option::enabled, autopas::Newton3Option::disabled});
 
-  _autopas->setBoxMax({domain->boxhi[0], domain->boxhi[1], domain->boxhi[2]});
-  _autopas->setBoxMin({domain->boxlo[0], domain->boxlo[1], domain->boxlo[2]});
+  _autopas->setBoxMax({domain->subhi[0], domain->subhi[1], domain->subhi[2]});
+  _autopas->setBoxMin({domain->sublo[0], domain->sublo[1], domain->sublo[2]});
 
   _autopas->setCutoff(
       cutoff); // TODO Test: cut_global (PairLJCut) or cutforce (Pair)
@@ -298,8 +298,8 @@ void AutoPasLMP::update_domain_size() {
                "Loosing all particles, use move_back() before modifying particles outside of AutoPas");
   }
 
-  _autopas->setBoxMax({domain->boxhi[0], domain->boxhi[1], domain->boxhi[2]});
-  _autopas->setBoxMin({domain->boxlo[0], domain->boxlo[1], domain->boxlo[2]});
+  _autopas->setBoxMax({domain->subhi[0], domain->subhi[1], domain->subhi[2]});
+  _autopas->setBoxMin({domain->sublo[0], domain->sublo[1], domain->sublo[2]});
 
   _autopas->init();
 }
