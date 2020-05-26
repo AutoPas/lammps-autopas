@@ -304,6 +304,31 @@ void AutoPasLMP::update_domain_size() {
   _autopas->init();
 }
 
+std::map<std::pair<size_t, size_t>, bool> AutoPasLMP::get_interaction_map() {
+  if (lmp->neighbor->nex_group > 0 || lmp->neighbor->nex_mol > 0) {
+    error->one(FLERR,
+               "Excluding interactions based on the group or the molecule is currently not supported with AutoPas. Use exclusion by type instead.");
+  }
+
+  // Initialize map with true for every type
+  std::map<std::pair<size_t, size_t>, bool> map;
+  for (int ti = 1; ti <= lmp->atom->ntypes; ++ti) {
+    for (int tj = 1; tj <= lmp->atom->ntypes; ++tj) {
+      map.emplace(std::make_pair(ti, tj), true);
+    }
+  }
+
+  // Update value in map for every excluded type pairing
+  for (int i = 0; i < lmp->neighbor->nex_type; ++i) {
+    map[std::make_pair(lmp->neighbor->ex1_type[i],
+                       lmp->neighbor->ex2_type[i])] = false;
+    map[std::make_pair(lmp->neighbor->ex2_type[i],
+                       lmp->neighbor->ex1_type[i])] = false;
+  }
+
+  return map;
+}
+
 template void AutoPasLMP::add_particle<false>(const ParticleType &p);
 
 template void AutoPasLMP::add_particle<true>(const ParticleType &p);

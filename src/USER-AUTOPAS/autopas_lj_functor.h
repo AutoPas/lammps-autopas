@@ -1,6 +1,7 @@
 #pragma once
 
 #include <array>
+#include <utility>
 
 #include "autopas/molecularDynamics/ParticlePropertiesLibrary.h"
 #include "autopas/iterators/SingleCellIterator.h"
@@ -41,6 +42,8 @@ class LJFunctorLammps
   using SoAArraysType = typename Particle::SoAArraysType;
   using SoAFloatPrecision = typename Particle::ParticleSoAFloatPrecision;
 
+  using interactingTypes_t = std::map<std::pair<size_t, size_t>, bool>;
+
 public:
   /**
    * Deleted default constructor
@@ -55,7 +58,7 @@ private:
    * simulation boundary. e.g. eightShell: false, fullShell: true.
    * @param dummy unused, only there to make the signature different from the public constructor.
    */
-  explicit LJFunctorLammps(double cutoff, bool duplicatedCalculation, void * /*dummy*/)
+  explicit LJFunctorLammps(double cutoff, interactingTypes_t  interactingTypes, bool duplicatedCalculation, void * /*dummy*/)
       : Functor<
       Particle, ParticleCell, SoAArraysType,
       LJFunctorLammps<Particle, ParticleCell, applyShift, useMixing, useNewton3, calculateGlobals, relevantForTuning>>(
@@ -65,7 +68,8 @@ private:
         _virialSum{0., 0., 0.},
         _aosThreadData(),
         _duplicatedCalculations{duplicatedCalculation},
-        _postProcessed{false} {
+        _postProcessed{false},
+        _interactingTypes{std::move(interactingTypes)}{
     if constexpr (calculateGlobals) {
       _aosThreadData.resize(autopas_get_max_threads());
     }
@@ -82,8 +86,8 @@ public:
    * @param duplicatedCalculation Defines whether duplicated calculations are happening across processes / over the
    * simulation boundary. e.g. eightShell: false, fullShell: true.
    */
-  explicit LJFunctorLammps(double cutoff, bool duplicatedCalculation = true)
-      : LJFunctorLammps(cutoff, duplicatedCalculation, nullptr) {
+  explicit LJFunctorLammps(double cutoff, const interactingTypes_t& interactingTypes, bool duplicatedCalculation = true)
+      : LJFunctorLammps(cutoff, interactingTypes, duplicatedCalculation, nullptr) {
     static_assert(not useMixing,
                   "Mixing without a ParticlePropertiesLibrary is not possible! Use a different constructor or set "
                   "mixing to false.");
@@ -97,9 +101,9 @@ public:
    * @param duplicatedCalculation Defines whether duplicated calculations are happening across processes / over the
    * simulation boundary. e.g. eightShell: false, fullShell: true.
    */
-  explicit LJFunctorLammps(double cutoff, ParticlePropertiesLibrary<double, size_t> &particlePropertiesLibrary,
+  explicit LJFunctorLammps(double cutoff, const interactingTypes_t& interactingTypes, ParticlePropertiesLibrary<double, size_t> &particlePropertiesLibrary,
                      bool duplicatedCalculation = true)
-      : LJFunctorLammps(cutoff, duplicatedCalculation, nullptr) {
+      : LJFunctorLammps(cutoff, interactingTypes, duplicatedCalculation, nullptr) {
     static_assert(useMixing,
                   "Not using Mixing but using a ParticlePropertiesLibrary is not allowed! Use a different constructor "
                   "or set mixing to true.");
@@ -129,6 +133,7 @@ public:
   }
 
   void AoSFunctor(Particle &i, Particle &j, bool newton3) override {
+    if(!doesInteract(i.getTypeId(),j.getTypeId())) return;
     auto sigmasquare = _sigmasquare;
     auto epsilon24 = _epsilon24;
     auto shift6 = _shift6;
@@ -263,6 +268,8 @@ public:
 // g++ only with -ffast-math or -funsafe-math-optimizations
 #pragma omp simd reduction(+ : fxacc, fyacc, fzacc, upotSum, virialSumXX, virialSumYY, virialSumZZ, virialSumXY, virialSumXZ, virialSumYZ)
       for (unsigned int j = i + 1; j < soa.getNumParticles(); ++j) {
+        if(!doesInteract(typeptr[i], typeptr[j])) continue;
+
         if constexpr (useMixing) {
           sigmasquare = sigmaSquares[j];
           epsilon24 = epsilon24s[j];
@@ -475,8 +482,11 @@ private:
       }
 
 // icpc vectorizes this.
-// g++ only with -ffast-math or -funsafe-math-optimizations#pragma omp simd reduction(+ : fxacc, fyacc, fzacc, upotSum, virialSumXX, virialSumYY, virialSumZZ, virialSumXY, virialSumXZ, virialSumYZ)
+// g++ only with -ffast-math or -funsafe-math-optimizations
+#pragma omp simd reduction(+ : fxacc, fyacc, fzacc, upotSum, virialSumXX, virialSumYY, virialSumZZ, virialSumXY, virialSumXZ, virialSumYZ)
       for (unsigned int j = 0; j < soa2.getNumParticles(); ++j) {
+        if(!doesInteract(typeptr1[i], typeptr2[j])) continue;
+
         if constexpr (useMixing) {
           sigmasquare = sigmaSquares[j];
           epsilon24 = epsilon24s[j];
@@ -940,8 +950,7 @@ private:
     auto *const __restrict__ fxptr = soa.template begin<Particle::AttributeNames::forceX>();
     auto *const __restrict__ fyptr = soa.template begin<Particle::AttributeNames::forceY>();
     auto *const __restrict__ fzptr = soa.template begin<Particle::AttributeNames::forceZ>();
-    [[maybe_unused]] auto *const __restrict__ typeptr1 = soa.template begin<Particle::AttributeNames::typeId>();
-    [[maybe_unused]] auto *const __restrict__ typeptr2 = soa.template begin<Particle::AttributeNames::typeId>();
+    [[maybe_unused]] auto *const __restrict__ typeptr = soa.template begin<Particle::AttributeNames::typeId>();
 
     const auto *const __restrict__ ownedPtr = soa.template begin<Particle::AttributeNames::owned>();
 
@@ -992,29 +1001,29 @@ private:
     // if the size of the verlet list is larger than the given size vecsize,
     // we will use a vectorized version.
     if (neighborListSize >= vecsize) {
-      alignas(64) std::array<SoAFloatPrecision, vecsize> xtmp, ytmp, ztmp, xArr, yArr, zArr, fxArr, fyArr, fzArr,
-          ownedArr;
+      alignas(64) std::array<SoAFloatPrecision, vecsize> xtmp, ytmp, ztmp, typetmp, xArr, yArr, zArr, fxArr, fyArr, fzArr,
+          ownedArr, typeArr;
       // broadcast of the position of particle i
       for (size_t tmpj = 0; tmpj < vecsize; tmpj++) {
         xtmp[tmpj] = xptr[indexFirst];
         ytmp[tmpj] = yptr[indexFirst];
         ztmp[tmpj] = zptr[indexFirst];
+        typetmp[tmpj] = typeptr[indexFirst];
       }
       // loop over the verlet list from 0 to x*vecsize
       for (; joff < neighborListSize - vecsize + 1; joff += vecsize) {
         // in each iteration we calculate the interactions of particle i with
         // vecsize particles in the neighborlist of particle i starting at
         // particle joff
-
         [[maybe_unused]] alignas(DEFAULT_CACHE_LINE_SIZE) std::array<SoAFloatPrecision, vecsize> sigmaSquares;
         [[maybe_unused]] alignas(DEFAULT_CACHE_LINE_SIZE) std::array<SoAFloatPrecision, vecsize> epsilon24s;
         [[maybe_unused]] alignas(DEFAULT_CACHE_LINE_SIZE) std::array<SoAFloatPrecision, vecsize> shift6s;
         if constexpr (useMixing) {
           for (size_t j = 0; j < vecsize; j++) {
-            sigmaSquares[j] = _PPLibrary->mixingSigmaSquare(typeptr1[indexFirst], typeptr2[neighborListPtr[joff + j]]);
-            epsilon24s[j] = _PPLibrary->mixing24Epsilon(typeptr1[indexFirst], typeptr2[neighborListPtr[joff + j]]);
+            sigmaSquares[j] = _PPLibrary->mixingSigmaSquare(typeptr[indexFirst], typeptr[neighborListPtr[joff + j]]);
+            epsilon24s[j] = _PPLibrary->mixing24Epsilon(typeptr[indexFirst], typeptr[neighborListPtr[joff + j]]);
             if constexpr (applyShift) {
-              shift6s[j] = _PPLibrary->mixingShift6(typeptr1[indexFirst], typeptr2[neighborListPtr[joff + j]]);
+              shift6s[j] = _PPLibrary->mixingShift6(typeptr[indexFirst], typeptr[neighborListPtr[joff + j]]);
             }
           }
         }
@@ -1026,10 +1035,13 @@ private:
           yArr[tmpj] = yptr[neighborListPtr[joff + tmpj]];
           zArr[tmpj] = zptr[neighborListPtr[joff + tmpj]];
           ownedArr[tmpj] = ownedPtr[neighborListPtr[joff + tmpj]];
+          typeArr[tmpj] = typeptr[neighborListPtr[joff + tmpj]];
         }
         // do omp simd with reduction of the interaction
 #pragma omp simd reduction(+ : fxacc, fyacc, fzacc, upotSum, virialSumXX, virialSumYY, virialSumZZ, virialSumXY, virialSumXZ, virialSumYZ) safelen(vecsize)
         for (size_t j = 0; j < vecsize; j++) {
+          if(!doesInteract(typetmp[j], typeArr[j])) continue;
+
           if constexpr (useMixing) {
             sigmasquare = sigmaSquares[j];
             epsilon24 = epsilon24s[j];
@@ -1118,11 +1130,12 @@ private:
     for (size_t jNeighIndex = joff; jNeighIndex < neighborListSize; ++jNeighIndex) {
       size_t j = neighborList[jNeighIndex];
       if (indexFirst == j) continue;
+      if(!doesInteract(typeptr[indexFirst], typeptr[j])) continue;
       if constexpr (useMixing) {
-        sigmasquare = _PPLibrary->mixingSigmaSquare(typeptr1[indexFirst], typeptr2[j]);
-        epsilon24 = _PPLibrary->mixing24Epsilon(typeptr1[indexFirst], typeptr2[j]);
+        sigmasquare = _PPLibrary->mixingSigmaSquare(typeptr[indexFirst], typeptr[j]);
+        epsilon24 = _PPLibrary->mixing24Epsilon(typeptr[indexFirst], typeptr[j]);
         if constexpr (applyShift) {
-          shift6 = _PPLibrary->mixingShift6(typeptr1[indexFirst], typeptr2[j]);
+          shift6 = _PPLibrary->mixingShift6(typeptr[indexFirst], typeptr[j]);
         }
       }
 
@@ -1228,6 +1241,10 @@ private:
     }
   }
 
+  inline bool doesInteract(size_t i, size_t j) const{
+    return _interactingTypes.at({i, j});
+  }
+
   /**
    * This class stores internal data of each thread, make sure that this data has proper size, i.e. k*64 Bytes!
    */
@@ -1270,6 +1287,9 @@ private:
 
   // defines whether or whether not the global values are already preprocessed
   bool _postProcessed;
+
+  // Type map
+  interactingTypes_t _interactingTypes;
 
 #if defined(AUTOPAS_CUDA)
   using CudaWrapperType = typename std::conditional<calculateGlobals, LJFunctorCudaGlobalsWrapper<SoAFloatPrecision>,
