@@ -141,6 +141,7 @@ void AutoPasLMP::move_into() {
   // Destroy memory for debugging purposes so we segfault instead of accidentally using the old particles outside of AutoPas
   memory->destroy(atom->x);
   memory->destroy(atom->v);
+  memory->destroy(atom->f);
 
   _initialized = true;
 }

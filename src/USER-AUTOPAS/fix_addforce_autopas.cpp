@@ -129,7 +129,7 @@ void FixAddForceAutoPas::post_force(int vflag) {
         foriginal[2] += f[1];
         foriginal[3] += f[2];
 
-        std::array<double, 3> f_add{0};
+        AutoPasLMP::FloatVecType f_add{0};
 
         if (xstyle) f_add[0] += xvalue;
         if (ystyle) f_add[1] += yvalue;
