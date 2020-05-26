@@ -90,6 +90,7 @@ void AutoPasLMP::init_autopas(double cutoff, double **epsilon, double **sigma) {
 
   { // TODO Necessary until verlet skin works correctly
     neighbor->every = 1;
+    neighbor->delay = 0;
     _autopas->setVerletRebuildFrequency(1);
     _autopas->setVerletSkin(0); // No skin needed when rebuilding every step
   }
