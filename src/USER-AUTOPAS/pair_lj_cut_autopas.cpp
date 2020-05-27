@@ -31,7 +31,7 @@ void PairLJCutAutoPas::compute(int eflag, int vflag) {
   // Force calculation
   //PairFunctorType functor{_autopas.getCutoff(), *_particlePropertiesLibrary};
   AutoPasLMP::PairFunctorType functor{lmp->autopas->get_cutoff(), lmp->autopas->get_interaction_map()};
-  functor.setParticleProperties(24, 1);
+  functor.setParticleProperties(24 * epsilon[1][1], sigma[1][1] * sigma[1][1]);
 
   lmp->autopas->iterate_pairwise(&functor);
 

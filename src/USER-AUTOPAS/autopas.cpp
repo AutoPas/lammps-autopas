@@ -38,7 +38,10 @@ void AutoPasLMP::init_autopas(double cutoff, double **epsilon, double **sigma) {
 
   // TODO Reenable mixings
   if (atom->ntypes > 1) {
-    error->warning(FLERR, "Mixings are currently disabled with AutoPas");
+    auto msg = "Mixings are currently disabled with AutoPas! Using epsilon " +
+               std::to_string(epsilon[1][1]) + " and sigma " +
+               std::to_string(sigma[1][1]) + " for all interactions!";
+    error->warning(FLERR, msg.c_str());
   }
 
   // _autopas.setAllowedCellSizeFactors(*cellSizeFactors);
