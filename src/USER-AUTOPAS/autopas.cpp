@@ -107,7 +107,7 @@ void AutoPasLMP::init_autopas(double cutoff, double **epsilon, double **sigma) {
   }
 
   autopas::Logger::create();
-  autopas::Logger::get()->set_level(autopas::Logger::LogLevel::trace);
+  autopas::Logger::get()->set_level(autopas::Logger::LogLevel::warn);
 
   _autopas->init();
 
@@ -143,10 +143,10 @@ void AutoPasLMP::move_into() {
   for (int i = 0; i < atom->nlocal; i++) {
     FloatVecType pos{atom->x[i][0], atom->x[i][1], atom->x[i][2]};
     FloatVecType vel{atom->v[i][0], atom->v[i][1], atom->v[i][2]};
-    unsigned long moleculeId = i;
+    unsigned long moleculeId = atom->tag[i];
     unsigned long typeId = atom->type[i];
 
-    add_particle(ParticleType(pos, vel, moleculeId, static_cast<int>(typeId)));
+    add_particle(ParticleType(pos, vel, moleculeId, i, typeId));
   }
 
   // Destroy memory for debugging purposes so we segfault instead of accidentally using the old particles outside of AutoPas
@@ -214,6 +214,7 @@ void AutoPasLMP::update_index_structure() {
 
 template<bool halo>
 void AutoPasLMP::add_particle(const ParticleType &p) {
+  assert(p.getTypeId() > 0);
 
   if constexpr (halo) {
     _autopas->addOrUpdateHaloParticle(p);
