@@ -27,16 +27,27 @@ void DomainAutoPas::pbc() {
 
   // Update leaving particles
   lmp->autopas->update_autopas();
+  auto &leavingParticles = lmp->autopas->get_leaving_particles();
 
   // verify owned atoms have valid numerical coords
   // may not if computed pairwise force between 2 atoms at same location
 
   bool flag = true;
-#pragma omp parallel default(none) reduction(&& : flag)
-  for (auto iter = lmp->autopas->const_iterate<autopas::IteratorBehavior::ownedOnly>(); iter.isValid(); ++iter) {
-    auto &x{iter->getR()};
-    flag = std::all_of(x.begin(), x.end(),
-                       [](auto _) { return std::isfinite(_); });
+#pragma omp parallel default(none) shared(leavingParticles) reduction(&& : flag)
+  {
+    for (auto iter = lmp->autopas->const_iterate<autopas::IteratorBehavior::ownedOnly>(); iter.isValid(); ++iter) {
+      auto &x{iter->getR()};
+      flag &= std::all_of(x.begin(), x.end(),
+                          [](auto _) { return std::isfinite(_); });
+    }
+
+#pragma omp for
+    for (auto iter = leavingParticles.cbegin();
+         iter < leavingParticles.cend(); ++iter) {
+      auto &x{iter->getR()};
+      flag &= std::all_of(x.begin(), x.end(),
+                          [](auto _) { return std::isfinite(_); });
+    }
   }
 
   if (!flag) error->one(FLERR, "Non-numeric atom coords - simulation unstable");
@@ -55,32 +66,12 @@ void DomainAutoPas::pbc() {
     period = prd_lamda;
   }
 
-  // apply PBC to each owned atom
-
-  // TODO Do we need owned atoms as well or are leaving particles enough?
-  // Probably not
-
-#pragma omp parallel default(none) shared(hi, lo, period)
-  for (auto iter = lmp->autopas->iterate<autopas::IteratorBehavior::ownedOnly>(); iter.isValid(); ++iter) {
-    pbc(*iter, lo, hi, period);
-  }
-
-  auto &leavingParticles = lmp->autopas->get_leaving_particles();
-  for (auto iter = leavingParticles.begin();
-       iter != leavingParticles.end();) {
-    bool wasTouched = pbc(*iter, lo, hi, period);
-    if (wasTouched) {
-      lmp->autopas->add_particle(*iter); // Particle is in the domain again
-      // No longer part of the leaving particles
-      iter = leavingParticles.erase(iter);
-      // TODO This is not correct for multiple processes
-      //  Instead of adding the particle to self, it might need to be sent
-      //  Do the adding in the communication class?
-    } else {
-      ++iter;
+  // apply PBC to each leaving atom
+#pragma omp parallel for default(none) shared(hi, lo, period, leavingParticles)
+    for (auto iter = leavingParticles.begin();
+         iter < leavingParticles.end(); ++iter) {
+      pbc(*iter, lo, hi, period);
     }
-  }
-
 }
 
 bool
@@ -94,7 +85,7 @@ DomainAutoPas::pbc(AutoPasLMP::ParticleType &particle, double *lo, double *hi,
   auto x{particle.getR()};
   auto v{particle.getV()};
 
-  auto idx{AutoPasLMP::particle_to_index(particle)};
+  auto idx{lmp->autopas->particle_to_index(particle)};
   bool was_touched = false;
 
   if (xperiodic) {
@@ -279,7 +270,7 @@ void DomainAutoPas::lamda2x(int n) {
 #pragma omp parallel default(none) shared(n)
   for (auto iter = lmp->autopas->iterate<autopas::IteratorBehavior::ownedOnly>(); iter.isValid(); ++iter) {
 
-    if (AutoPasLMP::particle_to_index(*iter) < n) {
+    if (lmp->autopas->particle_to_index(*iter) < n) {
       auto x{iter->getR()};
 
       x[0] = h[0] * x[0] + h[5] * x[1] + h[4] * x[2] + boxlo[0];
@@ -302,7 +293,7 @@ void DomainAutoPas::x2lamda(int n) {
 #pragma omp parallel default(none) shared(n) private(delta)
   for (auto iter = lmp->autopas->iterate<autopas::IteratorBehavior::ownedOnly>(); iter.isValid(); ++iter) {
 
-    if (AutoPasLMP::particle_to_index(*iter) < n) {
+    if (lmp->autopas->particle_to_index(*iter) < n) {
       auto x{iter->getR()};
 
       delta[0] = x[0] - boxlo[0];

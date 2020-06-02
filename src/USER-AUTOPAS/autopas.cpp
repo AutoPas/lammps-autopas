@@ -20,6 +20,14 @@ AutoPasLMP::AutoPasLMP(class LAMMPS *lmp, int narg, char **args) : Pointers(
 
 void AutoPasLMP::init_autopas(double cutoff, double **epsilon, double **sigma) {
 
+  if (!lmp->atom->tag_enable) {
+    error->one(FLERR, "AutoPas requires particle IDs");
+  }
+
+  if (!lmp->atom->map_user) {
+    error->one(FLERR, "AutoPas requires global id mapping");
+  }
+
   // TODO SUPPORT FOR: pair_modify shift yes
 
   _autopas = std::make_unique<AutoPasType>();
@@ -62,9 +70,9 @@ void AutoPasLMP::init_autopas(double cutoff, double **epsilon, double **sigma) {
   _autopas->setAllowedTraversals(sensibleTraversalOptions);
 
   {
-  //  _autopas->setAllowedContainers({autopas::ContainerOption::linkedCells});
-  //  _autopas->setAllowedDataLayouts({autopas::DataLayoutOption::soa});
-  //  _autopas->setAllowedTraversals({autopas::TraversalOption::c04});
+    //  _autopas->setAllowedContainers({autopas::ContainerOption::linkedCells});
+    //  _autopas->setAllowedDataLayouts({autopas::DataLayoutOption::soa});
+    //  _autopas->setAllowedTraversals({autopas::TraversalOption::c04});
   }
 
   // TODO AutoPas always calculates FullShell.
@@ -138,7 +146,7 @@ void AutoPasLMP::move_into() {
     unsigned long moleculeId = i;
     unsigned long typeId = atom->type[i];
 
-    add_particle(ParticleType(pos, vel, moleculeId, typeId));
+    add_particle(ParticleType(pos, vel, moleculeId, static_cast<int>(typeId)));
   }
 
   // Destroy memory for debugging purposes so we segfault instead of accidentally using the old particles outside of AutoPas
@@ -164,7 +172,7 @@ void AutoPasLMP::copy_back() const {
 #pragma omp parallel default(none)
   for (auto iter = const_iterate<autopas::ownedOnly>(); iter.isValid(); ++iter) {
     auto &p = *iter;
-    auto idx = particle_to_index(p);
+    auto idx{particle_to_index(p)};
     std::copy_n(p.getR().begin(), 3, atom->x[idx]);
     std::copy_n(p.getV().begin(), 3, atom->v[idx]);
     std::copy_n(p.getF().begin(), 3, atom->f[idx]);
@@ -190,7 +198,7 @@ void AutoPasLMP::update_index_structure() {
 
 #pragma omp parallel default(none)
   for (auto &p: *lmp->autopas->_autopas) { // owned and halo
-    auto idx = particle_to_index(p);
+    auto idx{particle_to_index(p)};
     if (_use_index_map) {
       _index_map.emplace(idx, &p);
       // TODO Test if no race when emplacing in map

@@ -2,13 +2,16 @@
 #define LMP_AUTOPAS_H
 
 #include "pointers.h"
+#include "atom.h"
+
+#include <cassert>
 
 #include <autopas/AutoPas.h>
 #include <autopas/cells/FullParticleCell.h>
-#include <autopas/molecularDynamics/MoleculeLJ.h>
 #include <autopas/molecularDynamics/ParticlePropertiesLibrary.h>
 
 #include "autopas_lj_functor.h"
+#include "autopas_particle.h"
 
 namespace LAMMPS_NS {
 
@@ -16,11 +19,11 @@ class AutoPasLMP : protected Pointers {
 public:
   using FloatType = double;
   using FloatVecType = std::array<FloatType, 3>;
-  using ParticleType = autopas::MoleculeLJ<>;
+  using ParticleType = MoleculeLJLammps<FloatType>;
   using ParticleCellType = autopas::FullParticleCell<ParticleType>;
   using AutoPasType = autopas::AutoPas<ParticleType, ParticleCellType>;
   using ParticlePropertiesLibraryType = ParticlePropertiesLibrary<FloatType, size_t>;
-  using PairFunctorType = autopas::LJFunctorLammps<ParticleType, ParticleCellType, /*applyShift*/ false, /*useMixing*/ false, /*useNewton3*/ autopas::FunctorN3Modes::Both, /*calculateGlobals*/ true>;
+  using PairFunctorType = LJFunctorLammps<ParticleType, ParticleCellType, /*applyShift*/ false, /*useMixing*/ false, /*useNewton3*/ autopas::FunctorN3Modes::Both, /*calculateGlobals*/ true>;
 
   /*
    * Flag used to differentiate when LAMMPS is build with and without
@@ -52,7 +55,7 @@ public:
   void add_particle(const ParticleType &p);
 
   template<bool haloOnly = false>
-  autopas::ParticleIteratorWrapper<autopas::MoleculeLJ<double>, true>
+  autopas::ParticleIteratorWrapper<ParticleType, true>
   particles_by_slab(int i, double d, double d1) const;
 
   std::vector<ParticleType> &get_leaving_particles();
@@ -84,8 +87,11 @@ public:
   static std::vector<int>
   particle_to_index(const std::vector<ParticleType *> &particles);
 
-  static constexpr int particle_to_index(const ParticleType &particle) {
-    return particle.getID(); // TODO Global id to local index mapping
+  static inline int particle_to_index(const ParticleType &particle) {
+    //auto idx {atom->map(particle.getID())};
+    auto idx{particle.getLocalID()};
+    assert(idx != -1);
+    return idx;
   }
 
   void update_domain_size();

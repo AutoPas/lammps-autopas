@@ -179,6 +179,8 @@ void CommAutoPas::exchange() {
   const double *sublo{triclinic == 0 ? domain->sublo : domain->sublo_lamda};
   const double *subhi{triclinic == 0 ? domain->subhi : domain->subhi_lamda};
 
+  auto &leavingParticles = lmp->autopas->get_leaving_particles();
+
   // loop over dimensions
   for (int dim = 0; dim < domain->dimension; dim++) {
 
@@ -190,17 +192,23 @@ void CommAutoPas::exchange() {
     int nlocal = atom->nlocal;
     int nsend = 0;
 
-    for (const auto &p : lmp->autopas->get_leaving_particles()) {
-      auto &x = p.getR();
+    for (auto iter = leavingParticles.begin();
+         iter < leavingParticles.end();) {
+      auto &p{*iter};
+      auto &x{p.getR()};
       if (x[dim] < lo || x[dim] >= hi) {
+        // Particle must be sent
         if (nsend > maxsend) grow_send(nsend, 1);
         nsend += avec->pack_exchange(p, &buf_send[nsend]);
         /////////////////
-        // Autopas already removed particles //TODO But: Gaps in other arrays?
-        auto idx{AutoPasLMP::particle_to_index(p)};
+        // Autopas already removed particles from container
+        auto idx{lmp->autopas->particle_to_index(p)};
         avec->copy(nlocal - 1, idx, 1);
         nlocal--;
+        iter = leavingParticles.erase(iter);
         //////////////////
+      } else {
+        ++iter;
       }
     }
 
@@ -255,6 +263,11 @@ void CommAutoPas::exchange() {
       if (value >= lo && value < hi) m += avec->unpack_exchange(&buf_recv[m]);
       else m += static_cast<int> (buf_recv[m]);
     }
+  }
+
+  for (auto &p : leavingParticles) {
+    // Particles that were not sent == stays in box -> insert back into particle container
+    lmp->autopas->add_particle(p);
   }
 
   if (atom->firstgroupname) atom->first_reorder();
@@ -348,7 +361,7 @@ void CommAutoPas::borders() {
       // set original index send list
       if (nsend > maxsendlist[iswap]) grow_list(iswap, nsend);
       for (int i = 0; i < nsend; ++i) {
-        sendlist[iswap][i] = AutoPasLMP::particle_to_index(
+        sendlist[iswap][i] = lmp->autopas->particle_to_index(
             *_sendlist_particles[iswap][i]);
       }
 
@@ -426,7 +439,7 @@ void CommAutoPas::border_impl(int idxfirst, int idxlast, double lo, double hi,
   for (auto iter = this->lmp->autopas->particles_by_slab<haloOnly>(
       dim, lo, hi); iter.isValid(); ++iter) {
     auto &p{*iter};
-    auto idx{AutoPasLMP::particle_to_index(p)};
+    auto idx{lmp->autopas->particle_to_index(p)};
     if (idx >= idxfirst && idx < idxlast) {
       sendparticles.push_back(&p);
     }
@@ -443,7 +456,7 @@ CommAutoPas::border_impl(int idxfirst, int idxlast, double *mlo, double *mhi,
   for (auto iter = lmp->autopas->particles_by_slab<haloOnly>(
       dim, mlo_min, mhi_max); iter.isValid(); ++iter) {
     auto &p{*iter};
-    auto idx{AutoPasLMP::particle_to_index(p)};
+    auto idx{lmp->autopas->particle_to_index(p)};
     auto &x{p.getR()};
     int itype = atom->type[idx];
     if (idx >= idxfirst && idx < idxlast && x[dim] >= mlo[itype] &&

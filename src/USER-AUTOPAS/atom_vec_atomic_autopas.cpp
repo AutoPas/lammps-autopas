@@ -61,14 +61,11 @@ void AtomVecAtomicAutopas::copy(int i, int j, int delflag) {
   mask[j] = mask[i];
   image[j] = image[i];
 
-  // TODO Copy is only used for sorting, which we will not support, or for deleting particles -> no need to handle x and v
-  /*
-  auto *pj = lmp->autopas->particle_by_index(j);
-  auto *pi = lmp->autopas->particle_by_index(i);
+  // Copy is only used for sorting, which we will not support, or for deleting particles -> no need to handle x and v
 
-  pj->setR(pi->getR());
-  pj->setV(pi->getV());
-   */
+  // Data for particle i was "copied" (moved) to index j -> update local index
+  auto *pi = lmp->autopas->particle_by_index(i);
+  pi->setLocalID(j);
 
   if (atom->nextra_grow)
     for (int iextra = 0; iextra < atom->nextra_grow; iextra++)
@@ -105,7 +102,7 @@ AtomVecAtomicAutopas::pack_border_autopas(
   int m = 0;
 
   for (const auto p : particles) {
-    auto idx{AutoPasLMP::particle_to_index(*p)};
+    auto idx{lmp->autopas->particle_to_index(*p)};
     auto &_x = p->getR();
     buf[m++] = _x[0] + dx;
     buf[m++] = _x[1] + dy;
@@ -116,7 +113,7 @@ AtomVecAtomicAutopas::pack_border_autopas(
   }
 
   if (atom->nextra_border) {
-    auto list{AutoPasLMP::particle_to_index(particles)};
+    auto list{lmp->autopas->particle_to_index(particles)};
     for (int iextra = 0; iextra < atom->nextra_border; iextra++)
       m += modify->fix[atom->extra_border[iextra]]->pack_border(list.size(),
                                                                 list.data(),
@@ -161,7 +158,7 @@ AtomVecAtomicAutopas::pack_border_vel_autopas(
 
   for (const auto p : particles) {
 
-    auto idx{AutoPasLMP::particle_to_index(*p)};
+    auto idx{lmp->autopas->particle_to_index(*p)};
     auto &x_{p->getR()};
     auto &v_{p->getV()};
     buf[m++] = x_[0] + dx;
@@ -183,7 +180,7 @@ AtomVecAtomicAutopas::pack_border_vel_autopas(
   }
 
   if (atom->nextra_border) {
-    auto list{AutoPasLMP::particle_to_index(particles)};
+    auto list{lmp->autopas->particle_to_index(particles)};
     for (int iextra = 0; iextra < atom->nextra_border; iextra++)
       m += modify->fix[atom->extra_border[iextra]]->pack_border(list.size(),
                                                                 list.data(),
@@ -211,7 +208,7 @@ AtomVecAtomicAutopas::unpack_border(int n, int first, double *buf) {
     mask[i] = (int) ubuf(buf[m++]).i;
 
     // Always halo particles
-    AutoPasLMP::ParticleType pi(x_, {0, 0, 0}, static_cast<unsigned long>(i),
+    AutoPasLMP::ParticleType pi(x_, {0, 0, 0}, static_cast<unsigned long>(tag[i]), i,
                                 static_cast<unsigned long>(type[i]));
     lmp->autopas->add_particle</*halo*/ true>(pi);
 
@@ -245,7 +242,7 @@ void AtomVecAtomicAutopas::unpack_border_vel(int n, int first,
     v_[2] = buf[m++];
 
     // Always halo particles
-    AutoPasLMP::ParticleType pi(x_, v_, static_cast<unsigned long>(i),
+    AutoPasLMP::ParticleType pi(x_, v_, static_cast<unsigned long>(tag[i]), i,
                                 static_cast<unsigned long>(type[i]));
     lmp->autopas->add_particle</*halo*/ true>(pi);
 
@@ -304,7 +301,7 @@ int AtomVecAtomicAutopas::unpack_exchange(double *buf) {
   image[nlocal] = (imageint) ubuf(buf[m++]).i;
 
   // Always new particle from other process
-  AutoPasLMP::ParticleType pi(x_, v_, static_cast<unsigned long>(nlocal),
+  AutoPasLMP::ParticleType pi(x_, v_, static_cast<unsigned long>(tag[nlocal]), nlocal,
                               static_cast<unsigned long>(type[nlocal]));
   lmp->autopas->add_particle(pi);
 
@@ -443,7 +440,7 @@ void AtomVecAtomicAutopas::pack_data(double **buf) {
 #pragma omp parallel default(none) shared(buf)
   for (auto iter = lmp->autopas->const_iterate<autopas::IteratorBehavior::ownedOnly>(); iter.isValid(); ++iter) {
     auto &x_{iter->getR()};
-    auto idx{AutoPasLMP::particle_to_index(*iter)};
+    auto idx{lmp->autopas->particle_to_index(*iter)};
     buf[idx][0] = ubuf(tag[idx]).d;
     buf[idx][1] = ubuf(type[idx]).d;
     buf[idx][2] = x_[0];
@@ -484,7 +481,7 @@ bigint AtomVecAtomicAutopas::memory_usage() {
 
 int AtomVecAtomicAutopas::pack_exchange(
     const AutoPasLMP::ParticleType &p, double *buf) {
-  auto idx{AutoPasLMP::particle_to_index(p)};
+  auto idx{lmp->autopas->particle_to_index(p)};
   auto &x_ = p.getR();
   auto &v_ = p.getV();
 

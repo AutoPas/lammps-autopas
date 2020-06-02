@@ -19,7 +19,7 @@
 #include "autopas/utils/ExceptionHandler.h"
 #endif
 
-namespace autopas {
+namespace LAMMPS_NS {
 
 /**
  * A functor to handle lennard-jones interactions between two particles (molecules).
@@ -33,12 +33,13 @@ namespace autopas {
  * @tparam relevantForTuning Whether or not the auto-tuner should consider this functor.
  */
 template <class Particle, class ParticleCell, bool applyShift = false, bool useMixing = false,
-    FunctorN3Modes useNewton3 = FunctorN3Modes::Both, bool calculateGlobals = false,
+    autopas::FunctorN3Modes useNewton3 = autopas::FunctorN3Modes::Both, bool calculateGlobals = false,
     bool relevantForTuning = true>
 class LJFunctorLammps
-    : public Functor<
+    : public autopas::Functor<
         Particle, ParticleCell, typename Particle::SoAArraysType,
         LJFunctorLammps<Particle, ParticleCell, applyShift, useMixing, useNewton3, calculateGlobals, relevantForTuning>> {
+
   using SoAArraysType = typename Particle::SoAArraysType;
   using SoAFloatPrecision = typename Particle::ParticleSoAFloatPrecision;
 
@@ -59,7 +60,7 @@ private:
    * @param dummy unused, only there to make the signature different from the public constructor.
    */
   explicit LJFunctorLammps(double cutoff, interactingTypes_t  interactingTypes, bool duplicatedCalculation, void * /*dummy*/)
-      : Functor<
+      : autopas::Functor<
       Particle, ParticleCell, SoAArraysType,
       LJFunctorLammps<Particle, ParticleCell, applyShift, useMixing, useNewton3, calculateGlobals, relevantForTuning>>(
       cutoff),
@@ -70,6 +71,7 @@ private:
         _duplicatedCalculations{duplicatedCalculation},
         _postProcessed{false},
         _interactingTypes{std::move(interactingTypes)}{
+    using namespace autopas;
     if constexpr (calculateGlobals) {
       _aosThreadData.resize(autopas_get_max_threads());
     }
@@ -113,14 +115,17 @@ public:
   bool isRelevantForTuning() override { return relevantForTuning; }
 
   bool allowsNewton3() override {
+    using namespace autopas;
     return useNewton3 == FunctorN3Modes::Newton3Only or useNewton3 == FunctorN3Modes::Both;
   }
 
   bool allowsNonNewton3() override {
+    using namespace autopas;
     return useNewton3 == FunctorN3Modes::Newton3Off or useNewton3 == FunctorN3Modes::Both;
   }
 
-  bool isAppropriateClusterSize(unsigned int clusterSize, DataLayoutOption::Value dataLayout) const override {
+  bool isAppropriateClusterSize(unsigned int clusterSize, autopas::DataLayoutOption::Value dataLayout) const override {
+    using namespace autopas;
     if (dataLayout == DataLayoutOption::cuda) {
 #if defined(AUTOPAS_CUDA)
       return _cudawrapper.isAppropriateClusterSize(clusterSize);
@@ -134,6 +139,7 @@ public:
 
   void AoSFunctor(Particle &i, Particle &j, bool newton3) override {
     if(!doesInteract(i.getTypeId(),j.getTypeId())) return;
+    using namespace autopas;
     auto sigmasquare = _sigmasquare;
     auto epsilon24 = _epsilon24;
     auto shift6 = _shift6;
@@ -196,7 +202,8 @@ public:
   * This functor ignores will use a newton3 like traversing of the soa, however, it still needs to know about newton3
   * to use it correctly for the global values.
   */
-  void SoAFunctorSingle(SoAView<SoAArraysType> soa, bool newton3, bool cellWiseOwnedState) override {
+  void SoAFunctorSingle(autopas::SoAView<SoAArraysType> soa, bool newton3, bool cellWiseOwnedState) override {
+    using namespace autopas;
     if (soa.getNumParticles() == 0) return;
 
     const auto *const __restrict__ xptr = soa.template begin<Particle::AttributeNames::posX>();
@@ -373,8 +380,9 @@ public:
    * @copydoc Functor::SoAFunctorPair(SoAView<SoAArraysType> soa1, SoAView<SoAArraysType> soa2, bool newton3, bool cellWiseOwnedState)
    */
   // clang-format on
-  void SoAFunctorPair(SoAView<SoAArraysType> soa1, SoAView<SoAArraysType> soa2, const bool newton3,
+  void SoAFunctorPair(autopas::SoAView<SoAArraysType> soa1, autopas::SoAView<SoAArraysType> soa2, const bool newton3,
                       const bool cellWiseOwnedState) override {
+    using namespace autopas;
     // using nested withStaticBool is not possible because of bug in gcc < 9 (and the intel compiler)
     /// @todo c++20: gcc < 9 can probably be dropped, replace with nested lambdas.
     utils::withStaticBool(newton3, [&](auto newton3) {
@@ -405,7 +413,8 @@ private:
    * @param soa2
    */
   template <bool newton3, bool cellWiseOwnedState, bool duplicatedCalculations>
-  void SoAFunctorPairImpl(SoAView<SoAArraysType> soa1, SoAView<SoAArraysType> soa2) {
+  void SoAFunctorPairImpl(autopas::SoAView<SoAArraysType> soa1, autopas::SoAView<SoAArraysType> soa2) {
+    using namespace autopas;
     if (soa1.getNumParticles() == 0 || soa2.getNumParticles() == 0) return;
 
     const auto *const __restrict__ x1ptr = soa1.template begin<Particle::AttributeNames::posX>();
@@ -613,9 +622,10 @@ public:
    * are no dependencies, i.e. introduce colors!
    */
   // clang-format on
-  void SoAFunctorVerlet(SoAView<SoAArraysType> soa, const size_t indexFirst,
+  void SoAFunctorVerlet(autopas::SoAView<SoAArraysType> soa, const size_t indexFirst,
                         const std::vector<size_t, autopas::AlignedAllocator<size_t>> &neighborList,
                         bool newton3) override {
+    using namespace autopas;
     if (newton3) {
       if (_duplicatedCalculations) {
         SoAFunctorImpl<true, true>(soa, indexFirst, neighborList);
@@ -639,7 +649,8 @@ public:
    * @param device_handle soa in device memory
    * @param newton3 defines whether or whether not to use newton
    */
-  void CudaFunctor(CudaSoA<typename Particle::CudaDeviceArraysType> &device_handle, bool newton3) override {
+  void CudaFunctor(autopas::CudaSoA<typename Particle::CudaDeviceArraysType> &device_handle, bool newton3) override {
+    using namespace autopas;
 #if defined(AUTOPAS_CUDA)
     const size_t size = device_handle.template get<Particle::AttributeNames::posX>().size();
     if (size == 0) {
@@ -667,6 +678,7 @@ public:
    * @param sigmaSquare
    */
   void setParticleProperties(SoAFloatPrecision epsilon24, SoAFloatPrecision sigmaSquare) {
+    using namespace autopas;
     _epsilon24 = epsilon24;
     _sigmasquare = sigmaSquare;
     if (applyShift) {
@@ -690,8 +702,9 @@ public:
    * @param device_handle2 second soa in device memory
    * @param newton3 defines whether or whether not to use newton
    */
-  void CudaFunctor(CudaSoA<typename Particle::CudaDeviceArraysType> &device_handle1,
-                   CudaSoA<typename Particle::CudaDeviceArraysType> &device_handle2, bool newton3) override {
+  void CudaFunctor(autopas::CudaSoA<typename Particle::CudaDeviceArraysType> &device_handle1,
+                   autopas::CudaSoA<typename Particle::CudaDeviceArraysType> &device_handle2, bool newton3) override {
+    using namespace autopas;
 #if defined(AUTOPAS_CUDA)
     const size_t size1 = device_handle1.template get<Particle::AttributeNames::posX>().size();
     const size_t size2 = device_handle2.template get<Particle::AttributeNames::posX>().size();
@@ -746,7 +759,8 @@ public:
    * @copydoc Functor::deviceSoALoader
    */
   void deviceSoALoader(::autopas::SoA<SoAArraysType> &soa,
-                       CudaSoA<typename Particle::CudaDeviceArraysType> &device_handle) override {
+                       autopas::CudaSoA<typename Particle::CudaDeviceArraysType> &device_handle) override {
+    using namespace autopas;
 #if defined(AUTOPAS_CUDA)
 
     const size_t size = soa.getNumParticles();
@@ -780,7 +794,8 @@ public:
    * @copydoc Functor::deviceSoAExtractor
    */
   void deviceSoAExtractor(::autopas::SoA<SoAArraysType> &soa,
-                          CudaSoA<typename Particle::CudaDeviceArraysType> &device_handle) override {
+                          autopas::CudaSoA<typename Particle::CudaDeviceArraysType> &device_handle) override {
+    using namespace autopas;
 #if defined(AUTOPAS_CUDA)
 
     const size_t size = soa.getNumParticles();
@@ -842,6 +857,7 @@ public:
    * Will set the global values to zero to prepare for the next iteration.
    */
   void initTraversal() override {
+    using namespace autopas;
     _upotSum = 0.;
     _virialSum = {0., 0., 0., 0., 0., 0.};
     _postProcessed = false;
@@ -861,6 +877,7 @@ public:
    * @param newton3
    */
   void endTraversal(bool newton3) override {
+    using namespace autopas;
     if (_postProcessed) {
       throw utils::ExceptionHandler::AutoPasException(
           "Already postprocessed, endTraversal(bool newton3) was called twice without calling initTraversal().");
@@ -898,6 +915,7 @@ public:
    * @return the potential Energy
    */
   double getUpot() {
+    using namespace autopas;
     if (not calculateGlobals) {
       throw utils::ExceptionHandler::AutoPasException(
           "Trying to get upot even though calculateGlobals is false. If you want this functor to calculate global "
@@ -914,6 +932,7 @@ public:
    * @return
    */
   std::array<double, 6>* getVirial() {
+    using namespace autopas;
     if (not calculateGlobals) {
       throw utils::ExceptionHandler::AutoPasException(
           "Trying to get virial even though calculateGlobals is false. If you want this functor to calculate global "
@@ -939,8 +958,9 @@ public:
 
 private:
   template <bool newton3, bool duplicatedCalculations>
-  void SoAFunctorImpl(SoAView<SoAArraysType> soa, const size_t indexFirst,
+  void SoAFunctorImpl(autopas::SoAView<SoAArraysType> soa, const size_t indexFirst,
                       const std::vector<size_t, autopas::AlignedAllocator<size_t>> &neighborList) {
+    using namespace autopas;
     if (soa.getNumParticles() == 0) return;
 
     const auto *const __restrict__ xptr = soa.template begin<Particle::AttributeNames::posX>();
@@ -1292,13 +1312,13 @@ private:
   interactingTypes_t _interactingTypes;
 
 #if defined(AUTOPAS_CUDA)
-  using CudaWrapperType = typename std::conditional<calculateGlobals, LJFunctorCudaGlobalsWrapper<SoAFloatPrecision>,
-                                                    LJFunctorCudaWrapper<SoAFloatPrecision>>::type;
+  using CudaWrapperType = typename std::conditional<calculateGlobals, autopas::LJFunctorCudaGlobalsWrapper<SoAFloatPrecision>,
+                                                    autopas::LJFunctorCudaWrapper<SoAFloatPrecision>>::type;
   // contains wrapper functions for cuda calls
   CudaWrapperType _cudawrapper;
 
   // contains device globals
-  utils::CudaDeviceVector<SoAFloatPrecision> _cudaGlobals;
+  autopas::utils::CudaDeviceVector<SoAFloatPrecision> _cudaGlobals;
 
 #endif
 
