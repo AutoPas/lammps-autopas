@@ -43,7 +43,7 @@ class LJFunctorLammps
   using SoAArraysType = typename Particle::SoAArraysType;
   using SoAFloatPrecision = typename Particle::ParticleSoAFloatPrecision;
 
-  using interactingTypes_t = std::map<std::pair<size_t, size_t>, bool>;
+  using interactingTypes_t = std::vector<std::vector<int>>;
 
 public:
   /**
@@ -1261,8 +1261,8 @@ private:
     }
   }
 
-  inline bool doesInteract(size_t i, size_t j) const{
-    return _interactingTypes.at({i, j});
+  inline int doesInteract(size_t i, size_t j) const{
+    return _interactingTypes[i-1][j-1];
   }
 
   /**
@@ -1323,4 +1323,4 @@ private:
 #endif
 
 };  // class LJFunctor
-}  // namespace autopas
+}  // namespace

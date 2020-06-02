@@ -96,7 +96,7 @@ public:
 
   void update_domain_size();
 
-  std::map<std::pair<size_t, size_t>, bool> get_interaction_map();
+  std::vector<std::vector<int>> get_interaction_map();
 
 private:
   std::unique_ptr<AutoPasType> _autopas;
