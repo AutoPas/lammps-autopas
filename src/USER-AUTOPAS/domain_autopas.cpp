@@ -66,21 +66,12 @@ void DomainAutoPas::pbc() {
     period = prd_lamda;
   }
 
-  // apply PBC to each owned atom
-  //TODO Is ownedOnly even required when having leavingParticles? No?
-
-#pragma omp parallel default(none) shared(hi, lo, period, leavingParticles)
-  {
-    for (auto iter = lmp->autopas->iterate<autopas::IteratorBehavior::ownedOnly>(); iter.isValid(); ++iter) {
-      pbc(*iter, lo, hi, period);
-    }
-
-#pragma omp for
+  // apply PBC to each leaving atom
+#pragma omp parallel for default(none) shared(hi, lo, period, leavingParticles)
     for (auto iter = leavingParticles.begin();
          iter < leavingParticles.end(); ++iter) {
       pbc(*iter, lo, hi, period);
     }
-  }
 }
 
 bool

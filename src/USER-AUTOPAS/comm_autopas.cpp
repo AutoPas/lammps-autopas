@@ -197,6 +197,8 @@ void CommAutoPas::exchange() {
   const double *sublo{triclinic == 0 ? domain->sublo : domain->sublo_lamda};
   const double *subhi{triclinic == 0 ? domain->subhi : domain->subhi_lamda};
 
+  auto &leavingParticles = lmp->autopas->get_leaving_particles();
+
   // loop over dimensions
   for (int dim = 0; dim < domain->dimension; dim++) {
 
@@ -208,8 +210,10 @@ void CommAutoPas::exchange() {
     int nlocal = atom->nlocal;
     int nsend = 0;
 
-    for (const auto &p : lmp->autopas->get_leaving_particles()) {
-      auto &x = p.getR();
+    for (auto iter = leavingParticles.begin();
+         iter < leavingParticles.end();) {
+      auto &p{*iter};
+      auto &x{p.getR()};
       if (x[dim] < lo || x[dim] >= hi) {
         // Particle must be sent
         if (nsend > maxsend) grow_send(nsend, 1);
@@ -219,10 +223,10 @@ void CommAutoPas::exchange() {
         auto idx{lmp->autopas->particle_to_index(p)};
         avec->copy(nlocal - 1, idx, 1);
         nlocal--;
+        iter = leavingParticles.erase(iter);
         //////////////////
       } else {
-        // Particle stays in box -> insert back into particle container
-        lmp->autopas->add_particle(p);
+        ++iter;
       }
     }
 
@@ -277,6 +281,11 @@ void CommAutoPas::exchange() {
       if (value >= lo && value < hi) m += avec->unpack_exchange(&buf_recv[m]);
       else m += static_cast<int> (buf_recv[m]);
     }
+  }
+
+  for (auto &p : leavingParticles) {
+    // Particles that were not sent == stays in box -> insert back into particle container
+    lmp->autopas->add_particle(p);
   }
 
   if (atom->firstgroupname) atom->first_reorder();
