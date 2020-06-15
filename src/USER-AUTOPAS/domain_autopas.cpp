@@ -336,45 +336,31 @@ void DomainAutoPas::reset_box() {
   if (nonperiodic == 2) {
     double extent[3][2], all[3][2];
 
-    extent[2][0] = extent[1][0] = extent[0][0] = std::numeric_limits<double>::max();
-    extent[2][1] = extent[1][1] = extent[0][1] = std::numeric_limits<double>::min();
+    double max_x_0, max_x_1, max_x_2;
+    double min_x_0, min_x_1, min_x_2;
 
-// TODO Fix OMP reduction
-#pragma omp declare reduction (fmin : double : omp_out = fmin(omp_in, omp_out)) initializer (omp_priv=std::numeric_limits<double>::max())
-#pragma omp declare reduction (fmax : double : omp_out = fmax(omp_in, omp_out)) initializer (omp_priv=std::numeric_limits<double>::min())
-//#pragma omp parallel default(none) reduction(fmin:extent[0][0], extent[1][0], extent[2][0]) reduction(fmax:extent[0][1], extent[1][1], extent[2][1])
-//#pragma omp parallel default(none) reduction(min:extent[0][0], extent[1][0], extent[2][0]) reduction(max:extent[0][1], extent[1][1], extent[2][1])
+    max_x_0 = max_x_1 = max_x_2 = std::numeric_limits<double>::min();
+    min_x_0 = min_x_1 = min_x_2 = std::numeric_limits<double>::max();
+
+#pragma omp parallel default(none) reduction(min:min_x_0,min_x_1,min_x_2) reduction(max:max_x_0,max_x_1,max_x_2)
     for (auto iter = lmp->autopas->iterate<autopas::ownedOnly>(); iter.isValid(); ++iter) {
       auto &x = iter->getR();
 
-      extent[0][0] = fmin(extent[0][0], x[0]);
-      extent[0][1] = fmax(extent[0][1], x[0]);
-      extent[1][0] = fmin(extent[1][0], x[1]);
-      extent[1][1] = fmax(extent[1][1], x[1]);
-      extent[2][0] = fmin(extent[2][0], x[2]);
-      extent[2][1] = fmax(extent[2][1], x[2]);
-
-      /*
-      if(extent[0][0] > x[0])
-        extent[0][0] = x[0];
-
-      if(extent[0][1] < x[0])
-        extent[0][1] = x[0];
-
-      if(extent[1][0] > x[1])
-        extent[1][0] = x[1];
-
-      if(extent[1][1] < x[1])
-        extent[1][1] = x[1];
-
-      if(extent[2][0] > x[2])
-        extent[2][0] = x[2];
-
-      if(extent[2][1] < x[2])
-        extent[2][1] = x[2];
-        */
+      min_x_0 = std::min(min_x_0, x[0]);
+      max_x_0 = std::max(max_x_0, x[0]);
+      min_x_1 = std::min(min_x_1, x[1]);
+      max_x_1 = std::max(max_x_1, x[1]);
+      min_x_2 = std::min(min_x_2, x[2]);
+      max_x_2 = std::max(max_x_2, x[2]);
 
     }
+
+    extent[0][0] = min_x_0;
+    extent[0][1] = max_x_0;
+    extent[1][0] = min_x_1;
+    extent[1][1] = max_x_1;
+    extent[2][0] = min_x_2;
+    extent[2][1] = max_x_2;
 
     // compute extent across all procs
     // flip sign of MIN to do it in one Allreduce MAX
