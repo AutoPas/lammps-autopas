@@ -56,16 +56,26 @@ void AtomVecAtomicAutopas::grow_reset() {
 
 
 void AtomVecAtomicAutopas::copy(int i, int j, int delflag) {
+
   tag[j] = tag[i];
   type[j] = type[i];
   mask[j] = mask[i];
   image[j] = image[i];
 
-  // Copy is only used for sorting, which we will not support, or for deleting particles -> no need to handle x and v
+  if (!lmp->autopas->is_initialized()) { // when AutoPas uninitialized, e.g. for delete_particles
+    x[j][0] = x[i][0];
+    x[j][1] = x[i][1];
+    x[j][2] = x[i][2];
+    v[j][0] = v[i][0];
+    v[j][1] = v[i][1];
+    v[j][2] = v[i][2];
+  } else { // with AutoPas initialized
+    // Copy is only used for sorting, which we will not support, or for deleting particles -> no need to handle x and v
 
-  // Data for particle i was "copied" (moved) to index j -> update local index
-  auto *pi = lmp->autopas->particle_by_index(i);
-  pi->setLocalID(j);
+    // Data for particle i was "copied" (moved) to index j -> update local index
+    auto *pi = lmp->autopas->particle_by_index(i);
+    pi->setLocalID(j);
+  }
 
   if (atom->nextra_grow)
     for (int iextra = 0; iextra < atom->nextra_grow; iextra++)
@@ -208,7 +218,8 @@ AtomVecAtomicAutopas::unpack_border(int n, int first, double *buf) {
     mask[i] = (int) ubuf(buf[m++]).i;
 
     // Always halo particles
-    AutoPasLMP::ParticleType pi(x_, {0, 0, 0}, static_cast<unsigned long>(tag[i]), i,
+    AutoPasLMP::ParticleType pi(x_, {0, 0, 0},
+                                static_cast<unsigned long>(tag[i]), i,
                                 static_cast<unsigned long>(type[i]));
     lmp->autopas->add_particle</*halo*/ true>(pi);
 
@@ -301,7 +312,8 @@ int AtomVecAtomicAutopas::unpack_exchange(double *buf) {
   image[nlocal] = (imageint) ubuf(buf[m++]).i;
 
   // Always new particle from other process
-  AutoPasLMP::ParticleType pi(x_, v_, static_cast<unsigned long>(tag[nlocal]), nlocal,
+  AutoPasLMP::ParticleType pi(x_, v_, static_cast<unsigned long>(tag[nlocal]),
+                              nlocal,
                               static_cast<unsigned long>(type[nlocal]));
   lmp->autopas->add_particle(pi);
 
