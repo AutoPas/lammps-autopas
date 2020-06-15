@@ -99,7 +99,8 @@ void AutoPasLMP::init_autopas(double cutoff, double **epsilon, double **sigma) {
       std::max(neighbor->every, neighbor->delay));
   _autopas->setVerletSkin(neighbor->skin);
 
-  { // TODO Necessary until verlet skin works correctly
+  {// TODO Necessary until verlet skin works correctly
+    std::cout << "Verlet skin will be disabled for now!" << std::endl;
     neighbor->every = 1;
     neighbor->delay = 0;
     _autopas->setVerletRebuildFrequency(1);
