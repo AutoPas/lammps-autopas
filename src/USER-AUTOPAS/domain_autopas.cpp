@@ -68,10 +68,10 @@ void DomainAutoPas::pbc() {
 
   // apply PBC to each leaving atom
 #pragma omp parallel for default(none) shared(hi, lo, period, leavingParticles)
-    for (auto iter = leavingParticles.begin();
-         iter < leavingParticles.end(); ++iter) {
-      pbc(*iter, lo, hi, period);
-    }
+  for (auto iter = leavingParticles.begin();
+       iter < leavingParticles.end(); ++iter) {
+    pbc(*iter, lo, hi, period);
+  }
 }
 
 bool
@@ -314,9 +314,207 @@ void DomainAutoPas::reset_box() {
     return Domain::reset_box();
   }
 
-  lmp->autopas->move_back();
-  Domain::reset_box();
-  lmp->autopas->update_domain_size();
-  lmp->autopas->move_into();
+  // Set a different (larger) small value to grow domain less often
+  small[0] = lmp->autopas->get_box_grow_factor() * (boxhi[0] - boxlo[0]);
+  small[1] = lmp->autopas->get_box_grow_factor() * (boxhi[1] - boxlo[1]);
+  small[2] = lmp->autopas->get_box_grow_factor() * (boxhi[2] - boxlo[2]);
+
+  // Force minimum size to prevent domain shrinking
+  minxlo = boxlo[0];
+  minxhi = boxhi[0];
+
+  minylo = boxlo[1];
+  minyhi = boxhi[1];
+
+  minzlo = boxlo[2];
+  minzhi = boxhi[2];
+
+  // perform shrink-wrapping
+  // compute extent of atoms on this proc
+  // for triclinic, this is done in lamda space
+
+  if (nonperiodic == 2) {
+    double extent[3][2], all[3][2];
+
+    extent[2][0] = extent[1][0] = extent[0][0] = std::numeric_limits<double>::max();
+    extent[2][1] = extent[1][1] = extent[0][1] = std::numeric_limits<double>::min();
+
+// TODO Fix OMP reduction
+#pragma omp declare reduction (fmin : double : omp_out = fmin(omp_in, omp_out)) initializer (omp_priv=std::numeric_limits<double>::max())
+#pragma omp declare reduction (fmax : double : omp_out = fmax(omp_in, omp_out)) initializer (omp_priv=std::numeric_limits<double>::min())
+//#pragma omp parallel default(none) reduction(fmin:extent[0][0], extent[1][0], extent[2][0]) reduction(fmax:extent[0][1], extent[1][1], extent[2][1])
+//#pragma omp parallel default(none) reduction(min:extent[0][0], extent[1][0], extent[2][0]) reduction(max:extent[0][1], extent[1][1], extent[2][1])
+    for (auto iter = lmp->autopas->iterate<autopas::ownedOnly>(); iter.isValid(); ++iter) {
+      auto &x = iter->getR();
+
+      extent[0][0] = fmin(extent[0][0], x[0]);
+      extent[0][1] = fmax(extent[0][1], x[0]);
+      extent[1][0] = fmin(extent[1][0], x[1]);
+      extent[1][1] = fmax(extent[1][1], x[1]);
+      extent[2][0] = fmin(extent[2][0], x[2]);
+      extent[2][1] = fmax(extent[2][1], x[2]);
+
+      /*
+      if(extent[0][0] > x[0])
+        extent[0][0] = x[0];
+
+      if(extent[0][1] < x[0])
+        extent[0][1] = x[0];
+
+      if(extent[1][0] > x[1])
+        extent[1][0] = x[1];
+
+      if(extent[1][1] < x[1])
+        extent[1][1] = x[1];
+
+      if(extent[2][0] > x[2])
+        extent[2][0] = x[2];
+
+      if(extent[2][1] < x[2])
+        extent[2][1] = x[2];
+        */
+
+    }
+
+    // compute extent across all procs
+    // flip sign of MIN to do it in one Allreduce MAX
+
+    extent[0][0] = -extent[0][0];
+    extent[1][0] = -extent[1][0];
+    extent[2][0] = -extent[2][0];
+
+    MPI_Allreduce(extent, all, 6, MPI_DOUBLE, MPI_MAX, world);
+
+    // for triclinic, convert back to box coords before changing box
+
+    if (triclinic) lamda2x(atom->nlocal);
+
+    // in shrink-wrapped dims, set box by atom extent
+    // if minimum set, enforce min box size settings
+    // for triclinic, convert lamda extent to box coords, then set box lo/hi
+    // decided NOT to do the next comment - don't want to sneakily change tilt
+    // for triclinic, adjust tilt factors if 2nd dim is shrink-wrapped,
+    //   so that displacement in 1st dim stays the same
+
+    if (triclinic == 0) {
+      if (xperiodic == 0) {
+        if (boundary[0][0] == 2) boxlo[0] = -all[0][0] - small[0];
+        else if (boundary[0][0] == 3)
+          boxlo[0] = std::min(-all[0][0] - small[0], minxlo);
+        if (boundary[0][1] == 2) boxhi[0] = all[0][1] + small[0];
+        else if (boundary[0][1] == 3)
+          boxhi[0] = std::max(all[0][1] + small[0], minxhi);
+        if (boxlo[0] > boxhi[0]) error->all(FLERR, "Illegal simulation box");
+      }
+      if (yperiodic == 0) {
+        if (boundary[1][0] == 2) boxlo[1] = -all[1][0] - small[1];
+        else if (boundary[1][0] == 3)
+          boxlo[1] = std::min(-all[1][0] - small[1], minylo);
+        if (boundary[1][1] == 2) boxhi[1] = all[1][1] + small[1];
+        else if (boundary[1][1] == 3)
+          boxhi[1] = std::max(all[1][1] + small[1], minyhi);
+        if (boxlo[1] > boxhi[1]) error->all(FLERR, "Illegal simulation box");
+      }
+      if (zperiodic == 0) {
+        if (boundary[2][0] == 2) boxlo[2] = -all[2][0] - small[2];
+        else if (boundary[2][0] == 3)
+          boxlo[2] = std::min(-all[2][0] - small[2], minzlo);
+        if (boundary[2][1] == 2) boxhi[2] = all[2][1] + small[2];
+        else if (boundary[2][1] == 3)
+          boxhi[2] = std::max(all[2][1] + small[2], minzhi);
+        if (boxlo[2] > boxhi[2]) error->all(FLERR, "Illegal simulation box");
+      }
+
+    } else {
+      double lo[3], hi[3];
+      if (xperiodic == 0) {
+        lo[0] = -all[0][0];
+        lo[1] = 0.0;
+        lo[2] = 0.0;
+        Domain::lamda2x(lo, lo);
+        hi[0] = all[0][1];
+        hi[1] = 0.0;
+        hi[2] = 0.0;
+        Domain::lamda2x(hi, hi);
+        if (boundary[0][0] == 2) boxlo[0] = lo[0] - small[0];
+        else if (boundary[0][0] == 3)
+          boxlo[0] = std::min(lo[0] - small[0], minxlo);
+        if (boundary[0][1] == 2) boxhi[0] = hi[0] + small[0];
+        else if (boundary[0][1] == 3)
+          boxhi[0] = std::max(hi[0] + small[0], minxhi);
+        if (boxlo[0] > boxhi[0]) error->all(FLERR, "Illegal simulation box");
+      }
+      if (yperiodic == 0) {
+        lo[0] = 0.0;
+        lo[1] = -all[1][0];
+        lo[2] = 0.0;
+        Domain::lamda2x(lo, lo);
+        hi[0] = 0.0;
+        hi[1] = all[1][1];
+        hi[2] = 0.0;
+        Domain::lamda2x(hi, hi);
+        if (boundary[1][0] == 2) boxlo[1] = lo[1] - small[1];
+        else if (boundary[1][0] == 3)
+          boxlo[1] = std::min(lo[1] - small[1], minylo);
+        if (boundary[1][1] == 2) boxhi[1] = hi[1] + small[1];
+        else if (boundary[1][1] == 3)
+          boxhi[1] = std::max(hi[1] + small[1], minyhi);
+        if (boxlo[1] > boxhi[1]) error->all(FLERR, "Illegal simulation box");
+        //xy *= (boxhi[1]-boxlo[1]) / yprd;
+      }
+      if (zperiodic == 0) {
+        lo[0] = 0.0;
+        lo[1] = 0.0;
+        lo[2] = -all[2][0];
+        Domain::lamda2x(lo, lo);
+        hi[0] = 0.0;
+        hi[1] = 0.0;
+        hi[2] = all[2][1];
+        Domain::lamda2x(hi, hi);
+        if (boundary[2][0] == 2) boxlo[2] = lo[2] - small[2];
+        else if (boundary[2][0] == 3)
+          boxlo[2] = std::min(lo[2] - small[2], minzlo);
+        if (boundary[2][1] == 2) boxhi[2] = hi[2] + small[2];
+        else if (boundary[2][1] == 3)
+          boxhi[2] = std::max(hi[2] + small[2], minzhi);
+        if (boxlo[2] > boxhi[2]) error->all(FLERR, "Illegal simulation box");
+        //xz *= (boxhi[2]-boxlo[2]) / xprd;
+        //yz *= (boxhi[2]-boxlo[2]) / yprd;
+      }
+    }
+  }
+
+  // if box size changed
+  if (minxlo != boxlo[0] || minxhi != boxhi[0] || minylo != boxlo[1] ||
+      minyhi != boxhi[1] || minzlo != boxlo[2] || minzhi != boxhi[2]) {
+
+    // Move particles back from AutoPas to LAMMPS arrays
+    lmp->autopas->move_back();
+
+    // reset box whether shrink-wrapping or not
+
+    set_global_box();
+    set_local_box();
+
+    // if shrink-wrapped & kspace is defined (i.e. using MSM), call setup()
+    // also call init() (to test for compatibility) ?
+
+    if (nonperiodic == 2 && force->kspace) {
+      //force->kspace->init();
+      force->kspace->setup();
+    }
+
+    // if shrink-wrapped & triclinic, re-convert to lamda coords for new box
+    // re-invoke pbc() b/c x2lamda result can be outside [0,1] due to roundoff
+
+    if (nonperiodic == 2 && triclinic) {
+      x2lamda(atom->nlocal);
+      pbc();
+    }
+
+    // Update AutoPas container and move particles back into it
+    lmp->autopas->update_domain_size();
+    lmp->autopas->move_into();
+  }
 
 }

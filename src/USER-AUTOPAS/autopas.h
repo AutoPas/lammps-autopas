@@ -98,6 +98,8 @@ public:
 
   std::vector<std::vector<int>> get_interaction_map();
 
+  double get_box_grow_factor();
+
 private:
   std::unique_ptr<AutoPasType> _autopas;
   std::unique_ptr<ParticlePropertiesLibraryType> _particlePropertiesLibrary;

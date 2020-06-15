@@ -338,6 +338,11 @@ std::vector<std::vector<int>> AutoPasLMP::get_interaction_map() {
   return map;
 }
 
+double AutoPasLMP::get_box_grow_factor() {
+  // Fraction of total domain size, LAMMPS default is 1.0e-4
+  return 1.0e-2;
+}
+
 template void AutoPasLMP::add_particle<false>(const ParticleType &p);
 
 template void AutoPasLMP::add_particle<true>(const ParticleType &p);
