@@ -483,7 +483,8 @@ bigint AtomVecAtomicAutopas::memory_usage() {
   if (atom->memcheck("mask")) bytes += memory->usage(mask, nmax);
   if (atom->memcheck("image")) bytes += memory->usage(image, nmax);
 
-  //TODO Memory usage from autopas
+  bytes += AutoPasLMP::get_memory_usage() * 1000;
+
   //if (atom->memcheck("x")) bytes += memory->usage(x,nmax,3);
   //if (atom->memcheck("v")) bytes += memory->usage(v,nmax,3);
   //if (atom->memcheck("f")) bytes += memory->usage(f,nmax*comm->nthreads,3);

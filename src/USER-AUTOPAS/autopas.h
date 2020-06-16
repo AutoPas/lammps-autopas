@@ -100,6 +100,9 @@ public:
 
   double get_box_grow_factor();
 
+  // kB
+  static size_t get_memory_usage();
+
 private:
   std::unique_ptr<AutoPasType> _autopas;
   std::unique_ptr<ParticlePropertiesLibraryType> _particlePropertiesLibrary;

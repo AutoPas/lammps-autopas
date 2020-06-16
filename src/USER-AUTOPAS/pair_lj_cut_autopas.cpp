@@ -47,7 +47,7 @@ void PairLJCutAutoPas::compute(int eflag, int vflag) {
 /* ---------------------------------------------------------------------- */
 
 double PairLJCutAutoPas::memory_usage() {
-  double bytes = 0; // TODO Get memory usage from AutoPas
+  double bytes = 0; //TODO Any additional memory usage for pair calculation?
   bytes += PairLJCut::memory_usage();
 
   return bytes;

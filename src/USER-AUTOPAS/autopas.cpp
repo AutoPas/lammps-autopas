@@ -10,6 +10,8 @@
 #include "memory.h"
 #include "neighbor.h"
 
+#include <autopas/utils/MemoryProfiler.h>
+
 
 using namespace LAMMPS_NS;
 
@@ -341,6 +343,10 @@ std::vector<std::vector<int>> AutoPasLMP::get_interaction_map() {
 double AutoPasLMP::get_box_grow_factor() {
   // Fraction of total domain size, LAMMPS default is 1.0e-4
   return 1.0e-2;
+}
+
+size_t AutoPasLMP::get_memory_usage() {
+  return autopas::memoryProfiler::currentMemoryUsage();
 }
 
 template void AutoPasLMP::add_particle<false>(const ParticleType &p);
