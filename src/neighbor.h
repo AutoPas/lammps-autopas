@@ -108,7 +108,8 @@ class Neighbor : protected Pointers {
   virtual ~Neighbor();
   virtual void init();
   int request(void *, int instance=0);
-  int decide();                     // decide whether to build or not
+
+  virtual int decide();                     // decide whether to build or not
   virtual int check_distance();     // check max distance moved since last build
   void setup_bins();                // setup bins based on box and cutoff
   virtual void build(int);          // build all perpetual neighbor lists

@@ -59,8 +59,8 @@ int LAMMPS_NS::NeighborAutoPas::check_distance() {
   if (includegroup) nlocal = atom->nfirst;
 
   int flag = 0;
-#pragma omp parallel default(none) shared(nlocal, deltasq) private(delx, dely, delz, rsq) reduction(max: flag)
 
+#pragma omp parallel default(none) shared(nlocal, deltasq) private(delx, dely, delz, rsq) reduction(max: flag)
   for (auto iter = lmp->autopas->const_iterate<autopas::IteratorBehavior::ownedOnly>(); iter.isValid(); ++iter) {
     auto &x{iter->getR()};
     auto idx{lmp->autopas->particle_to_index(*iter)};
@@ -81,13 +81,13 @@ int LAMMPS_NS::NeighborAutoPas::check_distance() {
 
 void LAMMPS_NS::NeighborAutoPas::build(int topoflag) {
 
-  return; //TODO Do we even need the neighbor lists in lammps? Don't create them for now
-
-  int m;
-
   ago = 0;
   ncalls++;
   lastcall = update->ntimestep;
+
+  return; //TODO Do we even need the neighbor lists in lammps? Don't create them for now
+
+  int m;
 
   int nlocal = atom->nlocal;
   int nall = nlocal + atom->nghost;
@@ -163,4 +163,12 @@ void LAMMPS_NS::NeighborAutoPas::build(int topoflag) {
   // build topology lists for bonds/angles/etc
 
   if (atom->molecular && topoflag) build_topology();
+}
+
+int LAMMPS_NS::NeighborAutoPas::decide() {
+  assert(lmp->autopas->is_initialized());
+
+  bool must_rebuild = Neighbor::decide();
+
+  return lmp->autopas->update_autopas(must_rebuild);
 }

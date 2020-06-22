@@ -42,7 +42,7 @@ public:
   void init_autopas(double cutoff, double **epsilon, double **sigma);
 
 
-  void update_autopas();
+  bool update_autopas(bool must_rebuild);
 
   // [[deprecated]]
   [[nodiscard]] ParticleType *particle_by_index(int idx);

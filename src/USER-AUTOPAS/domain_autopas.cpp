@@ -26,7 +26,6 @@ void DomainAutoPas::pbc() {
   }
 
   // Update leaving particles
-  lmp->autopas->update_autopas();
   auto &leavingParticles = lmp->autopas->get_leaving_particles();
 
   // verify owned atoms have valid numerical coords

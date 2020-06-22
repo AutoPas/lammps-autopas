@@ -10,6 +10,8 @@ public:
 
   int check_distance() override;
 
+  int decide() override;
+
   void build(int i) override;
 };
 }

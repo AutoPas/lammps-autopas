@@ -71,11 +71,11 @@ void AutoPasLMP::init_autopas(double cutoff, double **epsilon, double **sigma) {
       autopas::TraversalOption::verletClusterCells); // Segfault
   _autopas->setAllowedTraversals(sensibleTraversalOptions);
 
-  {
-    //  _autopas->setAllowedContainers({autopas::ContainerOption::linkedCells});
-    //  _autopas->setAllowedDataLayouts({autopas::DataLayoutOption::soa});
-    //  _autopas->setAllowedTraversals({autopas::TraversalOption::c04});
-  }
+  /*{
+    _autopas->setAllowedContainers({autopas::ContainerOption::linkedCells});
+    _autopas->setAllowedDataLayouts({autopas::DataLayoutOption::soa});
+    _autopas->setAllowedTraversals({autopas::TraversalOption::c04});
+  }*/
 
   // TODO AutoPas always calculates FullShell.
   //  Turn LAMMPS newton setting off to disable force exchange?
@@ -100,14 +100,6 @@ void AutoPasLMP::init_autopas(double cutoff, double **epsilon, double **sigma) {
   _autopas->setVerletRebuildFrequency(
       std::max(neighbor->every, neighbor->delay));
   _autopas->setVerletSkin(neighbor->skin);
-
-  {// TODO Necessary until verlet skin works correctly
-    std::cout << "Verlet skin will be disabled for now!" << std::endl;
-    neighbor->every = 1;
-    neighbor->delay = 0;
-    _autopas->setVerletRebuildFrequency(1);
-    _autopas->setVerletSkin(0); // No skin needed when rebuilding every step
-  }
 
   autopas::Logger::create();
   autopas::Logger::get()->set_level(autopas::Logger::LogLevel::warn);
@@ -134,10 +126,21 @@ AutoPasLMP::ParticleType *AutoPasLMP::particle_by_index(int idx) {
 
 }
 
-void AutoPasLMP::update_autopas() {
-  auto&&[invalidParticles, updated] = _autopas->updateContainer();
-  _leavingParticles = std::move(invalidParticles);
-  _index_structure_valid = false;
+bool AutoPasLMP::update_autopas(bool must_rebuild) {
+  auto&&[invalidParticles, updated] = [&] {
+    if (must_rebuild) {
+      return std::make_pair(_autopas->updateContainerForced(), true);
+    } else {
+      return _autopas->updateContainer();
+    }
+  }();
+
+  if (updated) {
+    _leavingParticles = std::move(invalidParticles);
+    _index_structure_valid = false;
+  }
+
+  return updated;
 }
 
 void AutoPasLMP::move_into() {
@@ -333,8 +336,8 @@ std::vector<std::vector<int>> AutoPasLMP::get_interaction_map() {
 
   // Update value in map for every excluded type pairing
   for (int i = 0; i < lmp->neighbor->nex_type; ++i) {
-    map[lmp->neighbor->ex1_type[i]-1][lmp->neighbor->ex2_type[i]-1] = 0;
-    map[lmp->neighbor->ex2_type[i]-1][lmp->neighbor->ex1_type[i]-1] = 0;
+    map[lmp->neighbor->ex1_type[i] - 1][lmp->neighbor->ex2_type[i] - 1] = 0;
+    map[lmp->neighbor->ex2_type[i] - 1][lmp->neighbor->ex1_type[i] - 1] = 0;
   }
 
   return map;
