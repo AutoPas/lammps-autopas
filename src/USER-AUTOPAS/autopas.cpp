@@ -194,7 +194,7 @@ void AutoPasLMP::copy_back() const {
 }
 
 void AutoPasLMP::update_index_structure() {
-  auto n = _autopas->getNumberOfParticles(autopas::haloAndOwned);
+  auto n = lmp->atom->nlocal + lmp->atom->nghost;
   if (_use_index_map) {
     _index_map.clear();
     _index_map.reserve(n);
@@ -204,15 +204,30 @@ void AutoPasLMP::update_index_structure() {
   }
 
 #pragma omp parallel default(none)
-  for (auto &p: *lmp->autopas->_autopas) { // owned and halo
-    auto idx{particle_to_index(p)};
-    if (_use_index_map) {
-      _index_map.emplace(idx, &p);
-      // TODO Test if no race when emplacing in map
-    } else {
-      _index_vector[idx] = &p;
+  {
+    for (auto &p: *lmp->autopas->_autopas) { // owned and halo
+      auto idx{particle_to_index(p)};
+      if (_use_index_map) {
+        _index_map.emplace(idx, &p);
+        // TODO Test if no race when emplacing in map
+      } else {
+        _index_vector[idx] = &p;
+      }
+    }
+
+#pragma omp for
+    for (int i = 0; i < _leavingParticles.size(); ++i) {
+      auto &p{_leavingParticles[i]};
+      auto idx{particle_to_index(p)};
+      if (_use_index_map) {
+        _index_map.emplace(idx, &p);
+        // TODO Test if no race when emplacing in map
+      } else {
+        _index_vector[idx] = &p;
+      }
     }
   }
+
   _index_structure_valid = true;
 }
 
