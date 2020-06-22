@@ -2748,8 +2748,8 @@ double Variable::collapse_tree(Tree *tree)
     else if (update->ntimestep < ivalue2) {
       int offset = update->ntimestep - ivalue1;
       tree->value = ivalue1 + (offset/ivalue3)*ivalue3 + ivalue3;
-      if (tree->value > ivalue2) tree->value = MAXBIGINT;
-    } else tree->value = MAXBIGINT;
+      if (tree->value > ivalue2) tree->value = static_cast<double>(MAXBIGINT);
+    } else tree->value = static_cast<double>(MAXBIGINT);
     return tree->value;
   }
 
@@ -3082,8 +3082,8 @@ double Variable::eval_tree(Tree *tree, int i)
     else if (update->ntimestep < ivalue2) {
       int offset = update->ntimestep - ivalue1;
       arg = ivalue1 + (offset/ivalue3)*ivalue3 + ivalue3;
-      if (arg > ivalue2) arg = MAXBIGINT;
-    } else arg = MAXBIGINT;
+      if (arg > ivalue2) arg = static_cast<double>(MAXBIGINT);
+    } else arg = static_cast<double>(MAXBIGINT);
     return arg;
   }
 
@@ -3659,8 +3659,8 @@ int Variable::math_function(char *word, char *contents, Tree **tree,
       else if (update->ntimestep < ivalue2) {
         int offset = update->ntimestep - ivalue1;
         value = ivalue1 + (offset/ivalue3)*ivalue3 + ivalue3;
-        if (value > ivalue2) value = MAXBIGINT;
-      } else value = MAXBIGINT;
+        if (value > ivalue2) value = static_cast<double>(MAXBIGINT);
+      } else value = static_cast<double>(MAXBIGINT);
       argstack[nargstack++] = value;
     }
 
