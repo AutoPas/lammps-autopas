@@ -23,8 +23,8 @@ if (PKG_USER-AUTOPAS)
     FetchContent_Declare(
             autopas
             GIT_REPOSITORY ${autopasRepoPath}
-            GIT_TAG 509a78ebe70020456c5e07ac68800db5936f50c9
-            #GIT_TAG origin/feature/regionParticleIteratorIncrease
+            GIT_TAG 918ce7c356250df60b9a1e217482a0c8d4f7bf0d
+            # GIT_TAG 509a78ebe70020456c5e07ac68800db5936f50c9
     )
 
     option(AUTOPAS_BUILD_TESTS "" OFF)

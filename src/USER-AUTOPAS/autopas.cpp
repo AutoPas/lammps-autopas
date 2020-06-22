@@ -62,13 +62,14 @@ void AutoPasLMP::init_autopas(double cutoff, double **epsilon, double **sigma) {
 
   auto sensibleTraversalOptions = autopas::TraversalOption::getAllOptions();
   sensibleTraversalOptions.erase(
-      autopas::TraversalOption::verletClusters); //  Segfault
+      autopas::TraversalOption::verletClusters); //  Wrong results
   sensibleTraversalOptions.erase(
-      autopas::TraversalOption::verletClustersColoring); // Segfault
+      autopas::TraversalOption::verletClustersColoring); // Wrong results
   sensibleTraversalOptions.erase(
-      autopas::TraversalOption::verletClustersStatic); // Segfault
+      autopas::TraversalOption::verletClustersStatic); // Wrong results
   sensibleTraversalOptions.erase(
-      autopas::TraversalOption::verletClusterCells); // Segfault
+      autopas::TraversalOption::verletClusterCells); // Vector out of range exception
+
   _autopas->setAllowedTraversals(sensibleTraversalOptions);
 
   /*{
