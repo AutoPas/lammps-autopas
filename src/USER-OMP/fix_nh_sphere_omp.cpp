@@ -117,7 +117,7 @@ void FixNHSphereOMP::nh_v_temp()
 
   if (which == NOBIAS) {
 #if defined(_OPENMP)
-#pragma omp parallel for default(none) private(i) schedule(static) shared(nlocal, mask, v, factor_eta, omega)
+#pragma omp parallel for default(none) private(i) schedule(static) shared(nlocal, mask, v, omega)
 #endif
     for (i = 0; i < nlocal; i++) {
       if (mask[i] & groupbit) {
