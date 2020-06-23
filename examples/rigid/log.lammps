@@ -1,0 +1,42 @@
+LAMMPS (7 Aug 2019)
+  using 1 OpenMP thread(s) per MPI task
+# Simple rigid body system
+
+units		lj
+atom_style	atomic
+
+pair_style	lj/cut 2.5
+
+read_data	data.rigid
+  orthogonal box = (-12 -12 -12) to (12 12 12)
+  1 by 1 by 1 MPI processor grid
+  reading atoms ...
+  81 atoms
+  read_data CPU = 0.0294104 secs
+
+velocity 	all create 100.0 4928459
+
+# unconnected bodies
+
+group		clump1 id <> 1 9
+9 atoms in group clump1
+group		clump2 id <> 10 18
+9 atoms in group clump2
+group		clump3 id <> 19 27
+9 atoms in group clump3
+group		clump4 id <> 28 36
+9 atoms in group clump4
+group		clump5 id <> 37 45
+9 atoms in group clump5
+group		clump6 id <> 46 54
+9 atoms in group clump6
+group		clump7 id <> 55 63
+9 atoms in group clump7
+group		clump8 id <> 64 72
+9 atoms in group clump8
+group		clump9 id <> 73 81
+9 atoms in group clump9
+
+fix 1 all rigid group 9 clump1 clump2 clump3 clump4 clump5 	  	      clump6 clump7 clump8 clump9
+ERROR: Unrecognized fix style 'rigid' is part of the RIGID package which is not enabled in this LAMMPS binary. (src/modify.cpp:901)
+Last command: fix 1 all rigid group 9 clump1 clump2 clump3 clump4 clump5 	  	      clump6 clump7 clump8 clump9
