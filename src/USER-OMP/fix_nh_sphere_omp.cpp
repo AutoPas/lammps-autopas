@@ -86,7 +86,7 @@ void FixNHSphereOMP::nve_v()
   // 4 cases depending on radius vs shape and rmass vs mass
 
 #if defined(_OPENMP)
-#pragma omp parallel for default(none) private(i) schedule(static)
+#pragma omp parallel for default(none) private(i) schedule(static) shared(nlocal, mask, rmass, v, f, dtfrotate, radius, omega, torque)
 #endif
   for (i = 0; i < nlocal; i++) {
     if (mask[i] & groupbit) {
@@ -117,7 +117,7 @@ void FixNHSphereOMP::nh_v_temp()
 
   if (which == NOBIAS) {
 #if defined(_OPENMP)
-#pragma omp parallel for default(none) private(i) schedule(static)
+#pragma omp parallel for default(none) private(i) schedule(static) shared(nlocal, mask, v, factor_eta, omega)
 #endif
     for (i = 0; i < nlocal; i++) {
       if (mask[i] & groupbit) {
@@ -131,7 +131,7 @@ void FixNHSphereOMP::nh_v_temp()
     }
   } else if (which == BIAS) {
 #if defined(_OPENMP)
-#pragma omp parallel for default(none) private(i) schedule(static)
+#pragma omp parallel for default(none) private(i) schedule(static) shared(nlocal, mask, v, omega)
 #endif
     for (i = 0; i < nlocal; i++) {
       double buf[3];

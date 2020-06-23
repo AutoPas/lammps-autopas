@@ -45,7 +45,7 @@ void PairGaussOMP::compute(int eflag, int vflag)
   double occ = 0.0;
 
 #if defined(_OPENMP)
-#pragma omp parallel default(none) shared(eflag,vflag) reduction(+:occ)
+#pragma omp parallel default(none) shared(eflag, vflag, inum, nthreads, nall) reduction(+:occ)
 #endif
   {
     int ifrom, ito, tid;

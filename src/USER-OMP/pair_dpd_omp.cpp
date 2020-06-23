@@ -80,7 +80,7 @@ void PairDPDOMP::compute(int eflag, int vflag)
   }
 
 #if defined(_OPENMP)
-#pragma omp parallel default(none) shared(eflag,vflag)
+#pragma omp parallel default(none) shared(eflag, vflag, inum, nthreads, nall)
 #endif
   {
     int ifrom, ito, tid;

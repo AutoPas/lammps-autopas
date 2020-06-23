@@ -46,7 +46,7 @@ void DomainOMP::pbc()
 
   int i;
 #if defined(_OPENMP)
-#pragma omp parallel for private(i) default(none) schedule(static)
+#pragma omp parallel for private(i) default(none) schedule(static) shared(nlocal, x, lo, period, mask, image, hi, v)
 #endif
   for (i = 0; i < nlocal; i++) {
     imageint idim,otherdims;
@@ -145,7 +145,7 @@ void DomainOMP::lamda2x(int n)
   int i;
 
 #if defined(_OPENMP)
-#pragma omp parallel for private(i) default(none) schedule(static)
+#pragma omp parallel for private(i) default(none) schedule(static) shared(num, x)
 #endif
   for (i = 0; i < num; i++) {
     x[i].x = h[0]*x[i].x + h[5]*x[i].y + h[4]*x[i].z + boxlo[0];
@@ -166,7 +166,7 @@ void DomainOMP::x2lamda(int n)
   int i;
 
 #if defined(_OPENMP)
-#pragma omp parallel for private(i) default(none) schedule(static)
+#pragma omp parallel for private(i) default(none) schedule(static) shared(num, x)
 #endif
   for (i = 0; i < num; i++) {
     double delta0 = x[i].x - boxlo[0];

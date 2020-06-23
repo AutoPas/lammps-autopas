@@ -115,7 +115,7 @@ void FixNVTSllodOMP::nh_v_temp()
   MathExtra::multiply_shape_shape(domain->h_rate,domain->h_inv,h_two);
 
 #if defined(_OPENMP)
-#pragma omp parallel for default(none) private(i) shared(h_two) schedule(static)
+#pragma omp parallel for default(none) private(i) shared(h_two, nlocal, mask, v) schedule(static)
 #endif
   for (i = 0; i < nlocal; i++) {
     double vdelu0,vdelu1,vdelu2,buf[3];

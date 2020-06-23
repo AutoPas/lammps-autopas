@@ -44,7 +44,7 @@ void PairLJ96CutOMP::compute(int eflag, int vflag)
   const int inum = list->inum;
 
 #if defined(_OPENMP)
-#pragma omp parallel default(none) shared(eflag,vflag)
+#pragma omp parallel default(none) shared(eflag, vflag, inum, nthreads, nall)
 #endif
   {
     int ifrom, ito, tid;

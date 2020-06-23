@@ -43,7 +43,7 @@ void NPairHalfMultiNewtonTriOmp::build(NeighList *list)
 
   NPAIR_OMP_INIT;
 #if defined(_OPENMP)
-#pragma omp parallel default(none) shared(list)
+#pragma omp parallel default(none) shared(list, nlocal, nthreads, ifix, molecular, moltemplate)
 #endif
   NPAIR_OMP_SETUP(nlocal);
 

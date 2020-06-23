@@ -49,7 +49,7 @@ void NPairHalfRespaNsqNewtonOmp::build(NeighList *list)
   const int respamiddle = list->respamiddle;
 
 #if defined(_OPENMP)
-#pragma omp parallel default(none) shared(list)
+#pragma omp parallel default(none) shared(list, nlocal, bitmask, nthreads, ifix, molecular, moltemplate, respamiddle)
 #endif
   NPAIR_OMP_SETUP(nlocal);
 

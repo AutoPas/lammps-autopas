@@ -71,7 +71,7 @@ void FixGravityOMP::post_force(int /* vflag */)
 
   if (rmass) {
 #if defined(_OPENMP)
-#pragma omp parallel for private(i,massone) default(none) reduction(-:grav)
+#pragma omp parallel for private(i,massone) default(none) reduction(-:grav) shared(nlocal, mask, rmass, f, xacc_thr, yacc_thr, zacc_thr, x)
 #endif
     for (i = 0; i < nlocal; i++)
       if (mask[i] & groupbit) {
@@ -83,7 +83,7 @@ void FixGravityOMP::post_force(int /* vflag */)
       }
   } else {
 #if defined(_OPENMP)
-#pragma omp parallel for private(i,massone) default(none) reduction(-:grav)
+#pragma omp parallel for private(i,massone) default(none) reduction(-:grav) shared(nlocal, mask, mass, type, f, xacc_thr, yacc_thr, zacc_thr, x)
 #endif
     for (i = 0; i < nlocal; i++)
       if (mask[i] & groupbit) {

@@ -50,7 +50,7 @@ void FixNVESphereOMP::initial_integrate(int /* vflag */)
   // update v,x,omega for all particles
   // d_omega/dt = torque / inertia
 #if defined(_OPENMP)
-#pragma omp parallel for private(i) default(none)
+#pragma omp parallel for private(i) default(none) shared(nlocal, mask, rmass, x, v, f, dtfrotate, radius, omega, torque)
 #endif
   for (i = 0; i < nlocal; i++) {
     if (mask[i] & groupbit) {
@@ -77,7 +77,7 @@ void FixNVESphereOMP::initial_integrate(int /* vflag */)
     double * const * const mu = atom->mu;
     if (dlm == NODLM) {
 #if defined(_OPENMP)
-#pragma omp parallel for private(i) default(none)
+#pragma omp parallel for private(i) default(none) shared(nlocal, mask, mu, omega)
 #endif
       for (i = 0; i < nlocal; i++) {
         double g0,g1,g2,msq,scale;
@@ -96,7 +96,7 @@ void FixNVESphereOMP::initial_integrate(int /* vflag */)
       }
     } else {
 #if defined(_OPENMP)
-#pragma omp parallel for private(i) default(none)
+#pragma omp parallel for private(i) default(none) shared(nlocal, mask, mu, omega)
 #endif
       // Integrate orientation following Dullweber-Leimkuhler-Maclachlan scheme
       for (i = 0; i < nlocal; i++) {
@@ -225,7 +225,7 @@ void FixNVESphereOMP::final_integrate()
   // d_omega/dt = torque / inertia
 
 #if defined(_OPENMP)
-#pragma omp parallel for private(i) default(none)
+#pragma omp parallel for private(i) default(none) shared(nlocal, mask, rmass, v, f, dtfrotate, radius, omega, torque)
 #endif
   for (i = 0; i < nlocal; i++)
     if (mask[i] & groupbit) {

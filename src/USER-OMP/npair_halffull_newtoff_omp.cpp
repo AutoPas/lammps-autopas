@@ -38,7 +38,7 @@ void NPairHalffullNewtoffOmp::build(NeighList *list)
   NPAIR_OMP_INIT;
 
 #if defined(_OPENMP)
-#pragma omp parallel default(none) shared(list)
+#pragma omp parallel default(none)  shared(list, nthreads, ifix, inum_full)
 #endif
   NPAIR_OMP_SETUP(inum_full);
 

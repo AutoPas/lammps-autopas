@@ -37,7 +37,7 @@ void NPairHalfBinAtomonlyNewtonOmp::build(NeighList *list)
 
   NPAIR_OMP_INIT;
 #if defined(_OPENMP)
-#pragma omp parallel default(none) shared(list)
+#pragma omp parallel default(none) shared(list, nthreads, nlocal, ifix)
 #endif
   NPAIR_OMP_SETUP(nlocal);
 

@@ -42,7 +42,7 @@ void FixNVEOMP::initial_integrate(int /* vflag */)
   if (atom->rmass) {
     const double * const rmass = atom->rmass;
 #if defined (_OPENMP)
-#pragma omp parallel for private(i) default(none) schedule(static)
+#pragma omp parallel for private(i) default(none) schedule(static) shared(nlocal, mask, rmass, v, x, f)
 #endif
     for (i = 0; i < nlocal; i++)
       if (mask[i] & groupbit) {
@@ -59,7 +59,7 @@ void FixNVEOMP::initial_integrate(int /* vflag */)
     const double * const mass = atom->mass;
     const int * const type = atom->type;
 #if defined (_OPENMP)
-#pragma omp parallel for private(i) default(none) schedule(static)
+#pragma omp parallel for private(i) default(none) schedule(static) shared(nlocal, mask, mass, type, v, x, f)
 #endif
     for (i = 0; i < nlocal; i++)
       if (mask[i] & groupbit) {
@@ -89,7 +89,7 @@ void FixNVEOMP::final_integrate()
   if (atom->rmass) {
     const double * const rmass = atom->rmass;
 #if defined (_OPENMP)
-#pragma omp parallel for private(i) default(none) schedule(static)
+#pragma omp parallel for private(i) default(none) schedule(static) shared(nlocal, mask, rmass, v, f)
 #endif
     for (i = 0; i < nlocal; i++)
       if (mask[i] & groupbit) {
@@ -103,7 +103,7 @@ void FixNVEOMP::final_integrate()
     const double * const mass = atom->mass;
     const int * const type = atom->type;
 #if defined (_OPENMP)
-#pragma omp parallel for private(i) default(none) schedule(static)
+#pragma omp parallel for private(i) default(none) schedule(static) shared(nlocal, mask, mass, type, v, f)
 #endif
     for (i = 0; i < nlocal; i++)
       if (mask[i] & groupbit) {
