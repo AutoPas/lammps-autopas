@@ -1,0 +1,29 @@
+LAMMPS (7 Aug 2019)
+  using 1 OpenMP thread(s) per MPI task
+# uniaxial NVT deformation of WCA fluid
+
+units		lj
+atom_style	atomic
+
+
+pair_style	lj/cut 1.122562
+read_data       data.wca
+  orthogonal box = (0 0 0) to (8.39798 8.39798 8.39798)
+  1 by 1 by 1 MPI processor grid
+  reading atoms ...
+  500 atoms
+  reading velocities ...
+  500 velocities
+  read_data CPU = 0.024124 secs
+pair_coeff	1 1 1.0 1.0
+pair_modify     shift yes
+
+neighbor	0.5 bin
+neigh_modify	delay 0
+
+change_box      all triclinic
+  triclinic box = (0 0 0) to (8.39798 8.39798 8.39798) with tilt (0 0 0)
+
+fix		1 all nvt/uef temp 0.722 0.722 0.5 erate -0.5 -0.5
+ERROR: Unrecognized fix style 'nvt/uef' is part of the USER-UEF package which is not enabled in this LAMMPS binary. (src/modify.cpp:901)
+Last command: fix		1 all nvt/uef temp 0.722 0.722 0.5 erate -0.5 -0.5
