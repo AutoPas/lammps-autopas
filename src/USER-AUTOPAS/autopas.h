@@ -17,6 +17,8 @@ namespace LAMMPS_NS {
 
 class AutoPasLMP : protected Pointers {
 public:
+
+  // AutoPas Types
   using FloatType = double;
   using FloatVecType = std::array<FloatType, 3>;
   using ParticleType = MoleculeLJLammps<FloatType>;
@@ -27,10 +29,13 @@ public:
 
   /*
    * Flag used to differentiate when LAMMPS is build with and without
-   * AutoPas support and using AutoPas enabled styles is ok
+   * AutoPas support and when using AutoPas enabled styles is ok
    */
   int autopas_exists = 1;
 
+  /**
+   * Create the AutoPas management object
+   */
   AutoPasLMP(class LAMMPS *, int, char **);
 
   /**
@@ -41,52 +46,122 @@ public:
    */
   void init_autopas(double cutoff, double **epsilon, double **sigma);
 
-
+  /**
+   * Rebuild the AutoPas container and update the leaving particles with the ones returned by AutoPas.
+   * @param must_rebuild When false, let AutoPas decide if rebuild is necessary
+   * @return Was container rebuild?
+   */
   bool update_autopas(bool must_rebuild);
 
-  // [[deprecated]]
-  [[nodiscard]] ParticleType *particle_by_index(int idx);
+  /**
+   * Get a particle by its global index / particle ID.
+   * Modifications to that particle are persistent but might have unexpected results if done the wrong way.
+   * E.g. never use this method to update particle positions!
+   * @param idx Particle ID
+   * @return The pointer to the particle inside of AutoPas.
+   * It is only valid when used immediately and must not be stored for later reference.
+   */
+  [[nodiscard]] ParticleType *particle_by_index(int idx); // TODO: Remove if possible
 
+  /**
+   * Copies all particles from the AutoPas container into the LAMMPS arrays.
+   */
   void copy_back() const;
+
+  /**
+   * Moves all particles from the AutoPas container into the LAMMPS arrays and sets AutoPas to uninitialized..
+   */
   void move_back();
+
+  /**
+   * Moves all particles from the LAMMPS arrays into the AutoPas container and sets AutoPas to initialized.
+   */
   void move_into();
 
+  /**
+   * Adds a particle to the AutoPas container.
+   * @tparam halo True: New particle is a ghost atom; False: New particle is a local atom
+   * @param p Particle to add
+   */
   template<bool halo = false>
   void add_particle(const ParticleType &p);
 
+  /**
+   * Iterate over particles in the specified slab of the domain.
+   * @tparam haloOnly Iterate only over ghost atoms
+   * @param dim Dimension
+   * @param lo Low corner
+   * @param hi High corner
+   * @return
+   */
   template<bool haloOnly = false>
   autopas::ParticleIteratorWrapper<ParticleType, true>
-  particles_by_slab(int i, double d, double d1) const;
+  particles_by_slab(int dim, double lo, double hi) const;
 
-  std::vector<ParticleType> &get_leaving_particles();
-
+  /**
+   * Iterate over all particles in the AutoPas container.
+   * @tparam iterateBehavior Local, ghost or both
+   * @return Particle iterator
+   */
   template<autopas::IteratorBehavior iterateBehavior>
   AutoPasLMP::AutoPasType::iterator_t iterate() {
     return _autopas->begin(iterateBehavior);
   }
 
+  /**
+   * Const iterate over all particles in the AutoPas container.
+   * @tparam iterateBehavior Local, ghost or both
+   * @return Const particle iterator
+   */
   template<autopas::IteratorBehavior iterateBehavior>
   AutoPasLMP::AutoPasType::const_iterator_t const_iterate() const {
     return _autopas->cbegin(iterateBehavior);
   }
 
+  /**
+   * Iterate over all particles in the AutoPas container.
+   * Some particles might be dropped from the iterator based on the given local index bounds.
+   * The user MUST still performing an additional check if the index of the particle is inside the given bounds.
+   * @param first Lower local index
+   * @param last  Upper local index
+   * @return Particle iterator
+   */
   AutoPasLMP::AutoPasType::const_iterator_t
   const_iterate_auto(int first, int last);
 
+  /**
+   * Const iterate over all particles in the AutoPas container.
+   * Some particles might be dropped from the iterator based on the given local index bounds.
+   * The user MUST still performing an additional check if the index of the particle is inside the given bounds.
+   * @param first Lower local index
+   * @param last  Upper local index
+   * @return Const particle iterator
+   */
   AutoPasLMP::AutoPasType::iterator_t
   iterate_auto(int first, int last);
 
 
+  /**
+   * Iterate all particle pairs (considering the set cutoff radius)
+   * @param functor Function to execute for every pair
+   * @return True if AutoPas tuned in this iteration
+   */
   bool iterate_pairwise(PairFunctorType *functor);
 
-
-  bool is_initialized();
-
-  FloatType get_cutoff();
-
+  /**
+   * Get the local indices of given particles.
+   * @param particles Vector of particles
+   * @return Vector of local indices
+   */
   static std::vector<int>
   particle_to_index(const std::vector<ParticleType *> &particles);
 
+  /**
+   * Get the local index of a given particle.
+   * This is the index the particle would be stored in when using the LAMMPS arrays.
+   * @param particle Particle
+   * @return Local index (this is not necessarily the particle ID)
+   */
   static inline int particle_to_index(const ParticleType &particle) {
     //auto idx {atom->map(particle.getID())};
     auto idx{particle.getLocalID()};
@@ -94,13 +169,50 @@ public:
     return idx;
   }
 
+  /**
+   * Returns the leaving particles of the last container rebuild.
+   * Particles can be deleted from this when they were handled.
+   * @return Leaving particles.
+   */
+  std::vector<ParticleType> &get_leaving_particles();
+
+  /**
+   * Flag determining if the particles are currently stored in the AutoPas container or in the LAMMPS arrays.
+   * This should always be checked before performing any operations using AutoPas.
+   * In most cases a fallback to an LAMMPS only implementation has to be provided if AutoPas is currently not initialized.
+   * @return True if particles are stored in the AutoPas container
+   */
+  bool is_initialized();
+
+  /**
+   * Gets the cutoff radius used by the AutoPas container.
+   * @return Cutoff radius
+   */
+  FloatType get_cutoff();
+
+  /**
+   * Grow or shrink the AutoPas container to the current domain size.
+   * This operation can only be performed if AutoPas is not initialized!
+   */
   void update_domain_size();
 
-  std::vector<std::vector<int>> get_interaction_map();
+  /**
+   * Compute the interaction mapping which particle type should interact with which.
+   * The entry for type i can be found at index (i-1)
+   * @return Type x Type => bool mapping
+   */
+  [[nodiscard]] std::vector<std::vector<int>> get_interaction_map();
 
+  /**
+   * Gets the factor the domain should grow every time it has to be resized.
+   * @return Regrow factor
+   */
   double get_box_grow_factor();
 
-  // kB
+  /**
+   * Get the memory usage of AutoPas.
+   * @return Memory usage in kB.
+   */
   static size_t get_memory_usage();
 
 private:
