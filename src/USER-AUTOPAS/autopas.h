@@ -61,7 +61,8 @@ public:
    * @return The pointer to the particle inside of AutoPas.
    * It is only valid when used immediately and must not be stored for later reference.
    */
-  [[nodiscard]] ParticleType *particle_by_index(int idx); // TODO: Remove if possible
+  [[nodiscard]] ParticleType *
+  particle_by_index(int idx); // TODO: Remove if possible
 
   /**
    * Copies all particles from the AutoPas container into the LAMMPS arrays.
@@ -228,6 +229,53 @@ private:
   void update_index_structure();
 
   bool _initialized = false;
+
+  /**
+   * AutoPas options
+   * defaults from autopas/AutoPas.h
+   */
+  struct {
+    bool tuning{true};
+
+    unsigned int verlet_cluster_size{4};
+    unsigned int tuning_interval{5000};
+    unsigned int num_samples{3};
+    unsigned int max_evidence{10};
+
+    // (only relevant for predictive tuning)
+    struct {
+      double relative_optimum_range{1.2};
+      unsigned int max_tuning_phases_without_test{5};
+    } predictive_tuning;
+
+    // / only relevant for Bayesian search)
+    autopas::AcquisitionFunctionOption acquisition_function = {
+        autopas::AcquisitionFunctionOption::upperConfidenceBound};
+
+    autopas::TuningStrategyOption tuning_strategy{
+        autopas::TuningStrategyOption::fullSearch};
+    autopas::SelectorStrategyOption selector_strategy{
+        autopas::SelectorStrategyOption::fastestAbs};
+
+    std::set<autopas::ContainerOption> allowed_containers{
+        autopas::ContainerOption::getMostOptions()};
+    std::set<autopas::TraversalOption> allowed_traversals{
+        autopas::TraversalOption::getMostOptions()};
+    std::set<autopas::DataLayoutOption> allowed_data_layouts{
+        autopas::DataLayoutOption::getMostOptions()};
+    std::set<autopas::Newton3Option> allowed_newton3{
+        autopas::Newton3Option::getMostOptions()};
+
+    // (only relevant for LinkedCells, VerletLists and VerletListsCells)
+    std::unique_ptr<autopas::NumberSet<double>> allowed_cell_size_factors{
+        std::make_unique<autopas::NumberSetFinite<double>>(
+            std::set<double>({1.}))
+    };
+
+    // (only relevant for BalancedSlicedTraversal and BalancedSlicedTraversalVerlet).
+    std::set<autopas::LoadEstimatorOption> allowed_load_estimators{
+        autopas::LoadEstimatorOption::getMostOptions()};
+  } _opt;
 };
 }
 
