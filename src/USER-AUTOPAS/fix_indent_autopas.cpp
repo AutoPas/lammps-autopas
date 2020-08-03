@@ -57,7 +57,7 @@ void FixIndentAutoPas::post_force(int vflag) {
     for (auto iter = lmp->autopas->iterate<autopas::ownedOnly>(); iter.isValid(); ++iter) {
       auto &x = iter->getR();
       auto &f = iter->getF();
-      int idx = AutoPasLMP::particle_to_index(*iter);
+      auto idx{iter->getLocalID()};
       double delx, dely, delz, r, dr, fmag, fx, fy, fz;
       if (atom->mask[idx] & groupbit) {
         delx = x[0] - ctr[0];
@@ -123,7 +123,7 @@ void FixIndentAutoPas::post_force(int vflag) {
     for (auto iter = lmp->autopas->iterate<autopas::ownedOnly>(); iter.isValid(); ++iter) {
       auto &x = iter->getR();
       auto &f = iter->getF();
-      int idx = AutoPasLMP::particle_to_index(*iter);
+      auto idx{iter->getLocalID()};
       double delx, dely, delz, r, dr, fmag, fx, fy, fz;
       if (atom->mask[idx] & groupbit) {
         if (cdim == 0) {
@@ -174,7 +174,7 @@ void FixIndentAutoPas::post_force(int vflag) {
     for (auto iter = lmp->autopas->iterate<autopas::ownedOnly>(); iter.isValid(); ++iter) {
       auto &x = iter->getR();
       auto &f = iter->getF();
-      int idx = AutoPasLMP::particle_to_index(*iter);
+      auto idx{iter->getLocalID()};
       double dr, fatom;
       if (atom->mask[idx] & groupbit) {
         dr = planeside * (plane - x[cdim]);

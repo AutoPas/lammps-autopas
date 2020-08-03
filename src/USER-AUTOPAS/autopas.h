@@ -158,19 +158,6 @@ public:
   particle_to_index(const std::vector<ParticleType *> &particles);
 
   /**
-   * Get the local index of a given particle.
-   * This is the index the particle would be stored in when using the LAMMPS arrays.
-   * @param particle Particle
-   * @return Local index (this is not necessarily the particle ID)
-   */
-  static inline int particle_to_index(const ParticleType &particle) {
-    //auto idx {atom->map(particle.getID())};
-    auto idx{particle.getLocalID()};
-    assert(idx != -1);
-    return idx;
-  }
-
-  /**
    * Returns the leaving particles of the last container rebuild.
    * Particles can be deleted from this when they were handled.
    * @return Leaving particles.

@@ -46,7 +46,7 @@ void FixSetForceAutoPas::post_force(int vflag) {
     for (auto iter = lmp->autopas->iterate<autopas::ownedOnly>(); iter.isValid(); ++iter) {
       auto &x = iter->getR();
       auto &f = iter->getF();
-      int idx = AutoPasLMP::particle_to_index(*iter);
+      auto idx{iter->getLocalID()};
       if (atom->mask[idx] & groupbit) {
         if (region && !region->match(x[0], x[1], x[2])) continue;
         foriginal[0] += f[0];
@@ -82,7 +82,7 @@ void FixSetForceAutoPas::post_force(int vflag) {
     for (auto iter = lmp->autopas->iterate<autopas::ownedOnly>(); iter.isValid(); ++iter) {
       auto &x = iter->getR();
       auto &f = iter->getF();
-      int idx = AutoPasLMP::particle_to_index(*iter);
+      auto idx{iter->getLocalID()};
       if (atom->mask[idx] & groupbit) {
         if (region && !region->match(x[0], x[1], x[2])) continue;
         foriginal[0] += f[0];
@@ -117,7 +117,7 @@ void FixSetForceAutoPas::post_force_respa(int vflag, int ilevel, int iloop) {
     for (auto iter = lmp->autopas->iterate<autopas::ownedOnly>(); iter.isValid(); ++iter) {
       auto &x = iter->getR();
       auto &f = iter->getF();
-      int idx = AutoPasLMP::particle_to_index(*iter);
+      auto idx{iter->getLocalID()};
       if (atom->mask[idx] & groupbit) {
         if (region && !region->match(x[0], x[1], x[2])) continue;
         AutoPasLMP::FloatVecType f_set{f};

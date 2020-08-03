@@ -69,7 +69,7 @@ void FixTempRescaleAutoPas::end_of_step() {
     for (auto iter = lmp->autopas->iterate<autopas::ownedOnly>(); iter.isValid(); ++iter) {
       auto v = iter->getV();
       auto &f = iter->getF();
-      int idx = AutoPasLMP::particle_to_index(*iter);
+      int idx = iter->getLocalID();
       if (atom->mask[idx] & groupbit) {
         if (which == BIAS) temperature->remove_bias(idx, v.data());
         v[0] *= factor;

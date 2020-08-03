@@ -15,7 +15,7 @@ void FixEnforce2DAutoPas::post_force(int vflag) {
   for (auto iter = lmp->autopas->iterate<autopas::ownedOnly>(); iter.isValid(); ++iter) {
     auto v = iter->getV();
     auto f = iter->getF();
-    int idx = AutoPasLMP::particle_to_index(*iter);
+    auto idx{iter->getLocalID()};
 
     if (idx < nlocal && (mask[idx] & groupbit)) {
       v[2] = 0.0;

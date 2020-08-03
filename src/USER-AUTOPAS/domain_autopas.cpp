@@ -84,7 +84,7 @@ DomainAutoPas::pbc(AutoPasLMP::ParticleType &particle, double *lo, double *hi,
   auto x{particle.getR()};
   auto v{particle.getV()};
 
-  auto idx{lmp->autopas->particle_to_index(particle)};
+  auto idx{particle.getLocalID()};
   bool was_touched = false;
 
   if (xperiodic) {
@@ -269,7 +269,8 @@ void DomainAutoPas::lamda2x(int n) {
 #pragma omp parallel default(none) shared(n)
   for (auto iter = lmp->autopas->iterate<autopas::IteratorBehavior::ownedOnly>(); iter.isValid(); ++iter) {
 
-    if (lmp->autopas->particle_to_index(*iter) < n) {
+    auto idx{iter->getLocalID()};
+    if (idx < n) {
       auto x{iter->getR()};
 
       x[0] = h[0] * x[0] + h[5] * x[1] + h[4] * x[2] + boxlo[0];
@@ -292,7 +293,8 @@ void DomainAutoPas::x2lamda(int n) {
 #pragma omp parallel default(none) shared(n) private(delta)
   for (auto iter = lmp->autopas->iterate<autopas::IteratorBehavior::ownedOnly>(); iter.isValid(); ++iter) {
 
-    if (lmp->autopas->particle_to_index(*iter) < n) {
+    auto idx{iter->getLocalID()};
+    if (idx < n) {
       auto x{iter->getR()};
 
       delta[0] = x[0] - boxlo[0];

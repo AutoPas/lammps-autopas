@@ -58,7 +58,7 @@ void FixAddForceAutoPas::post_force(int vflag) {
     for (auto iter = lmp->autopas->iterate<autopas::ownedOnly>(); iter.isValid(); ++iter) {
       auto &x = iter->getR();
       auto &f = iter->getF();
-      int idx = AutoPasLMP::particle_to_index(*iter);
+      auto idx{iter->getLocalID()};
       if (atom->mask[idx] & groupbit) {
         if (region && !region->match(x[0], x[1], x[2])) continue;
         double unwrap[3];
@@ -110,7 +110,7 @@ void FixAddForceAutoPas::post_force(int vflag) {
     for (auto iter = lmp->autopas->iterate<autopas::ownedOnly>(); iter.isValid(); ++iter) {
       auto &x = iter->getR();
       auto &f = iter->getF();
-      int idx = AutoPasLMP::particle_to_index(*iter);
+      auto idx{iter->getLocalID()};
       if (atom->mask[idx] & groupbit) {
         if (region && !region->match(x[0], x[1], x[2])) continue;
         double unwrap[3];

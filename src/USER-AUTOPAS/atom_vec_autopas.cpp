@@ -126,7 +126,7 @@ void LAMMPS_NS::AtomVecAutopas::unpack_comm(int n, int first, double *buf) {
 
   for (auto iter = lmp->autopas->iterate_auto(first, last);
        iter.isValid(); ++iter) {
-    auto idx{lmp->autopas->particle_to_index(*iter)};
+    auto idx{iter->getLocalID()};
     if (idx >= first && idx < last) {
       AutoPasLMP::FloatVecType x_;
       x_[0] = buf[m++];
@@ -144,7 +144,7 @@ void LAMMPS_NS::AtomVecAutopas::unpack_comm_vel(int n, int first, double *buf) {
 
   for (auto iter = lmp->autopas->iterate_auto(first, last);
        iter.isValid(); ++iter) {
-    auto idx{lmp->autopas->particle_to_index(*iter)};
+    auto idx{iter->getLocalID()};
     if (idx >= first && idx < last) {
       AutoPasLMP::FloatVecType x_;
       AutoPasLMP::FloatVecType v_;
@@ -167,7 +167,7 @@ int LAMMPS_NS::AtomVecAutopas::pack_reverse(int n, int first, double *buf) {
 
   for (auto iter = lmp->autopas->const_iterate_auto(first, last);
        iter.isValid(); ++iter) {
-    auto idx{lmp->autopas->particle_to_index(*iter)};
+    auto idx{iter->getLocalID()};
     if (idx >= first && idx < last) {
       auto &f_ = iter->getF();
       buf[m++] = f_[0];

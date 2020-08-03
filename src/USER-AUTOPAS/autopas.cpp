@@ -53,6 +53,8 @@ AutoPasLMP::AutoPasLMP(class LAMMPS *lmp, int narg, char **argc) : Pointers(
         _opt.log_level = autopas::Logger::LogLevel::critical;
       else if (level == "off")
         _opt.log_level = autopas::Logger::LogLevel::off;
+      else
+        error->all(FLERR, "Invalid AutoPas command-line arg: log");
       iarg += 2;
     } else if (args[iarg] == "n" || args[iarg] == "newton") {
       if (iarg + 2 > narg)
@@ -244,8 +246,9 @@ void AutoPasLMP::print_config(double *const *epsilon,
   // Helper function for printing selected options
   auto printOpt = [](auto name, auto set, auto nameMap) {
     std::cout << "  " << name << " - ";
-    for (auto o : set) {
-      std::cout << nameMap[o];
+    for (auto it = set.begin(); it != set.end(); ++it) {
+      std::cout << nameMap[*it];
+      if(it != std::prev(set.end())) std::cout << ", "; // fence post
     }
     std::cout << std::endl;
   };
@@ -253,8 +256,9 @@ void AutoPasLMP::print_config(double *const *epsilon,
   // Helper function for printing selected values
   auto printVal = [](auto name, auto set) {
     std::cout << "  " << name << " - ";
-    for (auto o : set) {
-      std::cout << o;
+    for (auto it = set.begin(); it != set.end(); ++it) {
+      std::cout << *it;
+      if(it != std::prev(set.end())) std::cout << ", "; // fence post
     }
     std::cout << std::endl;
   };
@@ -410,14 +414,14 @@ void AutoPasLMP::copy_back() const {
 #pragma omp parallel default(none)
   for (auto iter = const_iterate<autopas::ownedOnly>(); iter.isValid(); ++iter) {
     auto &p = *iter;
-    auto idx{particle_to_index(p)};
+    auto idx{iter->getLocalID()};
     std::copy_n(p.getR().begin(), 3, atom->x[idx]);
     std::copy_n(p.getV().begin(), 3, atom->v[idx]);
     std::copy_n(p.getF().begin(), 3, atom->f[idx]);
   }
 
   for (auto &p: _leavingParticles) {
-    auto idx = particle_to_index(p);
+    auto idx{p.getLocalID()};
     std::copy_n(p.getR().begin(), 3, atom->x[idx]);
     std::copy_n(p.getV().begin(), 3, atom->v[idx]);
     std::copy_n(p.getF().begin(), 3, atom->f[idx]);
@@ -436,7 +440,7 @@ void AutoPasLMP::update_index_structure() {
 
 #pragma omp parallel default(none)
   for (auto &p: *lmp->autopas->_autopas) { // owned and halo
-    auto idx{particle_to_index(p)};
+    auto idx{p.getLocalID()};
     if (_use_index_map) {
       _index_map.emplace(idx, &p);
       // TODO Test if no race when emplacing in map
@@ -505,7 +509,7 @@ AutoPasLMP::particle_to_index(
   std::vector<int> list(particles.size());
   std::transform(particles.begin(),
                  particles.end(), list.begin(),
-                 [](auto *p) { return particle_to_index(*p); });
+                 [](auto *p) { return p->getLocalID(); });
   return list;
 }
 

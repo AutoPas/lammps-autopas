@@ -25,7 +25,7 @@ void LAMMPS_NS::FixNVEAutoPas::do_integrate() {
 #pragma omp parallel default(none) shared(rmass, mass, type, mask)
   for (auto iter = lmp->autopas->iterate<autopas::ownedOnly>(); iter.isValid(); ++iter) {
     auto &particle = *iter;
-    auto idx{lmp->autopas->particle_to_index(particle)};
+    auto idx{particle.getLocalID()};
     if (mask[idx] & groupbit) {
 
       const double dtfm = dtf / (rmass ? rmass[idx] : mass[type[idx]]);

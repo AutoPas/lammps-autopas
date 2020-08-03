@@ -81,7 +81,7 @@ void CommAutoPas::reverse_comm() {
     force_buf.resize(atom->nlocal + atom->nghost);
 #pragma omp parallel default(none)
     for (auto iter = lmp->autopas->const_iterate<autopas::haloAndOwned>(); iter.isValid(); ++iter) {
-      auto idx{lmp->autopas->particle_to_index(*iter)};
+      auto idx{iter->getLocalID()};
       auto &f{iter->getF()};
       std::copy(f.begin(), f.end(), force_buf[idx].begin());
     }
@@ -202,7 +202,7 @@ void CommAutoPas::exchange() {
         nsend += avec->pack_exchange(p, &buf_send[nsend]);
         /////////////////
         // Autopas already removed particles from container
-        auto idx{lmp->autopas->particle_to_index(p)};
+        auto idx{p.getLocalID()};
         avec->copy(nlocal - 1, idx, 1);
         nlocal--;
         iter = leavingParticles.erase(iter);
@@ -361,8 +361,7 @@ void CommAutoPas::borders() {
       // set original index send list
       if (nsend > maxsendlist[iswap]) grow_list(iswap, nsend);
       for (int i = 0; i < nsend; ++i) {
-        sendlist[iswap][i] = lmp->autopas->particle_to_index(
-            *_sendlist_particles[iswap][i]);
+        sendlist[iswap][i] = _sendlist_particles[iswap][i]->getLocalID();
       }
 
       // pack up list of border atoms
@@ -439,7 +438,7 @@ void CommAutoPas::border_impl(int idxfirst, int idxlast, double lo, double hi,
   for (auto iter = this->lmp->autopas->particles_by_slab<haloOnly>(
       dim, lo, hi); iter.isValid(); ++iter) {
     auto &p{*iter};
-    auto idx{lmp->autopas->particle_to_index(p)};
+    auto idx{p.getLocalID()};
     if (idx >= idxfirst && idx < idxlast) {
       sendparticles.push_back(&p);
     }
@@ -456,7 +455,7 @@ CommAutoPas::border_impl(int idxfirst, int idxlast, double *mlo, double *mhi,
   for (auto iter = lmp->autopas->particles_by_slab<haloOnly>(
       dim, mlo_min, mhi_max); iter.isValid(); ++iter) {
     auto &p{*iter};
-    auto idx{lmp->autopas->particle_to_index(p)};
+    auto idx{p.getLocalID()};
     auto &x{p.getR()};
     int itype = atom->type[idx];
     if (idx >= idxfirst && idx < idxlast && x[dim] >= mlo[itype] &&
