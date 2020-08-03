@@ -68,7 +68,6 @@ void FixTempRescaleAutoPas::end_of_step() {
 #pragma omp parallel default(none) shared(factor)
     for (auto iter = lmp->autopas->iterate<autopas::ownedOnly>(); iter.isValid(); ++iter) {
       auto v = iter->getV();
-      auto &f = iter->getF();
       int idx = iter->getLocalID();
       if (atom->mask[idx] & groupbit) {
         if (which == BIAS) temperature->remove_bias(idx, v.data());

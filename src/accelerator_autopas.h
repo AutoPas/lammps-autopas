@@ -41,7 +41,6 @@ class AutoPasLMP {
 
 class AtomAutoPas : public Atom {
  public:
-  tagint **k_special;
   AtomAutoPas(class LAMMPS *lmp) : Atom(lmp) {}
 };
 
