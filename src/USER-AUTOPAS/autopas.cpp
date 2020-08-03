@@ -1,6 +1,7 @@
 #include "autopas.h"
 
 #include <algorithm>
+#include <string>
 #include <limits>
 
 #include "atom.h"
@@ -32,6 +33,12 @@ AutoPasLMP::AutoPasLMP(class LAMMPS *lmp, int narg, char **argc) : Pointers(
 
   // Command line parsing
   std::vector<std::string> args(argc, argc + narg);
+
+  // Convert arguments all to lowercase
+  std::transform(args.begin(), args.end(), args.begin(), [](auto s) {
+    std::transform(s.begin(), s.end(), s.begin(), ::tolower);
+    return s;
+  });
 
   int iarg = 0;
   while (iarg < narg) {
@@ -111,19 +118,19 @@ AutoPasLMP::AutoPasLMP(class LAMMPS *lmp, int narg, char **argc) : Pointers(
         error->all(FLERR, "Invalid AutoPas command-line arg: samples");
       _opt.num_samples = std::stoi(args[iarg + 1]);
       iarg += 2;
-    } else if (args[iarg] == "max_evidence") {
+    } else if (args[iarg] == "evidence") {
       if (iarg + 2 > narg)
-        error->all(FLERR, "Invalid AutoPas command-line arg: max_evidence");
+        error->all(FLERR, "Invalid AutoPas command-line arg: evidence");
       _opt.max_evidence = std::stoi(args[iarg + 1]);
       iarg += 2;
-    } else if (args[iarg] == "predictive_ror") {
+    } else if (args[iarg] == "pred_ror") {
       if (iarg + 2 > narg)
-        error->all(FLERR, "Invalid AutoPas command-line arg: predictive_ror");
+        error->all(FLERR, "Invalid AutoPas command-line arg: pred_ror");
       _opt.predictive_tuning.relative_optimum_range = std::stod(args[iarg + 1]);
       iarg += 2;
-    } else if (args[iarg] == "predictive_mtpwt") {
+    } else if (args[iarg] == "pred_mtpwt") {
       if (iarg + 2 > narg)
-        error->all(FLERR, "Invalid AutoPas command-line arg: predictive_mtpwt");
+        error->all(FLERR, "Invalid AutoPas command-line arg: pred_mtpwt");
       _opt.predictive_tuning.max_tuning_phases_without_test = std::stoi(
           args[iarg + 1]);
       iarg += 2;
@@ -136,10 +143,10 @@ AutoPasLMP::AutoPasLMP(class LAMMPS *lmp, int narg, char **argc) : Pointers(
         error->all(FLERR, "Invalid AutoPas command-line arg: bayesian_af");
       _opt.acquisition_function = *opts.begin();
       iarg += 2;
-    } else if (args[iarg] == "cell_size_factors") {
+    } else if (args[iarg] == "csf") {
       if (iarg + 2 > narg)
         error->all(FLERR,
-                   "Invalid AutoPas command-line arg: cell_size_factors");
+                   "Invalid AutoPas command-line arg: csf");
       auto tokens = autopas::utils::StringUtils::tokenize(args[iarg + 1],
                                                           autopas::utils::StringUtils::delimiters);
       std::set<double> csf;
@@ -248,7 +255,7 @@ void AutoPasLMP::print_config(double *const *epsilon,
     std::cout << "  " << name << " - ";
     for (auto it = set.begin(); it != set.end(); ++it) {
       std::cout << nameMap[*it];
-      if(it != std::prev(set.end())) std::cout << ", "; // fence post
+      if (it != std::prev(set.end())) std::cout << ", "; // fence post
     }
     std::cout << std::endl;
   };
@@ -258,7 +265,7 @@ void AutoPasLMP::print_config(double *const *epsilon,
     std::cout << "  " << name << " - ";
     for (auto it = set.begin(); it != set.end(); ++it) {
       std::cout << *it;
-      if(it != std::prev(set.end())) std::cout << ", "; // fence post
+      if (it != std::prev(set.end())) std::cout << ", "; // fence post
     }
     std::cout << std::endl;
   };
