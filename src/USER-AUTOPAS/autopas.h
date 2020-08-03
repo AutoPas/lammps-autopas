@@ -96,7 +96,7 @@ public:
    * @return
    */
   template<bool haloOnly = false>
-  autopas::ParticleIteratorWrapper<ParticleType, true>
+  [[nodiscard]] autopas::ParticleIteratorWrapper<ParticleType, true>
   particles_by_slab(int dim, double lo, double hi) const;
 
   /**
@@ -105,7 +105,7 @@ public:
    * @return Particle iterator
    */
   template<autopas::IteratorBehavior iterateBehavior>
-  AutoPasLMP::AutoPasType::iterator_t iterate() {
+  [[nodiscard]] AutoPasLMP::AutoPasType::iterator_t iterate() {
     return _autopas->begin(iterateBehavior);
   }
 
@@ -115,7 +115,7 @@ public:
    * @return Const particle iterator
    */
   template<autopas::IteratorBehavior iterateBehavior>
-  AutoPasLMP::AutoPasType::const_iterator_t const_iterate() const {
+  [[nodiscard]] AutoPasLMP::AutoPasType::const_iterator_t const_iterate() const {
     return _autopas->cbegin(iterateBehavior);
   }
 
@@ -127,7 +127,7 @@ public:
    * @param last  Upper local index
    * @return Particle iterator
    */
-  AutoPasLMP::AutoPasType::const_iterator_t
+  [[nodiscard]] AutoPasLMP::AutoPasType::const_iterator_t
   const_iterate_auto(int first, int last);
 
   /**
@@ -138,7 +138,7 @@ public:
    * @param last  Upper local index
    * @return Const particle iterator
    */
-  AutoPasLMP::AutoPasType::iterator_t
+  [[nodiscard]] AutoPasLMP::AutoPasType::iterator_t
   iterate_auto(int first, int last);
 
 
@@ -227,6 +227,7 @@ private:
   bool _index_structure_valid = false;
 
   void update_index_structure();
+  void print_config(double *const *epsilon, double *const *sigma) const;
 
   bool _initialized = false;
 
@@ -236,6 +237,7 @@ private:
    */
   struct {
     bool tuning{true};
+    autopas::Logger::LogLevel log_level{autopas::Logger::LogLevel::warn};
 
     unsigned int verlet_cluster_size{4};
     unsigned int tuning_interval{5000};
@@ -276,6 +278,7 @@ private:
     std::set<autopas::LoadEstimatorOption> allowed_load_estimators{
         autopas::LoadEstimatorOption::getMostOptions()};
   } _opt;
+
 };
 }
 

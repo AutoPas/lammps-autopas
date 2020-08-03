@@ -35,7 +35,26 @@ AutoPasLMP::AutoPasLMP(class LAMMPS *lmp, int narg, char **argc) : Pointers(
 
   int iarg = 0;
   while (iarg < narg) {
-    if (args[iarg] == "n" || args[iarg] == "newton") {
+    if (args[iarg] == "log") {
+      if (iarg + 2 > narg)
+        error->all(FLERR, "Invalid AutoPas command-line arg: log");
+      std::string level = args[iarg + 1];
+      if (level == "trace")
+        _opt.log_level = autopas::Logger::LogLevel::trace;
+      else if (level == "debug")
+        _opt.log_level = autopas::Logger::LogLevel::debug;
+      else if (level == "info")
+        _opt.log_level = autopas::Logger::LogLevel::info;
+      else if (level == "warn")
+        _opt.log_level = autopas::Logger::LogLevel::warn;
+      else if (level == "err")
+        _opt.log_level = autopas::Logger::LogLevel::err;
+      else if (level == "critical")
+        _opt.log_level = autopas::Logger::LogLevel::critical;
+      else if (level == "off")
+        _opt.log_level = autopas::Logger::LogLevel::off;
+      iarg += 2;
+    } else if (args[iarg] == "n" || args[iarg] == "newton") {
       if (iarg + 2 > narg)
         error->all(FLERR, "Invalid AutoPas command-line arg: newton");
       _opt.allowed_newton3 = autopas::Newton3Option::parseOptions(
@@ -152,6 +171,76 @@ void AutoPasLMP::init_autopas(double cutoff, double **epsilon, double **sigma) {
     error->one(FLERR, "AutoPas requires global id mapping");
   }
 
+
+  // TODO SUPPORT FOR: pair_modify shift yes
+
+  _autopas = std::make_unique<AutoPasType>();
+
+  // Initialize particle properties
+  _particlePropertiesLibrary = std::make_unique<ParticlePropertiesLibraryType>(
+      cutoff);
+
+  print_config(epsilon, sigma);
+
+  // TODO Reenable mixings
+  if (atom->ntypes > 1) {
+    auto msg = "Mixings are currently disabled with AutoPas! Using epsilon " +
+               std::to_string(epsilon[1][1]) + " and sigma " +
+               std::to_string(sigma[1][1]) + " for all interactions!";
+    error->warning(FLERR, msg.c_str());
+  }
+
+  _autopas->setBoxMax({domain->subhi[0], domain->subhi[1], domain->subhi[2]});
+  _autopas->setBoxMin({domain->sublo[0], domain->sublo[1], domain->sublo[2]});
+
+  // TODO Test: cut_global (PairLJCut) or cutforce (Pair)
+  _autopas->setCutoff(cutoff);
+
+  _autopas->setAllowedCellSizeFactors(*_opt.allowed_cell_size_factors);
+
+  _autopas->setVerletSkin(neighbor->skin);
+  _autopas->setVerletRebuildFrequency(
+      std::max(neighbor->every, neighbor->delay));
+  _autopas->setVerletClusterSize(_opt.verlet_cluster_size);
+
+  _autopas->setTuningInterval(_opt.tuning_interval);
+  _autopas->setNumSamples(_opt.num_samples);
+  _autopas->setMaxEvidence(_opt.max_evidence);
+
+  _autopas->setRelativeOptimumRange(
+      _opt.predictive_tuning.relative_optimum_range);
+  _autopas->setMaxTuningPhasesWithoutTest(
+      _opt.predictive_tuning.max_tuning_phases_without_test);
+
+  _autopas->setAcquisitionFunction(_opt.acquisition_function);
+  _autopas->setSelectorStrategy(_opt.selector_strategy);
+  _autopas->setAllowedLoadEstimators(_opt.allowed_load_estimators);
+
+  _autopas->setAllowedContainers(_opt.allowed_containers);
+  _autopas->setAllowedTraversals(_opt.allowed_traversals);
+  _autopas->setAllowedDataLayouts(_opt.allowed_data_layouts);
+
+  // TODO AutoPas always calculates FullShell.
+  //  Turn LAMMPS newton setting off to disable force exchange?
+  //  Or just leave reverse_comm empty? What about other forces?
+  force->newton = force->newton_pair = force->newton_bond = false;
+  _autopas->setAllowedNewton3Options(_opt.allowed_newton3);
+
+  _autopas->setTuningStrategyOption(_opt.tuning_strategy);
+
+  autopas::Logger::create();
+  autopas::Logger::get()->set_level(_opt.log_level);
+
+  _autopas->init();
+
+  // Handle particles that got added before AutoPas was initialized
+  move_into();
+
+  // TODO When to move_back()? After run command finished? Destructor?
+}
+
+void AutoPasLMP::print_config(double *const *epsilon,
+                              double *const *sigma) const {
   // Helper function for printing selected options
   auto printOpt = [](auto name, auto set, auto nameMap) {
     std::cout << "  " << name << " - ";
@@ -245,14 +334,6 @@ void AutoPasLMP::init_autopas(double cutoff, double **epsilon, double **sigma) {
     }
   }
 
-  // TODO SUPPORT FOR: pair_modify shift yes
-
-  _autopas = std::make_unique<AutoPasType>();
-
-  // Initialize particle properties
-  _particlePropertiesLibrary = std::make_unique<ParticlePropertiesLibraryType>(
-      cutoff);
-
   std::cout << "  Particle Properties\n";
   for (int i = 1; i <= atom->ntypes; ++i) {
     std::cout << "    Type, Eps, Sig: " << i << " " << epsilon[i][i] << " "
@@ -261,72 +342,6 @@ void AutoPasLMP::init_autopas(double cutoff, double **epsilon, double **sigma) {
         i, epsilon[i][i], sigma[i][i], atom->mass[i]
     );
   }
-
-  // TODO Reenable mixings
-  if (atom->ntypes > 1) {
-    auto msg = "Mixings are currently disabled with AutoPas! Using epsilon " +
-               std::to_string(epsilon[1][1]) + " and sigma " +
-               std::to_string(sigma[1][1]) + " for all interactions!";
-    error->warning(FLERR, msg.c_str());
-  }
-
-  // _autopas.setAllowedCellSizeFactors(*cellSizeFactors);
-  auto sensibleContainerOptions = autopas::ContainerOption::getAllOptions();
-  sensibleContainerOptions.erase(
-      autopas::ContainerOption::directSum); // Never good choice
-  _autopas->setAllowedContainers(sensibleContainerOptions);
-
-  auto sensibleTraversalOptions = autopas::TraversalOption::getAllOptions();
-  sensibleTraversalOptions.erase(
-      autopas::TraversalOption::verletClusters); //  Wrong results
-  sensibleTraversalOptions.erase(
-      autopas::TraversalOption::verletClustersColoring); // Wrong results
-  sensibleTraversalOptions.erase(
-      autopas::TraversalOption::verletClustersStatic); // Wrong results
-  sensibleTraversalOptions.erase(
-      autopas::TraversalOption::verletClusterCells); // Vector out of range exception
-
-  _autopas->setAllowedTraversals(sensibleTraversalOptions);
-
-  /*{
-    _autopas->setAllowedContainers({autopas::ContainerOption::linkedCells});
-    _autopas->setAllowedDataLayouts({autopas::DataLayoutOption::soa});
-    _autopas->setAllowedTraversals({autopas::TraversalOption::c04});
-  }*/
-
-  // TODO AutoPas always calculates FullShell.
-  //  Turn LAMMPS newton setting off to disable force exchange?
-  //  Or just leave reverse_comm empty? What about other forces?
-  force->newton = force->newton_pair = force->newton_bond = false;
-
-  _autopas->setAllowedNewton3Options(
-      {autopas::Newton3Option::enabled, autopas::Newton3Option::disabled});
-
-  _autopas->setBoxMax({domain->subhi[0], domain->subhi[1], domain->subhi[2]});
-  _autopas->setBoxMin({domain->sublo[0], domain->sublo[1], domain->sublo[2]});
-
-  _autopas->setCutoff(
-      cutoff); // TODO Test: cut_global (PairLJCut) or cutforce (Pair)
-  //_autopas.setNumSamples(tuningSamples);
-  //_autopas.setSelectorStrategy(selectorStrategy);
-  _autopas->setTuningInterval(1000);
-  _autopas->setTuningStrategyOption(autopas::TuningStrategyOption::fullSearch);
-
-  //_autopas.setVerletClusterSize(_config->verletClusterSize);
-
-  _autopas->setVerletRebuildFrequency(
-      std::max(neighbor->every, neighbor->delay));
-  _autopas->setVerletSkin(neighbor->skin);
-
-  autopas::Logger::create();
-  autopas::Logger::get()->set_level(autopas::Logger::LogLevel::warn);
-
-  _autopas->init();
-
-  // Handle particles that got added before AutoPas was initialized
-  move_into();
-
-  // TODO When to move_back()? After run command finished? Destructor?
 }
 
 AutoPasLMP::ParticleType *AutoPasLMP::particle_by_index(int idx) {
