@@ -112,7 +112,7 @@ AtomVecAtomicAutopas::pack_border_autopas(
   int m = 0;
 
   for (const auto p : particles) {
-    auto idx{lmp->autopas->particle_to_index(*p)};
+    auto idx{p->getLocalID()};
     auto &_x = p->getR();
     buf[m++] = _x[0] + dx;
     buf[m++] = _x[1] + dy;
@@ -167,8 +167,7 @@ AtomVecAtomicAutopas::pack_border_vel_autopas(
   int m = 0;
 
   for (const auto p : particles) {
-
-    auto idx{lmp->autopas->particle_to_index(*p)};
+    auto idx{p->getLocalID()};
     auto &x_{p->getR()};
     auto &v_{p->getV()};
     buf[m++] = x_[0] + dx;
@@ -452,7 +451,7 @@ void AtomVecAtomicAutopas::pack_data(double **buf) {
 #pragma omp parallel default(none) shared(buf)
   for (auto iter = lmp->autopas->const_iterate<autopas::IteratorBehavior::ownedOnly>(); iter.isValid(); ++iter) {
     auto &x_{iter->getR()};
-    auto idx{lmp->autopas->particle_to_index(*iter)};
+    auto idx{iter->getLocalID()};
     buf[idx][0] = ubuf(tag[idx]).d;
     buf[idx][1] = ubuf(type[idx]).d;
     buf[idx][2] = x_[0];
@@ -494,7 +493,7 @@ bigint AtomVecAtomicAutopas::memory_usage() {
 
 int AtomVecAtomicAutopas::pack_exchange(
     const AutoPasLMP::ParticleType &p, double *buf) {
-  auto idx{lmp->autopas->particle_to_index(p)};
+  auto idx{p.getLocalID()};
   auto &x_ = p.getR();
   auto &v_ = p.getV();
 

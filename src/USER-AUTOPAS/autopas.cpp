@@ -1,6 +1,7 @@
 #include "autopas.h"
 
 #include <algorithm>
+#include <string>
 #include <limits>
 
 #include "atom.h"
@@ -15,9 +16,158 @@
 
 using namespace LAMMPS_NS;
 
-AutoPasLMP::AutoPasLMP(class LAMMPS *lmp, int narg, char **args) : Pointers(
+AutoPasLMP::AutoPasLMP(class LAMMPS *lmp, int narg, char **argc) : Pointers(
     lmp) {
   lmp->autopas = this;
+
+  // TODO Check again with new Autopas version
+  // Remove additional traversals from the defaults provided by AutoPas
+  _opt.allowed_traversals.erase(
+      autopas::TraversalOption::verletClusters); //  Wrong results
+  _opt.allowed_traversals.erase(
+      autopas::TraversalOption::verletClustersColoring); // Wrong results
+  _opt.allowed_traversals.erase(
+      autopas::TraversalOption::verletClustersStatic); // Wrong results
+  _opt.allowed_traversals.erase(
+      autopas::TraversalOption::verletClusterCells); // Vector out of range exception
+
+  // Command line parsing
+  std::vector<std::string> args(argc, argc + narg);
+
+  // Convert arguments all to lowercase
+  std::transform(args.begin(), args.end(), args.begin(), [](auto s) {
+    std::transform(s.begin(), s.end(), s.begin(), ::tolower);
+    return s;
+  });
+
+  int iarg = 0;
+  while (iarg < narg) {
+    if (args[iarg] == "log") {
+      if (iarg + 2 > narg)
+        error->all(FLERR, "Invalid AutoPas command-line arg: log");
+      std::string level = args[iarg + 1];
+      if (level == "trace")
+        _opt.log_level = autopas::Logger::LogLevel::trace;
+      else if (level == "debug")
+        _opt.log_level = autopas::Logger::LogLevel::debug;
+      else if (level == "info")
+        _opt.log_level = autopas::Logger::LogLevel::info;
+      else if (level == "warn")
+        _opt.log_level = autopas::Logger::LogLevel::warn;
+      else if (level == "err")
+        _opt.log_level = autopas::Logger::LogLevel::err;
+      else if (level == "critical")
+        _opt.log_level = autopas::Logger::LogLevel::critical;
+      else if (level == "off")
+        _opt.log_level = autopas::Logger::LogLevel::off;
+      else
+        error->all(FLERR, "Invalid AutoPas command-line arg: log");
+      iarg += 2;
+    } else if (args[iarg] == "n" || args[iarg] == "newton") {
+      if (iarg + 2 > narg)
+        error->all(FLERR, "Invalid AutoPas command-line arg: newton");
+      _opt.allowed_newton3 = autopas::Newton3Option::parseOptions(
+          args[iarg + 1]);
+      iarg += 2;
+    } else if (args[iarg] == "t" || args[iarg] == "traversals") {
+      if (iarg + 2 > narg)
+        error->all(FLERR, "Invalid AutoPas command-line arg: traversal");
+      _opt.allowed_traversals = autopas::TraversalOption::parseOptions(
+          args[iarg + 1]);
+      iarg += 2;
+    } else if (args[iarg] == "c" || args[iarg] == "containers") {
+      if (iarg + 2 > narg)
+        error->all(FLERR, "Invalid AutoPas command-line arg: containers");
+      _opt.allowed_containers = autopas::ContainerOption::parseOptions(
+          args[iarg + 1]);
+      iarg += 2;
+    } else if (args[iarg] == "d" || args[iarg] == "data") {
+      if (iarg + 2 > narg)
+        error->all(FLERR, "Invalid AutoPas command-line arg: data");
+      _opt.allowed_data_layouts = autopas::DataLayoutOption::parseOptions(
+          args[iarg + 1]);
+      iarg += 2;
+    } else if (args[iarg] == "i" || args[iarg] == "interval") {
+      if (iarg + 2 > narg)
+        error->all(FLERR, "Invalid AutoPas command-line arg: interval");
+      _opt.tuning_interval = std::stoi(args[iarg + 1]);
+      iarg += 2;
+    } else if (args[iarg] == "s" || args[iarg] == "strategy") {
+      if (iarg + 2 > narg)
+        error->all(FLERR, "Invalid AutoPas command-line arg: strategy");
+      auto opts = autopas::TuningStrategyOption::parseOptions(args[iarg + 1]);
+      if (opts.size() != 1)
+        error->all(FLERR, "Invalid AutoPas command-line arg: strategy");
+      _opt.tuning_strategy = *opts.begin();
+      iarg += 2;
+    } else if (args[iarg] == "selector") {
+      if (iarg + 2 > narg)
+        error->all(FLERR, "Invalid AutoPas command-line arg: selector");
+      auto opts = autopas::SelectorStrategyOption::parseOptions(args[iarg + 1]);
+      if (opts.size() != 1)
+        error->all(FLERR, "Invalid AutoPas command-line arg: selector");
+      _opt.selector_strategy = *opts.begin();
+      iarg += 2;
+    } else if (args[iarg] == "vc_size") {
+      if (iarg + 2 > narg)
+        error->all(FLERR, "Invalid AutoPas command-line arg: vc_size");
+      _opt.verlet_cluster_size = std::stoi(args[iarg + 1]);
+      iarg += 2;
+    } else if (args[iarg] == "samples") {
+      if (iarg + 2 > narg)
+        error->all(FLERR, "Invalid AutoPas command-line arg: samples");
+      _opt.num_samples = std::stoi(args[iarg + 1]);
+      iarg += 2;
+    } else if (args[iarg] == "evidence") {
+      if (iarg + 2 > narg)
+        error->all(FLERR, "Invalid AutoPas command-line arg: evidence");
+      _opt.max_evidence = std::stoi(args[iarg + 1]);
+      iarg += 2;
+    } else if (args[iarg] == "pred_ror") {
+      if (iarg + 2 > narg)
+        error->all(FLERR, "Invalid AutoPas command-line arg: pred_ror");
+      _opt.predictive_tuning.relative_optimum_range = std::stod(args[iarg + 1]);
+      iarg += 2;
+    } else if (args[iarg] == "pred_mtpwt") {
+      if (iarg + 2 > narg)
+        error->all(FLERR, "Invalid AutoPas command-line arg: pred_mtpwt");
+      _opt.predictive_tuning.max_tuning_phases_without_test = std::stoi(
+          args[iarg + 1]);
+      iarg += 2;
+    } else if (args[iarg] == "bayesian_af") {
+      if (iarg + 2 > narg)
+        error->all(FLERR, "Invalid AutoPas command-line arg: bayesian_af");
+      auto opts = autopas::AcquisitionFunctionOption::parseOptions(
+          args[iarg + 1]);
+      if (opts.size() != 1)
+        error->all(FLERR, "Invalid AutoPas command-line arg: bayesian_af");
+      _opt.acquisition_function = *opts.begin();
+      iarg += 2;
+    } else if (args[iarg] == "csf") {
+      if (iarg + 2 > narg)
+        error->all(FLERR,
+                   "Invalid AutoPas command-line arg: csf");
+      auto tokens = autopas::utils::StringUtils::tokenize(args[iarg + 1],
+                                                          autopas::utils::StringUtils::delimiters);
+      std::set<double> csf;
+      for (auto &t: tokens)
+        csf.insert(std::stod(t));
+      _opt.allowed_cell_size_factors = std::make_unique<autopas::NumberSetFinite<double>>(
+          csf);
+      iarg += 2;
+    } else if (args[iarg] == "estimator") {
+      if (iarg + 2 > narg)
+        error->all(FLERR, "Invalid AutoPas command-line arg: estimator");
+      _opt.allowed_load_estimators = autopas::LoadEstimatorOption::parseOptions(
+          args[iarg + 1]);
+      iarg += 2;
+    } else if (args[iarg] == "notune") {
+      _opt.tuning = false;
+      iarg += 1;
+    } else error->all(FLERR, "Invalid AutoPas command-line args");
+  }
+
+
 }
 
 void AutoPasLMP::init_autopas(double cutoff, double **epsilon, double **sigma) {
@@ -30,6 +180,7 @@ void AutoPasLMP::init_autopas(double cutoff, double **epsilon, double **sigma) {
     error->one(FLERR, "AutoPas requires global id mapping");
   }
 
+
   // TODO SUPPORT FOR: pair_modify shift yes
 
   _autopas = std::make_unique<AutoPasType>();
@@ -38,13 +189,7 @@ void AutoPasLMP::init_autopas(double cutoff, double **epsilon, double **sigma) {
   _particlePropertiesLibrary = std::make_unique<ParticlePropertiesLibraryType>(
       cutoff);
 
-  for (int i = 1; i <= atom->ntypes; ++i) {
-    std::cout << "Type, Eps, Sig: " << i << " " << epsilon[i][i] << " "
-              << sigma[i][i] << "\n";
-    _particlePropertiesLibrary->addType(
-        i, epsilon[i][i], sigma[i][i], atom->mass[i]
-    );
-  }
+  print_config(epsilon, sigma);
 
   // TODO Reenable mixings
   if (atom->ntypes > 1) {
@@ -54,56 +199,46 @@ void AutoPasLMP::init_autopas(double cutoff, double **epsilon, double **sigma) {
     error->warning(FLERR, msg.c_str());
   }
 
-  // _autopas.setAllowedCellSizeFactors(*cellSizeFactors);
-  auto sensibleContainerOptions = autopas::ContainerOption::getAllOptions();
-  sensibleContainerOptions.erase(
-      autopas::ContainerOption::directSum); // Never good choice
-  _autopas->setAllowedContainers(sensibleContainerOptions);
+  _autopas->setBoxMax({domain->subhi[0], domain->subhi[1], domain->subhi[2]});
+  _autopas->setBoxMin({domain->sublo[0], domain->sublo[1], domain->sublo[2]});
 
-  auto sensibleTraversalOptions = autopas::TraversalOption::getAllOptions();
-  sensibleTraversalOptions.erase(
-      autopas::TraversalOption::verletClusters); //  Wrong results
-  sensibleTraversalOptions.erase(
-      autopas::TraversalOption::verletClustersColoring); // Wrong results
-  sensibleTraversalOptions.erase(
-      autopas::TraversalOption::verletClustersStatic); // Wrong results
-  sensibleTraversalOptions.erase(
-      autopas::TraversalOption::verletClusterCells); // Vector out of range exception
+  // TODO Test: cut_global (PairLJCut) or cutforce (Pair)
+  _autopas->setCutoff(cutoff);
 
-  _autopas->setAllowedTraversals(sensibleTraversalOptions);
+  _autopas->setAllowedCellSizeFactors(*_opt.allowed_cell_size_factors);
 
-  /*{
-    _autopas->setAllowedContainers({autopas::ContainerOption::linkedCells});
-    _autopas->setAllowedDataLayouts({autopas::DataLayoutOption::soa});
-    _autopas->setAllowedTraversals({autopas::TraversalOption::c04});
-  }*/
+  _autopas->setVerletSkin(neighbor->skin);
+  _autopas->setVerletRebuildFrequency(
+      std::max(neighbor->every, neighbor->delay));
+  _autopas->setVerletClusterSize(_opt.verlet_cluster_size);
+
+  _autopas->setTuningInterval(_opt.tuning_interval);
+  _autopas->setNumSamples(_opt.num_samples);
+  _autopas->setMaxEvidence(_opt.max_evidence);
+
+  _autopas->setRelativeOptimumRange(
+      _opt.predictive_tuning.relative_optimum_range);
+  _autopas->setMaxTuningPhasesWithoutTest(
+      _opt.predictive_tuning.max_tuning_phases_without_test);
+
+  _autopas->setAcquisitionFunction(_opt.acquisition_function);
+  _autopas->setSelectorStrategy(_opt.selector_strategy);
+  _autopas->setAllowedLoadEstimators(_opt.allowed_load_estimators);
+
+  _autopas->setAllowedContainers(_opt.allowed_containers);
+  _autopas->setAllowedTraversals(_opt.allowed_traversals);
+  _autopas->setAllowedDataLayouts(_opt.allowed_data_layouts);
 
   // TODO AutoPas always calculates FullShell.
   //  Turn LAMMPS newton setting off to disable force exchange?
   //  Or just leave reverse_comm empty? What about other forces?
   force->newton = force->newton_pair = force->newton_bond = false;
+  _autopas->setAllowedNewton3Options(_opt.allowed_newton3);
 
-  _autopas->setAllowedNewton3Options(
-      {autopas::Newton3Option::enabled, autopas::Newton3Option::disabled});
-
-  _autopas->setBoxMax({domain->subhi[0], domain->subhi[1], domain->subhi[2]});
-  _autopas->setBoxMin({domain->sublo[0], domain->sublo[1], domain->sublo[2]});
-
-  _autopas->setCutoff(
-      cutoff); // TODO Test: cut_global (PairLJCut) or cutforce (Pair)
-  //_autopas.setNumSamples(tuningSamples);
-  //_autopas.setSelectorStrategy(selectorStrategy);
-  _autopas->setTuningInterval(1000);
-  _autopas->setTuningStrategyOption(autopas::TuningStrategyOption::fullSearch);
-
-  //_autopas.setVerletClusterSize(_config->verletClusterSize);
-
-  _autopas->setVerletRebuildFrequency(
-      std::max(neighbor->every, neighbor->delay));
-  _autopas->setVerletSkin(neighbor->skin);
+  _autopas->setTuningStrategyOption(_opt.tuning_strategy);
 
   autopas::Logger::create();
-  autopas::Logger::get()->set_level(autopas::Logger::LogLevel::warn);
+  autopas::Logger::get()->set_level(_opt.log_level);
 
   _autopas->init();
 
@@ -111,6 +246,113 @@ void AutoPasLMP::init_autopas(double cutoff, double **epsilon, double **sigma) {
   move_into();
 
   // TODO When to move_back()? After run command finished? Destructor?
+}
+
+void AutoPasLMP::print_config(double *const *epsilon,
+                              double *const *sigma) const {
+  // Helper function for printing selected options
+  auto printOpt = [](auto name, auto set, auto nameMap) {
+    std::cout << "  " << name << " - ";
+    for (auto it = set.begin(); it != set.end(); ++it) {
+      std::cout << nameMap[*it];
+      if (it != std::prev(set.end())) std::cout << ", "; // fence post
+    }
+    std::cout << std::endl;
+  };
+
+  // Helper function for printing selected values
+  auto printVal = [](auto name, auto set) {
+    std::cout << "  " << name << " - ";
+    for (auto it = set.begin(); it != set.end(); ++it) {
+      std::cout << *it;
+      if (it != std::prev(set.end())) std::cout << ", "; // fence post
+    }
+    std::cout << std::endl;
+  };
+
+  std::cout << "AutoPas setup:\n";
+  printOpt("Traversals", _opt.allowed_traversals,
+           autopas::TraversalOption::getOptionNames());
+  printOpt("Containers", _opt.allowed_containers,
+           autopas::ContainerOption::getOptionNames());
+
+  printOpt("Data Layout", _opt.allowed_data_layouts,
+           autopas::DataLayoutOption::getOptionNames());
+  printOpt("Newton3", _opt.allowed_newton3,
+           autopas::Newton3Option::getOptionNames());
+
+
+  if (
+      _opt.allowed_traversals.count(autopas::TraversalOption::verletClusters) ||
+      _opt.allowed_traversals.count(
+          autopas::TraversalOption::verletClusterCells) ||
+      _opt.allowed_traversals.count(
+          autopas::TraversalOption::verletClustersColoring) ||
+      _opt.allowed_traversals.count(
+          autopas::TraversalOption::verletClustersStatic)) {
+    printVal("Verlet Cluster Size", std::set{_opt.verlet_cluster_size});
+  }
+
+  if (_opt.tuning) {
+    printVal("Tuning Interval", std::set{_opt.tuning_interval});
+    printVal("Num Samples", std::set{_opt.num_samples});
+    printVal("Max Evidence", std::set{_opt.max_evidence});
+
+    printOpt("Tuning Strategy", std::set{_opt.tuning_strategy},
+             autopas::TuningStrategyOption::getOptionNames());
+    printOpt("Selector Strategy", std::set{_opt.selector_strategy},
+             autopas::SelectorStrategyOption::getOptionNames());
+
+    if (_opt.tuning_strategy == autopas::TuningStrategyOption::bayesianSearch ||
+        _opt.tuning_strategy ==
+        autopas::TuningStrategyOption::bayesianClusterSearch) {
+      printOpt("Acquisition Function", std::set{_opt.acquisition_function},
+               autopas::AcquisitionFunctionOption::getOptionNames());
+    } else if (_opt.tuning_strategy ==
+               autopas::TuningStrategyOption::predictiveTuning) {
+      printVal("Relative Optimum Range",
+               std::set{_opt.predictive_tuning.relative_optimum_range});
+      printVal("Max Tuning Phases Without Test",
+               std::set{_opt.predictive_tuning.max_tuning_phases_without_test});
+    }
+
+    if (_opt.allowed_traversals.count(
+        autopas::TraversalOption::BalancedSliced) ||
+        _opt.allowed_traversals.count(
+            autopas::TraversalOption::BalancedSlicedVerlet)) {
+      printOpt("Load Estimator", _opt.allowed_load_estimators,
+               autopas::LoadEstimatorOption::getOptionNames());
+    }
+  } else {
+    // Double check that AutoPas is not tuning when we are asked to not tune:
+    if (_opt.allowed_traversals.size() != 1)
+      error->all(FLERR, "AutoPas will tune: Multiple traversal options");
+    if (_opt.allowed_containers.size() != 1)
+      error->all(FLERR, "AutoPas will tune: Multiple container options");
+    if (_opt.allowed_data_layouts.size() != 1)
+      error->all(FLERR, "AutoPas will tune: Multiple data layout options");
+    if (_opt.allowed_newton3.size() != 1)
+      error->all(FLERR, "AutoPas will tune: Multiple newton3 options");
+    if (_opt.allowed_cell_size_factors->getAll().size() != 1)
+      error->all(FLERR, "AutoPas will tune: Multiple cell size factors");
+    if (_opt.allowed_load_estimators.size() != 1) {
+      if (_opt.allowed_traversals.count(
+          autopas::TraversalOption::BalancedSliced) ||
+          _opt.allowed_traversals.count(
+              autopas::TraversalOption::BalancedSlicedVerlet)) {
+        error->all(FLERR, "AutoPas will tune: Multiple load estimators");
+      }
+    }
+  }
+
+  std::cout << "  Particle Properties\n";
+  for (int i = 1; i <= atom->ntypes; ++i) {
+    std::cout << "    Type, Eps, Sig: " << i << " " << epsilon[i][i] << " "
+              << sigma[i][i] << "\n";
+    _particlePropertiesLibrary->addType(
+        i, epsilon[i][i], sigma[i][i], atom->mass[i]
+    );
+  }
 }
 
 AutoPasLMP::ParticleType *AutoPasLMP::particle_by_index(int idx) {
@@ -179,14 +421,14 @@ void AutoPasLMP::copy_back() const {
 #pragma omp parallel default(none)
   for (auto iter = const_iterate<autopas::ownedOnly>(); iter.isValid(); ++iter) {
     auto &p = *iter;
-    auto idx{particle_to_index(p)};
+    auto idx{iter->getLocalID()};
     std::copy_n(p.getR().begin(), 3, atom->x[idx]);
     std::copy_n(p.getV().begin(), 3, atom->v[idx]);
     std::copy_n(p.getF().begin(), 3, atom->f[idx]);
   }
 
   for (auto &p: _leavingParticles) {
-    auto idx = particle_to_index(p);
+    auto idx{p.getLocalID()};
     std::copy_n(p.getR().begin(), 3, atom->x[idx]);
     std::copy_n(p.getV().begin(), 3, atom->v[idx]);
     std::copy_n(p.getF().begin(), 3, atom->f[idx]);
@@ -205,7 +447,7 @@ void AutoPasLMP::update_index_structure() {
 
 #pragma omp parallel default(none)
   for (auto &p: *lmp->autopas->_autopas) { // owned and halo
-    auto idx{particle_to_index(p)};
+    auto idx{p.getLocalID()};
     if (_use_index_map) {
       _index_map.emplace(idx, &p);
       // TODO Test if no race when emplacing in map
@@ -274,7 +516,7 @@ AutoPasLMP::particle_to_index(
   std::vector<int> list(particles.size());
   std::transform(particles.begin(),
                  particles.end(), list.begin(),
-                 [](auto *p) { return particle_to_index(*p); });
+                 [](auto *p) { return p->getLocalID(); });
   return list;
 }
 
