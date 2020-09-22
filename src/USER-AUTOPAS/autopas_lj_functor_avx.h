@@ -672,8 +672,8 @@ private:
     const __m256d dummyMask =
         _mm256_cmp_pd(_mm256_castsi256_pd(ownedStateJ), _zero, _CMP_NEQ_UQ);
     const __m256d cutoffDummyMask = _mm256_and_pd(cutoffMask, dummyMask);
-    const __m256d cutoffDummyInteractMask =
-        _mm256_and_pd(cutoffDummyMask, doesInteractMask);
+    const __m256d cutoffDummyInteractMask = cutoffDummyMask;
+        //_mm256_and_pd(cutoffDummyMask, doesInteractMask);
 
     // if everything is masked away return from this function.
     if (_mm256_movemask_pd(cutoffDummyInteractMask) == 0) {
