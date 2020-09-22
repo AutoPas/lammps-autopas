@@ -159,7 +159,7 @@ public:
   }
 
   void AoSFunctor(Particle &i, Particle &j, bool newton3) override {
-    if (!doesInteract(i, j))
+    if (not doesInteract(i.getTypeId(), j.getTypeId()) or i.isDummy() or j.isDummy())
       return;
     using namespace autopas;
     auto sigmasquare = _sigmasquare;
@@ -1324,8 +1324,8 @@ private:
     }
   }
 
-  inline int doesInteract(const Particle &i, const Particle &j) const {
-    return _interactingTypes[i.getTypeId() - 1][j.getTypeId() - 1] and not (i.isDummy() or j.isDummy());
+  inline int doesInteract(size_t i, size_t j) const {
+    return _interactingTypes[i - 1][j - 1] ;
   }
 
   /**
