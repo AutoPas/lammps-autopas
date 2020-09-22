@@ -579,7 +579,7 @@ private:
     __m256d epsilon24s = _epsilon24;
     __m256d sigmaSquares = _sigmaSquare;
     __m256d shift6s = _shift6;
-    __m256d doesInteractMask;
+    __m256d doesInteractMask = _ffff;
     if (useMixing) {
       // the first argument for set lands in the last bits of the register
       epsilon24s = _mm256_set_pd(
@@ -604,7 +604,7 @@ private:
               ? _PPLibrary->mixingSigmaSquare(*typeID1ptr, *(typeID2ptr + 1))
               : 0,
           _PPLibrary->mixingSigmaSquare(*typeID1ptr, *(typeID2ptr + 0)));
-      doesInteractMask =
+      const __m256d doesInteractVec =
           _mm256_set_pd(not remainderIsMasked or rest > 3
                             ? doesInteract(*typeID1ptr, *(typeID2ptr + 3))
                             : 0,
@@ -616,7 +616,7 @@ private:
                             : 0,
                         doesInteract(*typeID1ptr, *(typeID2ptr + 0)));
       // convert entries with 1 to 1 masks
-      doesInteractMask = _mm256_cmp_pd(_zero, doesInteractMask, _CMP_GT_OS);
+      doesInteractMask = _mm256_cmp_pd(_zero, doesInteractVec, _CMP_GT_OS);
 
       if constexpr (applyShift) {
         shift6s = _mm256_set_pd(
@@ -672,8 +672,8 @@ private:
     const __m256d dummyMask =
         _mm256_cmp_pd(_mm256_castsi256_pd(ownedStateJ), _zero, _CMP_NEQ_UQ);
     const __m256d cutoffDummyMask = _mm256_and_pd(cutoffMask, dummyMask);
-    const __m256d cutoffDummyInteractMask = cutoffDummyMask;
-        //_mm256_and_pd(cutoffDummyMask, doesInteractMask);
+    const __m256d cutoffDummyInteractMask = // cutoffDummyMask;
+        _mm256_and_pd(cutoffDummyMask, doesInteractMask);
 
     // if everything is masked away return from this function.
     if (_mm256_movemask_pd(cutoffDummyInteractMask) == 0) {
@@ -1228,7 +1228,7 @@ private:
 #ifdef __AVX__
   const __m256d _zero{_mm256_set1_pd(0.)};
   const __m256d _one{_mm256_set1_pd(1.)};
-  const __m256i _oneInt{_mm256_set1_epi64x(1)};
+  const __m256d _ffff{_mm256_castsi256_pd(_mm256_set1_epi64x(-1LL))};
   const __m256i _vindex = _mm256_set_epi64x(0, 1, 3, 4);
   const __m256i _masks[3]{
       _mm256_set_epi64x(0, 0, 0, -1),
