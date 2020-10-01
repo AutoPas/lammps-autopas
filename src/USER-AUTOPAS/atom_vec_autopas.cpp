@@ -124,16 +124,12 @@ void LAMMPS_NS::AtomVecAutopas::unpack_comm(int n, int first, double *buf) {
   int m = 0;
   int last = first + n;
 
-  for (auto iter = lmp->autopas->iterate_auto(first, last);
-       iter.isValid(); ++iter) {
-    auto idx{iter->getLocalID()};
-    if (idx >= first && idx < last) {
-      AutoPasLMP::FloatVecType x_;
-      x_[0] = buf[m++];
-      x_[1] = buf[m++];
-      x_[2] = buf[m++];
-      iter->setR(x_);
-    }
+  for (int i = first; i < last; ++i) {
+    AutoPasLMP::FloatVecType x_;
+    x_[0] = buf[m++];
+    x_[1] = buf[m++];
+    x_[2] = buf[m++];
+    lmp->autopas->particle_by_index(i)->setR(x_);
   }
 }
 
