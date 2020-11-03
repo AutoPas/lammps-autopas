@@ -1,3 +1,42 @@
+# This is a fork of LAMMPS extended by AutoPas
+
+## How to run with AutoPas
+
+### Compile
+
+```bash
+mkdir lammps-autopas/build && cd "$_"
+
+cmake \
+    -DPKG_USER-AUTOPAS=yes \
+    -DPKG_USER-OMP=yes \
+    -DPKG_KOKKOS=yes \
+    -DKOKKOS_ARCH=HSW \
+    -DKOKKOS_ENABLE_OPENMP=yes \
+    -DBUILD_OMP=yes \
+    -DWITH_GZIP=false \
+    -DWITH_JPEG=false \
+    -DWITH_PNG=false \
+    ../cmake
+
+make
+```
+
+### Run
+
+Examples:
+```bash
+lmp -i in.lj -autopas on log debug -sf autopas -v t 1000 -v x 128 -v y 128 -v z 128 
+
+```
+or
+
+```bash
+lmp -i in.lj -autopas on notune t balanced-sliced-verlet c VerletListsCells d AoS n disabled estimator none -sf autopas -v t 1000 -v x 128 -v y 128 -v z 128 
+```
+
+## Original LAMMPS README
+
 This is the LAMMPS software package.
 
 LAMMPS stands for Large-scale Atomic/Molecular Massively Parallel

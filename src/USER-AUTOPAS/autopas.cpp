@@ -1,8 +1,8 @@
 #include "autopas.h"
 
 #include <algorithm>
-#include <string>
 #include <limits>
+#include <string>
 
 #include "atom.h"
 #include "domain.h"
@@ -13,23 +13,23 @@
 
 #include <autopas/utils/MemoryProfiler.h>
 
-
 using namespace LAMMPS_NS;
 
-AutoPasLMP::AutoPasLMP(class LAMMPS *lmp, int narg, char **argc) : Pointers(
-    lmp) {
+AutoPasLMP::AutoPasLMP(class LAMMPS *lmp, int narg, char **argc)
+    : Pointers(lmp) {
   lmp->autopas = this;
 
   // TODO Check again with new Autopas version
   // Remove additional traversals from the defaults provided by AutoPas
   _opt.allowed_traversals.erase(
-      autopas::TraversalOption::verletClusters); //  Wrong results
+      autopas::TraversalOption::vcl_cluster_iteration); //  Wrong results
   _opt.allowed_traversals.erase(
-      autopas::TraversalOption::verletClustersColoring); // Wrong results
+      autopas::TraversalOption::vcl_c06); // Wrong results
   _opt.allowed_traversals.erase(
-      autopas::TraversalOption::verletClustersStatic); // Wrong results
+      autopas::TraversalOption::vcl_c01_balanced); // Wrong results
   _opt.allowed_traversals.erase(
-      autopas::TraversalOption::verletClusterCells); // Vector out of range exception
+      autopas::TraversalOption::vcc_cluster_iteration_cuda); // Vector out of
+                                                             // range exception
 
   // Command line parsing
   std::vector<std::string> args(argc, argc + narg);
@@ -66,26 +66,26 @@ AutoPasLMP::AutoPasLMP(class LAMMPS *lmp, int narg, char **argc) : Pointers(
     } else if (args[iarg] == "n" || args[iarg] == "newton") {
       if (iarg + 2 > narg)
         error->all(FLERR, "Invalid AutoPas command-line arg: newton");
-      _opt.allowed_newton3 = autopas::Newton3Option::parseOptions(
-          args[iarg + 1]);
+      _opt.allowed_newton3 =
+          autopas::Newton3Option::parseOptions(args[iarg + 1]);
       iarg += 2;
     } else if (args[iarg] == "t" || args[iarg] == "traversals") {
       if (iarg + 2 > narg)
         error->all(FLERR, "Invalid AutoPas command-line arg: traversal");
-      _opt.allowed_traversals = autopas::TraversalOption::parseOptions(
-          args[iarg + 1]);
+      _opt.allowed_traversals =
+          autopas::TraversalOption::parseOptions(args[iarg + 1]);
       iarg += 2;
     } else if (args[iarg] == "c" || args[iarg] == "containers") {
       if (iarg + 2 > narg)
         error->all(FLERR, "Invalid AutoPas command-line arg: containers");
-      _opt.allowed_containers = autopas::ContainerOption::parseOptions(
-          args[iarg + 1]);
+      _opt.allowed_containers =
+          autopas::ContainerOption::parseOptions(args[iarg + 1]);
       iarg += 2;
     } else if (args[iarg] == "d" || args[iarg] == "data") {
       if (iarg + 2 > narg)
         error->all(FLERR, "Invalid AutoPas command-line arg: data");
-      _opt.allowed_data_layouts = autopas::DataLayoutOption::parseOptions(
-          args[iarg + 1]);
+      _opt.allowed_data_layouts =
+          autopas::DataLayoutOption::parseOptions(args[iarg + 1]);
       iarg += 2;
     } else if (args[iarg] == "i" || args[iarg] == "interval") {
       if (iarg + 2 > narg)
@@ -131,43 +131,41 @@ AutoPasLMP::AutoPasLMP(class LAMMPS *lmp, int narg, char **argc) : Pointers(
     } else if (args[iarg] == "pred_mtpwt") {
       if (iarg + 2 > narg)
         error->all(FLERR, "Invalid AutoPas command-line arg: pred_mtpwt");
-      _opt.predictive_tuning.max_tuning_phases_without_test = std::stoi(
-          args[iarg + 1]);
+      _opt.predictive_tuning.max_tuning_phases_without_test =
+          std::stoi(args[iarg + 1]);
       iarg += 2;
     } else if (args[iarg] == "bayesian_af") {
       if (iarg + 2 > narg)
         error->all(FLERR, "Invalid AutoPas command-line arg: bayesian_af");
-      auto opts = autopas::AcquisitionFunctionOption::parseOptions(
-          args[iarg + 1]);
+      auto opts =
+          autopas::AcquisitionFunctionOption::parseOptions(args[iarg + 1]);
       if (opts.size() != 1)
         error->all(FLERR, "Invalid AutoPas command-line arg: bayesian_af");
       _opt.acquisition_function = *opts.begin();
       iarg += 2;
     } else if (args[iarg] == "csf") {
       if (iarg + 2 > narg)
-        error->all(FLERR,
-                   "Invalid AutoPas command-line arg: csf");
-      auto tokens = autopas::utils::StringUtils::tokenize(args[iarg + 1],
-                                                          autopas::utils::StringUtils::delimiters);
+        error->all(FLERR, "Invalid AutoPas command-line arg: csf");
+      auto tokens = autopas::utils::StringUtils::tokenize(
+          args[iarg + 1], autopas::utils::StringUtils::delimiters);
       std::set<double> csf;
-      for (auto &t: tokens)
+      for (auto &t : tokens)
         csf.insert(std::stod(t));
-      _opt.allowed_cell_size_factors = std::make_unique<autopas::NumberSetFinite<double>>(
-          csf);
+      _opt.allowed_cell_size_factors =
+          std::make_unique<autopas::NumberSetFinite<double>>(csf);
       iarg += 2;
     } else if (args[iarg] == "estimator") {
       if (iarg + 2 > narg)
         error->all(FLERR, "Invalid AutoPas command-line arg: estimator");
-      _opt.allowed_load_estimators = autopas::LoadEstimatorOption::parseOptions(
-          args[iarg + 1]);
+      _opt.allowed_load_estimators =
+          autopas::LoadEstimatorOption::parseOptions(args[iarg + 1]);
       iarg += 2;
     } else if (args[iarg] == "notune") {
       _opt.tuning = false;
       iarg += 1;
-    } else error->all(FLERR, "Invalid AutoPas command-line args");
+    } else
+      error->all(FLERR, "Invalid AutoPas command-line args");
   }
-
-
 }
 
 void AutoPasLMP::init_autopas(double cutoff, double **epsilon, double **sigma) {
@@ -180,14 +178,13 @@ void AutoPasLMP::init_autopas(double cutoff, double **epsilon, double **sigma) {
     error->one(FLERR, "AutoPas requires global id mapping");
   }
 
-
   // TODO SUPPORT FOR: pair_modify shift yes
 
   _autopas = std::make_unique<AutoPasType>();
 
   // Initialize particle properties
-  _particlePropertiesLibrary = std::make_unique<ParticlePropertiesLibraryType>(
-      cutoff);
+  _particlePropertiesLibrary =
+      std::make_unique<ParticlePropertiesLibraryType>(cutoff);
 
   print_config(epsilon, sigma);
 
@@ -255,7 +252,8 @@ void AutoPasLMP::print_config(double *const *epsilon,
     std::cout << "  " << name << " - ";
     for (auto it = set.begin(); it != set.end(); ++it) {
       std::cout << nameMap[*it];
-      if (it != std::prev(set.end())) std::cout << ", "; // fence post
+      if (it != std::prev(set.end()))
+        std::cout << ", "; // fence post
     }
     std::cout << std::endl;
   };
@@ -265,7 +263,8 @@ void AutoPasLMP::print_config(double *const *epsilon,
     std::cout << "  " << name << " - ";
     for (auto it = set.begin(); it != set.end(); ++it) {
       std::cout << *it;
-      if (it != std::prev(set.end())) std::cout << ", "; // fence post
+      if (it != std::prev(set.end()))
+        std::cout << ", "; // fence post
     }
     std::cout << std::endl;
   };
@@ -281,15 +280,13 @@ void AutoPasLMP::print_config(double *const *epsilon,
   printOpt("Newton3", _opt.allowed_newton3,
            autopas::Newton3Option::getOptionNames());
 
-
-  if (
-      _opt.allowed_traversals.count(autopas::TraversalOption::verletClusters) ||
+  if (_opt.allowed_traversals.count(
+          autopas::TraversalOption::vcl_cluster_iteration) ||
       _opt.allowed_traversals.count(
-          autopas::TraversalOption::verletClusterCells) ||
+          autopas::TraversalOption::vcc_cluster_iteration_cuda) ||
+      _opt.allowed_traversals.count(autopas::TraversalOption::vcl_c06) ||
       _opt.allowed_traversals.count(
-          autopas::TraversalOption::verletClustersColoring) ||
-      _opt.allowed_traversals.count(
-          autopas::TraversalOption::verletClustersStatic)) {
+          autopas::TraversalOption::vcl_c01_balanced)) {
     printVal("Verlet Cluster Size", std::set{_opt.verlet_cluster_size});
   }
 
@@ -305,7 +302,7 @@ void AutoPasLMP::print_config(double *const *epsilon,
 
     if (_opt.tuning_strategy == autopas::TuningStrategyOption::bayesianSearch ||
         _opt.tuning_strategy ==
-        autopas::TuningStrategyOption::bayesianClusterSearch) {
+            autopas::TuningStrategyOption::bayesianClusterSearch) {
       printOpt("Acquisition Function", std::set{_opt.acquisition_function},
                autopas::AcquisitionFunctionOption::getOptionNames());
     } else if (_opt.tuning_strategy ==
@@ -317,9 +314,9 @@ void AutoPasLMP::print_config(double *const *epsilon,
     }
 
     if (_opt.allowed_traversals.count(
-        autopas::TraversalOption::BalancedSliced) ||
+            autopas::TraversalOption::lc_sliced_balanced) ||
         _opt.allowed_traversals.count(
-            autopas::TraversalOption::BalancedSlicedVerlet)) {
+            autopas::TraversalOption::vlc_sliced_balanced)) {
       printOpt("Load Estimator", _opt.allowed_load_estimators,
                autopas::LoadEstimatorOption::getOptionNames());
     }
@@ -337,22 +334,24 @@ void AutoPasLMP::print_config(double *const *epsilon,
       error->all(FLERR, "AutoPas will tune: Multiple cell size factors");
     if (_opt.allowed_load_estimators.size() != 1) {
       if (_opt.allowed_traversals.count(
-          autopas::TraversalOption::BalancedSliced) ||
+              autopas::TraversalOption::lc_sliced_balanced) ||
           _opt.allowed_traversals.count(
-              autopas::TraversalOption::BalancedSlicedVerlet)) {
+              autopas::TraversalOption::vlc_sliced_balanced)) {
         error->all(FLERR, "AutoPas will tune: Multiple load estimators");
       }
     }
   }
 
+  // dummy because LAMMPS starts with typeID 1 and autopas with 0
+  _particlePropertiesLibrary->addType(0, 1, 1, 1);
   std::cout << "  Particle Properties\n";
   for (int i = 1; i <= atom->ntypes; ++i) {
     std::cout << "    Type, Eps, Sig: " << i << " " << epsilon[i][i] << " "
               << sigma[i][i] << "\n";
-    _particlePropertiesLibrary->addType(
-        i, epsilon[i][i], sigma[i][i], atom->mass[i]
-    );
+    _particlePropertiesLibrary->addType(i, epsilon[i][i], sigma[i][i],
+                                        atom->mass[i]);
   }
+  _particlePropertiesLibrary->calculateMixingCoefficients();
 }
 
 AutoPasLMP::ParticleType *AutoPasLMP::particle_by_index(int idx) {
@@ -366,17 +365,10 @@ AutoPasLMP::ParticleType *AutoPasLMP::particle_by_index(int idx) {
   } else {
     return _index_vector.at(idx);
   }
-
 }
 
 bool AutoPasLMP::update_autopas(bool must_rebuild) {
-  auto&&[invalidParticles, updated] = [&] {
-    if (must_rebuild) {
-      return std::make_pair(_autopas->updateContainerForced(), true);
-    } else {
-      return _autopas->updateContainer();
-    }
-  }();
+  auto &&[invalidParticles, updated] = _autopas->updateContainer(must_rebuild);
 
   if (updated) {
     _leavingParticles = std::move(invalidParticles);
@@ -398,7 +390,8 @@ void AutoPasLMP::move_into() {
     add_particle(ParticleType(pos, vel, moleculeId, i, typeId));
   }
 
-  // Destroy memory for debugging purposes so we segfault instead of accidentally using the old particles outside of AutoPas
+  // Destroy memory for debugging purposes so we segfault instead of
+  // accidentally using the old particles outside of AutoPas
   memory->destroy(atom->x);
   memory->destroy(atom->v);
   memory->destroy(atom->f);
@@ -419,7 +412,8 @@ void AutoPasLMP::copy_back() const {
   atom->f = memory->grow(atom->f, nmax, 3, "atom:f");
 
 #pragma omp parallel default(none)
-  for (auto iter = const_iterate<autopas::ownedOnly>(); iter.isValid(); ++iter) {
+  for (auto iter = const_iterate<autopas::ownedOnly>(); iter.isValid();
+       ++iter) {
     auto &p = *iter;
     auto idx{iter->getLocalID()};
     std::copy_n(p.getR().begin(), 3, atom->x[idx]);
@@ -427,7 +421,7 @@ void AutoPasLMP::copy_back() const {
     std::copy_n(p.getF().begin(), 3, atom->f[idx]);
   }
 
-  for (auto &p: _leavingParticles) {
+  for (auto &p : _leavingParticles) {
     auto idx{p.getLocalID()};
     std::copy_n(p.getR().begin(), 3, atom->x[idx]);
     std::copy_n(p.getV().begin(), 3, atom->v[idx]);
@@ -446,7 +440,7 @@ void AutoPasLMP::update_index_structure() {
   }
 
 #pragma omp parallel default(none)
-  for (auto &p: *lmp->autopas->_autopas) { // owned and halo
+  for (auto &p : *lmp->autopas->_autopas) { // owned and halo
     auto idx{p.getLocalID()};
     if (_use_index_map) {
       _index_map.emplace(idx, &p);
@@ -461,8 +455,7 @@ void AutoPasLMP::update_index_structure() {
 #pragma clang diagnostic push
 #pragma ide diagnostic ignored "UnreachableCode"
 
-template<bool halo>
-void AutoPasLMP::add_particle(const ParticleType &p) {
+template <bool halo> void AutoPasLMP::add_particle(const ParticleType &p) {
   assert(p.getTypeId() > 0);
   assert(p.getTypeId() <= atom->ntypes);
 
@@ -474,13 +467,13 @@ void AutoPasLMP::add_particle(const ParticleType &p) {
 
   if (_index_structure_valid) {
     _index_structure_valid = false;
-    //std::cout << "Invalidate map\n";
+    // std::cout << "Invalidate map\n";
   }
 }
 
 #pragma clang diagnostic pop
 
-template<bool haloOnly>
+template <bool haloOnly>
 autopas::ParticleIteratorWrapper<AutoPasLMP::ParticleType, true>
 AutoPasLMP::particles_by_slab(int dim, double lo, double hi) const {
 
@@ -500,29 +493,21 @@ AutoPasLMP::particles_by_slab(int dim, double lo, double hi) const {
   }
 }
 
-std::vector<AutoPasLMP::ParticleType> &
-AutoPasLMP::get_leaving_particles() {
+std::vector<AutoPasLMP::ParticleType> &AutoPasLMP::get_leaving_particles() {
   return _leavingParticles;
 }
 
-bool AutoPasLMP::is_initialized() {
-  return _initialized;
-}
+bool AutoPasLMP::is_initialized() { return _initialized; }
 
-
-std::vector<int>
-AutoPasLMP::particle_to_index(
+std::vector<int> AutoPasLMP::particle_to_index(
     const std::vector<AutoPasLMP::ParticleType *> &particles) {
   std::vector<int> list(particles.size());
-  std::transform(particles.begin(),
-                 particles.end(), list.begin(),
+  std::transform(particles.begin(), particles.end(), list.begin(),
                  [](auto *p) { return p->getLocalID(); });
   return list;
 }
 
-AutoPasLMP::FloatType AutoPasLMP::get_cutoff() {
-  return _autopas->getCutoff();
-}
+AutoPasLMP::FloatType AutoPasLMP::get_cutoff() { return _autopas->getCutoff(); }
 
 bool AutoPasLMP::iterate_pairwise(AutoPasLMP::PairFunctorType *functor) {
   return _autopas->iteratePairwise(functor);
@@ -538,11 +523,10 @@ AutoPasLMP::const_iterate_auto(int first, int last) {
   } else {
     return const_iterate<autopas::haloAndOwned>();
   }
-
 }
 
-AutoPasLMP::AutoPasType::iterator_t
-AutoPasLMP::iterate_auto(int first, int last) {
+AutoPasLMP::AutoPasType::iterator_t AutoPasLMP::iterate_auto(int first,
+                                                             int last) {
   auto nlocal{atom->nlocal};
   if (last < nlocal) {
     return iterate<autopas::ownedOnly>();
@@ -557,8 +541,8 @@ void AutoPasLMP::update_domain_size() {
   // For changing the domain it is necessary to reinitialize AutoPas
   // All particles will be deleted
   if (_initialized) {
-    error->one(FLERR,
-               "Loosing all particles, use move_back() before modifying particles outside of AutoPas");
+    error->one(FLERR, "Loosing all particles, use move_back() before modifying "
+                      "particles outside of AutoPas");
   }
 
   _autopas->setBoxMax({domain->subhi[0], domain->subhi[1], domain->subhi[2]});
@@ -569,8 +553,10 @@ void AutoPasLMP::update_domain_size() {
 
 std::vector<std::vector<int>> AutoPasLMP::get_interaction_map() {
   if (lmp->neighbor->nex_group > 0 || lmp->neighbor->nex_mol > 0) {
-    error->one(FLERR,
-               "Excluding interactions based on the group or the molecule is currently not supported with AutoPas. Use exclusion by type instead.");
+    error->one(
+        FLERR,
+        "Excluding interactions based on the group or the molecule is "
+        "currently not supported with AutoPas. Use exclusion by type instead.");
   }
 
   // Initialize n x n map with 1 for every type
@@ -599,10 +585,8 @@ template void AutoPasLMP::add_particle<false>(const ParticleType &p);
 
 template void AutoPasLMP::add_particle<true>(const ParticleType &p);
 
-template
-autopas::ParticleIteratorWrapper<AutoPasLMP::ParticleType, true>
+template autopas::ParticleIteratorWrapper<AutoPasLMP::ParticleType, true>
 AutoPasLMP::particles_by_slab<true>(int dim, double lo, double hi) const;
 
-template
-autopas::ParticleIteratorWrapper<AutoPasLMP::ParticleType, true>
+template autopas::ParticleIteratorWrapper<AutoPasLMP::ParticleType, true>
 AutoPasLMP::particles_by_slab<false>(int dim, double lo, double hi) const;
