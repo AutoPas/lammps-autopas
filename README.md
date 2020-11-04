@@ -61,28 +61,30 @@ more information about the code and its uses.
 
 The LAMMPS distribution includes the following files and directories:
 
-README			   this file
-LICENSE			   the GNU General Public License (GPL)
-bench			   benchmark problems
-cmake			   CMake build system
-doc			   documentation
-examples		   simple test problems
-lib			   libraries LAMMPS can be linked with
-potentials		   interatomic potential files
-python			   Python wrapper on LAMMPS as a library
-src			   source files
-tools			   pre- and post-processing tools
+* README.md			   this file
+* LICENSE			   the GNU General Public License (GPL)
+* bench			   benchmark problems
+* cmake			   CMake build system
+* doc			   documentation
+* examples		   simple test problems
+* lib			   libraries LAMMPS can be linked with
+* potentials		   interatomic potential files
+* python			   Python wrapper on LAMMPS as a library
+* src			   source files
+* tools			   pre- and post-processing tools
 
 Point your browser at any of these files to get started:
 
-http://lammps.sandia.gov/doc/Manual.html         the LAMMPS manual
-http://lammps.sandia.gov/doc/Intro.html          hi-level introduction
-http://lammps.sandia.gov/doc/Build.html          how to build LAMMPS
-http://lammps.sandia.gov/doc/Run_head.html       how to run LAMMPS
-http://lammps.sandia.gov/doc/Developer.pdf       LAMMPS developer guide
+* http://lammps.sandia.gov/doc/Manual.html         the LAMMPS manual
+* http://lammps.sandia.gov/doc/Intro.html          hi-level introduction
+* http://lammps.sandia.gov/doc/Build.html          how to build LAMMPS
+* http://lammps.sandia.gov/doc/Run_head.html       how to run LAMMPS
+* http://lammps.sandia.gov/doc/Developer.pdf       LAMMPS developer guide
 
 You can also create these doc pages locally:
 
-% cd doc
-% make html                # creates HTML pages in doc/html
-% make pdf                 # creates Manual.pdf and Developer.pdf
+```bash
+cd doc
+make html                # creates HTML pages in doc/html
+make pdf                 # creates Manual.pdf and Developer.pdf
+```
