@@ -23,7 +23,8 @@ if (PKG_USER-AUTOPAS)
     FetchContent_Declare(
             autopas
             GIT_REPOSITORY ${autopasRepoPath}
-            GIT_TAG cacb3fa0e14b28bb8b50f10ec7fe16628bbb2582
+            # GIT_TAG cacb3fa0e14b28bb8b50f10ec7fe16628bbb2582
+            GIT_TAG ab14c135d5790de357dac56930827cfb791b4114
     )
 
     option(AUTOPAS_BUILD_TESTS "" OFF)
