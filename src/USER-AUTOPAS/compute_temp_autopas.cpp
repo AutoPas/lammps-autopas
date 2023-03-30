@@ -25,7 +25,7 @@ double LAMMPS_NS::ComputeTempAutoPas::compute_scalar() {
   double t = 0.0;
 
 #pragma omp parallel default(none) shared(mask, rmass, mass, type) reduction(+: t)
-  for (auto iter = lmp->autopas->const_iterate<autopas::IteratorBehavior::ownedOnly>(); iter.isValid(); ++iter) {
+  for (auto iter = lmp->autopas->const_iterate<autopas::IteratorBehavior::owned>(); iter.isValid(); ++iter) {
     auto &v{iter->getV()};
     auto idx{iter->getLocalID()};
     if (mask[idx] & groupbit) {
@@ -65,7 +65,7 @@ void LAMMPS_NS::ComputeTempAutoPas::compute_vector() {
   double massone, t[6] = {0};
 
 #pragma omp parallel default(none) shared(mask, rmass, mass, type, massone) reduction(+:t[:6])
-  for (auto iter = lmp->autopas->const_iterate<autopas::IteratorBehavior::ownedOnly>(); iter.isValid(); ++iter) {
+  for (auto iter = lmp->autopas->const_iterate<autopas::IteratorBehavior::owned>(); iter.isValid(); ++iter) {
     auto &v{iter->getV()};
     auto idx{iter->getLocalID()};
 

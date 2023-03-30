@@ -12,7 +12,7 @@ void FixEnforce2DAutoPas::post_force(int vflag) {
   if (igroup == atom->firstgroup) nlocal = atom->nfirst;
 
 #pragma omp parallel default(none) shared(mask, nlocal)
-  for (auto iter = lmp->autopas->iterate<autopas::ownedOnly>(); iter.isValid(); ++iter) {
+  for (auto iter = lmp->autopas->iterate<autopas::IteratorBehavior::owned>(); iter.isValid(); ++iter) {
     auto v = iter->getV();
     auto f = iter->getF();
     auto idx{iter->getLocalID()};

@@ -43,7 +43,7 @@ void FixSetForceAutoPas::post_force(int vflag) {
 
   if (varflag == CONSTANT) {
 #pragma omp parallel default(none) shared(region) reduction(+:foriginal[:3])
-    for (auto iter = lmp->autopas->iterate<autopas::ownedOnly>(); iter.isValid(); ++iter) {
+    for (auto iter = lmp->autopas->iterate<autopas::IteratorBehavior::owned>(); iter.isValid(); ++iter) {
       auto &x = iter->getR();
       auto &f = iter->getF();
       auto idx{iter->getLocalID()};
@@ -79,7 +79,7 @@ void FixSetForceAutoPas::post_force(int vflag) {
     modify->addstep_compute(update->ntimestep + 1);
 
 #pragma omp parallel default(none) shared(region) reduction(+:foriginal[:3])
-    for (auto iter = lmp->autopas->iterate<autopas::ownedOnly>(); iter.isValid(); ++iter) {
+    for (auto iter = lmp->autopas->iterate<autopas::IteratorBehavior::owned>(); iter.isValid(); ++iter) {
       auto &x = iter->getR();
       auto &f = iter->getF();
       auto idx{iter->getLocalID()};
@@ -114,7 +114,7 @@ void FixSetForceAutoPas::post_force_respa(int vflag, int ilevel, int iloop) {
     }
 
 #pragma omp parallel default(none) shared(region)
-    for (auto iter = lmp->autopas->iterate<autopas::ownedOnly>(); iter.isValid(); ++iter) {
+    for (auto iter = lmp->autopas->iterate<autopas::IteratorBehavior::owned>(); iter.isValid(); ++iter) {
       auto &x = iter->getR();
       auto &f = iter->getF();
       auto idx{iter->getLocalID()};

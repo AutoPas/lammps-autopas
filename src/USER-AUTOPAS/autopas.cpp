@@ -27,9 +27,6 @@ AutoPasLMP::AutoPasLMP(class LAMMPS *lmp, int narg, char **argc)
       autopas::TraversalOption::vcl_c06); // Wrong results
   _opt.allowed_traversals.erase(
       autopas::TraversalOption::vcl_c01_balanced); // Wrong results
-  _opt.allowed_traversals.erase(
-      autopas::TraversalOption::vcc_cluster_iteration_cuda); // Vector out of
-                                                             // range exception
 
   // Command line parsing
   std::vector<std::string> args(argc, argc + narg);
@@ -204,9 +201,9 @@ void AutoPasLMP::init_autopas(double cutoff, double **epsilon, double **sigma) {
 
   _autopas->setAllowedCellSizeFactors(*_opt.allowed_cell_size_factors);
 
-  _autopas->setVerletSkin(neighbor->skin);
   _autopas->setVerletRebuildFrequency(
       std::max(neighbor->every, neighbor->delay));
+  _autopas->setVerletSkinPerTimestep(neighbor->skin / _autopas->getVerletRebuildFrequency());
   _autopas->setVerletClusterSize(_opt.verlet_cluster_size);
 
   _autopas->setTuningInterval(_opt.tuning_interval);
@@ -282,8 +279,6 @@ void AutoPasLMP::print_config(double *const *epsilon,
 
   if (_opt.allowed_traversals.count(
           autopas::TraversalOption::vcl_cluster_iteration) ||
-      _opt.allowed_traversals.count(
-          autopas::TraversalOption::vcc_cluster_iteration_cuda) ||
       _opt.allowed_traversals.count(autopas::TraversalOption::vcl_c06) ||
       _opt.allowed_traversals.count(
           autopas::TraversalOption::vcl_c01_balanced)) {
@@ -367,15 +362,12 @@ AutoPasLMP::ParticleType *AutoPasLMP::particle_by_index(int idx) {
   }
 }
 
-bool AutoPasLMP::update_autopas(bool must_rebuild) {
-  auto &&[invalidParticles, updated] = _autopas->updateContainer(must_rebuild);
+void AutoPasLMP::update_autopas() {
+  auto invalidParticles = _autopas->updateContainer();
 
-  if (updated) {
-    _leavingParticles = std::move(invalidParticles);
-    _index_structure_valid = false;
-  }
-
-  return updated;
+  _leavingParticles = std::move(invalidParticles);
+  _index_structure_valid = false;
+  return;
 }
 
 void AutoPasLMP::move_into() {
@@ -412,7 +404,7 @@ void AutoPasLMP::copy_back() const {
   atom->f = memory->grow(atom->f, nmax, 3, "atom:f");
 
 #pragma omp parallel default(none)
-  for (auto iter = const_iterate<autopas::ownedOnly>(); iter.isValid();
+  for (auto iter = const_iterate<autopas::IteratorBehavior::owned>(); iter.isValid();
        ++iter) {
     auto &p = *iter;
     auto idx{iter->getLocalID()};
@@ -430,7 +422,7 @@ void AutoPasLMP::copy_back() const {
 }
 
 void AutoPasLMP::update_index_structure() {
-  auto n = _autopas->getNumberOfParticles(autopas::haloAndOwned);
+  auto n = _autopas->getNumberOfParticles(autopas::IteratorBehavior::ownedOrHalo);
   if (_use_index_map) {
     _index_map.clear();
     _index_map.reserve(n);
@@ -460,7 +452,7 @@ template <bool halo> void AutoPasLMP::add_particle(const ParticleType &p) {
   assert(p.getTypeId() <= atom->ntypes);
 
   if constexpr (halo) {
-    _autopas->addOrUpdateHaloParticle(p);
+    _autopas->addHaloParticle(p);
   } else {
     _autopas->addParticle(p);
   }
@@ -487,9 +479,9 @@ AutoPasLMP::particles_by_slab(int dim, double lo, double hi) const {
   high[dim] = hi;
 
   if constexpr (haloOnly) {
-    return _autopas->getRegionIterator(low, high, autopas::haloOnly);
+    return _autopas->getRegionIterator(low, high, autopas::IteratorBehavior::halo);
   } else {
-    return _autopas->getRegionIterator(low, high, autopas::haloAndOwned);
+    return _autopas->getRegionIterator(low, high, autopas::IteratorBehavior::ownedOrHalo);
   }
 }
 
@@ -517,11 +509,11 @@ AutoPasLMP::AutoPasType::const_iterator_t
 AutoPasLMP::const_iterate_auto(int first, int last) {
   auto nlocal{atom->nlocal};
   if (last < nlocal) {
-    return const_iterate<autopas::ownedOnly>();
+    return const_iterate<autopas::IteratorBehavior::owned>();
   } else if (first >= nlocal) {
-    return const_iterate<autopas::haloOnly>();
+    return const_iterate<autopas::IteratorBehavior::halo>();
   } else {
-    return const_iterate<autopas::haloAndOwned>();
+    return const_iterate<autopas::IteratorBehavior::ownedOrHalo>();
   }
 }
 
@@ -529,11 +521,11 @@ AutoPasLMP::AutoPasType::iterator_t AutoPasLMP::iterate_auto(int first,
                                                              int last) {
   auto nlocal{atom->nlocal};
   if (last < nlocal) {
-    return iterate<autopas::ownedOnly>();
+    return iterate<autopas::IteratorBehavior::owned>();
   } else if (first >= nlocal) {
-    return iterate<autopas::haloOnly>();
+    return iterate<autopas::IteratorBehavior::halo>();
   } else {
-    return iterate<autopas::haloAndOwned>();
+    return iterate<autopas::IteratorBehavior::ownedOrHalo>();
   }
 }
 

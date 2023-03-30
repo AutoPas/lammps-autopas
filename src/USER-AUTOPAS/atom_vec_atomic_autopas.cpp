@@ -449,7 +449,7 @@ AtomVecAtomicAutopas::data_atom(double *coord, imageint imagetmp,
 void AtomVecAtomicAutopas::pack_data(double **buf) {
 
 #pragma omp parallel default(none) shared(buf)
-  for (auto iter = lmp->autopas->const_iterate<autopas::IteratorBehavior::ownedOnly>(); iter.isValid(); ++iter) {
+  for (auto iter = lmp->autopas->const_iterate<autopas::IteratorBehavior::owned>(); iter.isValid(); ++iter) {
     auto &x_{iter->getR()};
     auto idx{iter->getLocalID()};
     buf[idx][0] = ubuf(tag[idx]).d;

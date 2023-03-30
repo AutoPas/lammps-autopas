@@ -80,7 +80,7 @@ void CommAutoPas::reverse_comm() {
     // Using force buffer
     force_buf.resize(atom->nlocal + atom->nghost);
 #pragma omp parallel default(none)
-    for (auto iter = lmp->autopas->const_iterate<autopas::haloAndOwned>(); iter.isValid(); ++iter) {
+    for (auto iter = lmp->autopas->const_iterate<autopas::IteratorBehavior::ownedOrHalo>(); iter.isValid(); ++iter) {
       auto idx{iter->getLocalID()};
       auto &f{iter->getF()};
       std::copy(f.begin(), f.end(), force_buf[idx].begin());

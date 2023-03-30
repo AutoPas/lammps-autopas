@@ -54,7 +54,7 @@ void FixIndentAutoPas::post_force(int vflag) {
 
 
 #pragma omp parallel default(none) shared(ctr, radius) reduction(-:indenter[:3])
-    for (auto iter = lmp->autopas->iterate<autopas::ownedOnly>(); iter.isValid(); ++iter) {
+    for (auto iter = lmp->autopas->iterate<autopas::IteratorBehavior::owned>(); iter.isValid(); ++iter) {
       auto &x = iter->getR();
       auto &f = iter->getF();
       auto idx{iter->getLocalID()};
@@ -120,7 +120,7 @@ void FixIndentAutoPas::post_force(int vflag) {
 
 
 #pragma omp parallel default(none) shared(ctr, radius) reduction(-:indenter[:3])
-    for (auto iter = lmp->autopas->iterate<autopas::ownedOnly>(); iter.isValid(); ++iter) {
+    for (auto iter = lmp->autopas->iterate<autopas::IteratorBehavior::owned>(); iter.isValid(); ++iter) {
       auto &x = iter->getR();
       auto &f = iter->getF();
       auto idx{iter->getLocalID()};
@@ -171,7 +171,7 @@ void FixIndentAutoPas::post_force(int vflag) {
     else plane = pvalue;
 
 #pragma omp parallel default(none) shared(plane) reduction(-:indenter[:3])
-    for (auto iter = lmp->autopas->iterate<autopas::ownedOnly>(); iter.isValid(); ++iter) {
+    for (auto iter = lmp->autopas->iterate<autopas::IteratorBehavior::owned>(); iter.isValid(); ++iter) {
       auto &x = iter->getR();
       auto &f = iter->getF();
       auto idx{iter->getLocalID()};

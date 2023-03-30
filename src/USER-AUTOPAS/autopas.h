@@ -24,9 +24,9 @@ public:
   using FloatVecType = std::array<FloatType, 3>;
   using ParticleType = MoleculeLJLammps<FloatType>;
   using ParticleCellType = autopas::FullParticleCell<ParticleType>;
-  using AutoPasType = autopas::AutoPas<ParticleType, ParticleCellType>;
+  using AutoPasType = autopas::AutoPas<ParticleType>;
   using ParticlePropertiesLibraryType = ParticlePropertiesLibrary<FloatType, size_t>;
-  using PairFunctorType = LJFunctorLammps<ParticleType, ParticleCellType, /*applyShift*/ false, /*useMixing*/ false, /*useNewton3*/ autopas::FunctorN3Modes::Both, /*calculateGlobals*/ true>;
+  using PairFunctorType = LJFunctorLammps<ParticleType, /*applyShift*/ false, /*useMixing*/ false, /*useNewton3*/ autopas::FunctorN3Modes::Both, /*calculateGlobals*/ true>;
 
   /*
    * Flag used to differentiate when LAMMPS is build with and without
@@ -49,10 +49,8 @@ public:
 
   /**
    * Rebuild the AutoPas container and update the leaving particles with the ones returned by AutoPas.
-   * @param must_rebuild When false, let AutoPas decide if rebuild is necessary
-   * @return Was container rebuild?
    */
-  bool update_autopas(bool must_rebuild);
+  void update_autopas();
 
   /**
    * Get a particle by its global index / particle ID.
@@ -105,7 +103,7 @@ public:
    * @tparam iterateBehavior Local, ghost or both
    * @return Particle iterator
    */
-  template<autopas::IteratorBehavior iterateBehavior>
+  template<autopas::IteratorBehavior::Value iterateBehavior>
   [[nodiscard]] AutoPasLMP::AutoPasType::iterator_t iterate() {
     return _autopas->begin(iterateBehavior);
   }
@@ -115,7 +113,7 @@ public:
    * @tparam iterateBehavior Local, ghost or both
    * @return Const particle iterator
    */
-  template<autopas::IteratorBehavior iterateBehavior>
+  template<autopas::IteratorBehavior::Value iterateBehavior>
   [[nodiscard]] AutoPasLMP::AutoPasType::const_iterator_t const_iterate() const {
     return _autopas->cbegin(iterateBehavior);
   }

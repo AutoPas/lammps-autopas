@@ -61,7 +61,7 @@ int LAMMPS_NS::NeighborAutoPas::check_distance() {
   int flag = 0;
 
 #pragma omp parallel default(none) shared(nlocal, deltasq) private(delx, dely, delz, rsq) reduction(max: flag)
-  for (auto iter = lmp->autopas->const_iterate<autopas::IteratorBehavior::ownedOnly>(); iter.isValid(); ++iter) {
+  for (auto iter = lmp->autopas->const_iterate<autopas::IteratorBehavior::owned>(); iter.isValid(); ++iter) {
     auto &x{iter->getR()};
     auto idx{iter->getLocalID()};
     if (idx < nlocal) {
@@ -108,7 +108,7 @@ void LAMMPS_NS::NeighborAutoPas::build(int topoflag) {
     }
 
 #pragma omp parallel default(none) shared(nlocal)
-    for (auto iter = lmp->autopas->const_iterate<autopas::IteratorBehavior::ownedOnly>(); iter.isValid(); ++iter) {
+    for (auto iter = lmp->autopas->const_iterate<autopas::IteratorBehavior::owned>(); iter.isValid(); ++iter) {
       auto &x{iter->getR()};
       auto idx{iter->getLocalID()};
       if (idx < nlocal) {
@@ -168,7 +168,7 @@ void LAMMPS_NS::NeighborAutoPas::build(int topoflag) {
 int LAMMPS_NS::NeighborAutoPas::decide() {
   assert(lmp->autopas->is_initialized());
 
-  bool must_rebuild = Neighbor::decide();
-
-  return lmp->autopas->update_autopas(must_rebuild);
+  // bool must_rebuild = Neighbor::decide();
+  lmp->autopas->update_autopas();
+  return 1;
 }

@@ -34,7 +34,7 @@ void DomainAutoPas::pbc() {
   bool flag = true;
 #pragma omp parallel default(none) shared(leavingParticles) reduction(&& : flag)
   {
-    for (auto iter = lmp->autopas->const_iterate<autopas::IteratorBehavior::ownedOnly>(); iter.isValid(); ++iter) {
+    for (auto iter = lmp->autopas->const_iterate<autopas::IteratorBehavior::owned>(); iter.isValid(); ++iter) {
       auto &x{iter->getR()};
       flag &= std::all_of(x.begin(), x.end(),
                           [](auto _) { return std::isfinite(_); });
@@ -267,7 +267,7 @@ void DomainAutoPas::lamda2x(int n) {
   }
 
 #pragma omp parallel default(none) shared(n)
-  for (auto iter = lmp->autopas->iterate<autopas::IteratorBehavior::ownedOnly>(); iter.isValid(); ++iter) {
+  for (auto iter = lmp->autopas->iterate<autopas::IteratorBehavior::owned>(); iter.isValid(); ++iter) {
 
     auto idx{iter->getLocalID()};
     if (idx < n) {
@@ -291,7 +291,7 @@ void DomainAutoPas::x2lamda(int n) {
   double delta[3];
 
 #pragma omp parallel default(none) shared(n) private(delta)
-  for (auto iter = lmp->autopas->iterate<autopas::IteratorBehavior::ownedOnly>(); iter.isValid(); ++iter) {
+  for (auto iter = lmp->autopas->iterate<autopas::IteratorBehavior::owned>(); iter.isValid(); ++iter) {
 
     auto idx{iter->getLocalID()};
     if (idx < n) {
@@ -344,7 +344,7 @@ void DomainAutoPas::reset_box() {
     min_x_0 = min_x_1 = min_x_2 = std::numeric_limits<double>::max();
 
 #pragma omp parallel default(none) reduction(min:min_x_0,min_x_1,min_x_2) reduction(max:max_x_0,max_x_1,max_x_2)
-    for (auto iter = lmp->autopas->iterate<autopas::ownedOnly>(); iter.isValid(); ++iter) {
+    for (auto iter = lmp->autopas->iterate<autopas::IteratorBehavior::owned>(); iter.isValid(); ++iter) {
       auto &x = iter->getR();
 
       min_x_0 = std::min(min_x_0, x[0]);
