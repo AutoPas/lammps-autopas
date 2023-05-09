@@ -95,7 +95,7 @@ public:
    * @return
    */
   template<bool haloOnly = false>
-  [[nodiscard]] autopas::ParticleIteratorWrapper<ParticleType, true>
+  [[nodiscard]] AutoPasLMP::AutoPasType::RegionIteratorT
   particles_by_slab(int dim, double lo, double hi) const;
 
   /**
@@ -104,7 +104,7 @@ public:
    * @return Particle iterator
    */
   template<autopas::IteratorBehavior::Value iterateBehavior>
-  [[nodiscard]] AutoPasLMP::AutoPasType::iterator_t iterate() {
+  [[nodiscard]] AutoPasLMP::AutoPasType::IteratorT iterate() {
     return _autopas->begin(iterateBehavior);
   }
 
@@ -114,7 +114,7 @@ public:
    * @return Const particle iterator
    */
   template<autopas::IteratorBehavior::Value iterateBehavior>
-  [[nodiscard]] AutoPasLMP::AutoPasType::const_iterator_t const_iterate() const {
+  [[nodiscard]] AutoPasLMP::AutoPasType::ConstIteratorT const_iterate() const {
     return _autopas->cbegin(iterateBehavior);
   }
 
@@ -126,7 +126,7 @@ public:
    * @param last  Upper local index
    * @return Particle iterator
    */
-  [[nodiscard]] AutoPasLMP::AutoPasType::const_iterator_t
+  [[nodiscard]] AutoPasLMP::AutoPasType::ConstIteratorT
   const_iterate_auto(int first, int last);
 
   /**
@@ -137,7 +137,7 @@ public:
    * @param last  Upper local index
    * @return Const particle iterator
    */
-  [[nodiscard]] AutoPasLMP::AutoPasType::iterator_t
+  [[nodiscard]] AutoPasLMP::AutoPasType::IteratorT
   iterate_auto(int first, int last);
 
 

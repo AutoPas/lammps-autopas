@@ -16,7 +16,7 @@ using namespace LAMMPS_NS;
 void CommAutoPas::forward_comm(int /*dummy*/) {
   // exchange data with another proc
   // if other proc is self, just copy
-  // if comm_x_only set, exchange or copy directly to x, don't unpack
+  // (if comm_x_only set, exchange or copy directly to x, don't unpack)
 
   for (int iswap = 0; iswap < nswap; iswap++) {
     if (sendproc[iswap] != me) {
@@ -196,7 +196,7 @@ void CommAutoPas::exchange() {
          iter < leavingParticles.end();) {
       auto &p{*iter};
       auto &x{p.getR()};
-      if (x[dim] < lo || x[dim] >= hi) {
+      if (x[dim] < lo || x[dim] >= hi) { // TODO: check necessary as AutoPas already checked?
         // Particle must be sent
         if (nsend > maxsend) grow_send(nsend, 1);
         nsend += avec->pack_exchange(p, &buf_send[nsend]);
@@ -205,7 +205,7 @@ void CommAutoPas::exchange() {
         auto idx{p.getLocalID()};
         avec->copy(nlocal - 1, idx, 1);
         nlocal--;
-        iter = leavingParticles.erase(iter);
+        iter = leavingParticles.erase(iter); //TODO: somehow avoid erase()
         //////////////////
       } else {
         ++iter;

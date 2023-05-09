@@ -40,7 +40,7 @@ void DomainAutoPas::pbc() {
                           [](auto _) { return std::isfinite(_); });
     }
 
-#pragma omp for
+#pragma omp for // TODO: Check if this makes sense
     for (auto iter = leavingParticles.cbegin();
          iter < leavingParticles.cend(); ++iter) {
       auto &x{iter->getR()};

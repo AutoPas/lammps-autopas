@@ -466,13 +466,13 @@ template <bool halo> void AutoPasLMP::add_particle(const ParticleType &p) {
 #pragma clang diagnostic pop
 
 template <bool haloOnly>
-autopas::ParticleIteratorWrapper<AutoPasLMP::ParticleType, true>
+AutoPasLMP::AutoPasType::RegionIteratorT
 AutoPasLMP::particles_by_slab(int dim, double lo, double hi) const {
 
   std::array<double, 3> low{};
   std::array<double, 3> high{};
 
-  low.fill(-std::numeric_limits<double>::max());
+  low.fill(std::numeric_limits<double>::lowest());
   high.fill(std::numeric_limits<double>::max());
 
   low[dim] = lo;
@@ -505,7 +505,7 @@ bool AutoPasLMP::iterate_pairwise(AutoPasLMP::PairFunctorType *functor) {
   return _autopas->iteratePairwise(functor);
 }
 
-AutoPasLMP::AutoPasType::const_iterator_t
+AutoPasLMP::AutoPasType::ConstIteratorT
 AutoPasLMP::const_iterate_auto(int first, int last) {
   auto nlocal{atom->nlocal};
   if (last < nlocal) {
@@ -517,7 +517,7 @@ AutoPasLMP::const_iterate_auto(int first, int last) {
   }
 }
 
-AutoPasLMP::AutoPasType::iterator_t AutoPasLMP::iterate_auto(int first,
+AutoPasLMP::AutoPasType::IteratorT AutoPasLMP::iterate_auto(int first,
                                                              int last) {
   auto nlocal{atom->nlocal};
   if (last < nlocal) {
@@ -577,8 +577,8 @@ template void AutoPasLMP::add_particle<false>(const ParticleType &p);
 
 template void AutoPasLMP::add_particle<true>(const ParticleType &p);
 
-template autopas::ParticleIteratorWrapper<AutoPasLMP::ParticleType, true>
+template AutoPasLMP::AutoPasType::RegionIteratorT
 AutoPasLMP::particles_by_slab<true>(int dim, double lo, double hi) const;
 
-template autopas::ParticleIteratorWrapper<AutoPasLMP::ParticleType, true>
+template AutoPasLMP::AutoPasType::RegionIteratorT
 AutoPasLMP::particles_by_slab<false>(int dim, double lo, double hi) const;
