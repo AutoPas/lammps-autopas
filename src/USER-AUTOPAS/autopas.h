@@ -26,7 +26,7 @@ public:
   using ParticleCellType = autopas::FullParticleCell<ParticleType>;
   using AutoPasType = autopas::AutoPas<ParticleType>;
   using ParticlePropertiesLibraryType = ParticlePropertiesLibrary<FloatType, size_t>;
-  using PairFunctorType = LJFunctorLammps<ParticleType, /*applyShift*/ false, /*useMixing*/ false, /*useNewton3*/ autopas::FunctorN3Modes::Both, /*calculateGlobals*/ true>;
+  using PairFunctorType = LJFunctorLammpsAVX<ParticleType, /*applyShift*/ false, /*useMixing*/ false, /*useNewton3*/ autopas::FunctorN3Modes::Both, /*calculateGlobals*/ true>;
 
   /*
    * Flag used to differentiate when LAMMPS is build with and without

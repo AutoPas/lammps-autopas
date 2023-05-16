@@ -22,7 +22,7 @@ class MoleculeLJLammps final : public autopas::Particle {
          * @param localID Local Id of the molecule.
          * @param typeId TypeId of the molecule.
          */
-        explicit MoleculeLJLammps(std::array<floatType, 3> pos, std::array<floatType, 3> v, unsigned long moleculeId,
+        explicit MoleculeLJLammps(const std::array<floatType, 3> pos, const std::array<floatType, 3> v, unsigned long moleculeId,
                             int localID, unsigned long typeId = 0)
                 : autopas::Particle(pos, v, moleculeId), _typeId(typeId), _localId(localID) {}
 
@@ -37,15 +37,9 @@ class MoleculeLJLammps final : public autopas::Particle {
             posX,
             posY,
             posZ,
-            velocityX,
-            velocityY,
-            velocityZ,
             forceX,
             forceY,
             forceZ,
-            oldForceX,
-            oldForceY,
-            oldForceZ,
             typeId,
             ownershipState
         };
@@ -58,9 +52,9 @@ class MoleculeLJLammps final : public autopas::Particle {
          * The reason for this is the easier use of the value in calculations (See LJFunctor "energyFactor")
          */
         using SoAArraysType = typename autopas::utils::SoAType<
-                MoleculeLJLammps<floatType> *, size_t /*id*/, floatType /*x*/, floatType /*y*/, floatType /*z*/, floatType /*vx*/,
-                floatType /*vy*/, floatType /*vz*/, floatType /*fx*/, floatType /*fy*/, floatType /*fz*/, floatType /*oldFx*/,
-                floatType /*oldFy*/, floatType /*oldFz*/, size_t /*typeid*/, autopas::OwnershipState /*ownershipState*/>::Type;
+                MoleculeLJLammps<floatType> *, size_t /*id*/, floatType /*x*/, floatType /*y*/, floatType /*z*/,
+                floatType /*fx*/, floatType /*fy*/, floatType /*fz*/, size_t /*typeid*/,
+                autopas::OwnershipState /*ownershipState*/>::Type;
 
         /**
          * Non-const getter for the pointer of this object.
@@ -87,24 +81,12 @@ class MoleculeLJLammps final : public autopas::Particle {
                 return getR()[1];
             } else if constexpr (attribute == AttributeNames::posZ) {
                 return getR()[2];
-            } else if constexpr (attribute == AttributeNames::velocityX) {
-                return getV()[0];
-            } else if constexpr (attribute == AttributeNames::velocityY) {
-                return getV()[1];
-            } else if constexpr (attribute == AttributeNames::velocityZ) {
-                return getV()[2];
             } else if constexpr (attribute == AttributeNames::forceX) {
                 return getF()[0];
             } else if constexpr (attribute == AttributeNames::forceY) {
                 return getF()[1];
             } else if constexpr (attribute == AttributeNames::forceZ) {
                 return getF()[2];
-            } else if constexpr (attribute == AttributeNames::oldForceX) {
-                return getOldF()[0];
-            } else if constexpr (attribute == AttributeNames::oldForceY) {
-                return getOldF()[1];
-            } else if constexpr (attribute == AttributeNames::oldForceZ) {
-                return getOldF()[2];
             } else if constexpr (attribute == AttributeNames::typeId) {
                 return getTypeId();
             } else if constexpr (attribute == AttributeNames::ownershipState) {
@@ -130,24 +112,12 @@ class MoleculeLJLammps final : public autopas::Particle {
                 _r[1] = value;
             } else if constexpr (attribute == AttributeNames::posZ) {
                 _r[2] = value;
-            } else if constexpr (attribute == AttributeNames::velocityX) {
-                _v[0] = value;
-            } else if constexpr (attribute == AttributeNames::velocityY) {
-                _v[1] = value;
-            } else if constexpr (attribute == AttributeNames::velocityZ) {
-                _v[2] = value;
             } else if constexpr (attribute == AttributeNames::forceX) {
                 _f[0] = value;
             } else if constexpr (attribute == AttributeNames::forceY) {
                 _f[1] = value;
             } else if constexpr (attribute == AttributeNames::forceZ) {
                 _f[2] = value;
-            } else if constexpr (attribute == AttributeNames::oldForceX) {
-                _oldF[0] = value;
-            } else if constexpr (attribute == AttributeNames::oldForceY) {
-                _oldF[1] = value;
-            } else if constexpr (attribute == AttributeNames::oldForceZ) {
-                _oldF[2] = value;
             } else if constexpr (attribute == AttributeNames::typeId) {
                 setTypeId(value);
             } else if constexpr (attribute == AttributeNames::ownershipState) {
@@ -156,18 +126,6 @@ class MoleculeLJLammps final : public autopas::Particle {
                 autopas::utils::ExceptionHandler::exception("MoleculeLJLammps::set() unknown attribute {}", attribute);
             }
         }
-
-        /**
-         * Get the old force.
-         * @return
-         */
-        [[nodiscard]] std::array<double, 3> getOldF() const { return _oldF; }
-
-        /**
-         * Set old force.
-         * @param oldForce
-         */
-        void setOldF(const std::array<double, 3> &oldForce) { _oldF = oldForce; }
 
         /**
          * Get TypeId.
@@ -194,11 +152,6 @@ class MoleculeLJLammps final : public autopas::Particle {
          * Particle type id.
          */
         size_t _typeId = 0;
-
-        /**
-         * Old Force of the particle experiences as 3D vector.
-         */
-        std::array<double, 3> _oldF = {0., 0., 0.};
 
         int _localId = -1;
     };

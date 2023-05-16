@@ -22,7 +22,7 @@
 #include "autopas/utils/WrapOpenMP.h"
 #include "autopas/utils/inBox.h"
 
-namespace autopas {
+namespace LAMMPS_NS {
 
 /**
  * A functor to handle lennard-jones interactions between two particles (molecules).
@@ -39,18 +39,20 @@ namespace autopas {
  * @tparam relevantForTuning Whether or not the auto-tuner should consider this functor.
  */
 template <class Particle, bool applyShift = false, bool useMixing = false,
-          FunctorN3Modes useNewton3 = FunctorN3Modes::Both, bool calculateGlobals = false,
+          autopas::FunctorN3Modes useNewton3 = autopas::FunctorN3Modes::Both, bool calculateGlobals = false,
           bool relevantForTuning = true>
-class LJFunctorAVX
-    : public Functor<Particle,
-                     LJFunctorAVX<Particle, applyShift, useMixing, useNewton3, calculateGlobals, relevantForTuning>> {
+class LJFunctorLammpsAVX
+: public autopas::Functor<Particle,
+        LJFunctorLammpsAVX<Particle, applyShift, useMixing, useNewton3, calculateGlobals, relevantForTuning>> {
   using SoAArraysType = typename Particle::SoAArraysType;
 
- public:
+  using interactingTypes_t = std::vector<std::vector<int>>;
+
+public:
   /**
    * Deleted default constructor
    */
-  LJFunctorAVX() = delete;
+  LJFunctorLammpsAVX() = delete;
 
  private:
   /**
@@ -58,23 +60,25 @@ class LJFunctorAVX
    * @param cutoff
    * @note param dummy unused, only there to make the signature different from the public constructor.
    */
-  explicit LJFunctorAVX(double cutoff, void * /*dummy*/)
+  explicit LJFunctorLammpsAVX(double cutoff, interactingTypes_t interactingTypes, void * /*dummy*/)
 #ifdef __AVX__
-      : Functor<Particle,
-                LJFunctorAVX<Particle, applyShift, useMixing, useNewton3, calculateGlobals, relevantForTuning>>(cutoff),
+      : autopas::Functor<Particle,
+          LJFunctorLammpsAVX<Particle, applyShift, useMixing, useNewton3, calculateGlobals, relevantForTuning>>(cutoff),
         _cutoffsquare{_mm256_set1_pd(cutoff * cutoff)},
         _cutoffsquareAoS(cutoff * cutoff),
         _upotSum{0.},
-        _virialSum{0., 0., 0.},
+        _virialSum{0., 0., 0., 0., 0., 0.},
         _aosThreadData(),
-        _postProcessed{false} {
+        _postProcessed{false},
+        _interactingTypes{std::move(interactingTypes)} {
+    using namespace autopas;
     if (calculateGlobals) {
       _aosThreadData.resize(autopas_get_max_threads());
     }
   }
 #else
-      : Functor<Particle,
-                LJFunctorAVX<Particle, applyShift, useMixing, useNewton3, calculateGlobals, relevantForTuning>>(
+      : autopas::Functor<Particle,
+                LJFunctorLammpsAVX<Particle, applyShift, useMixing, useNewton3, calculateGlobals, relevantForTuning>>(
             cutoff) {
     utils::ExceptionHandler::exception("AutoPas was compiled without AVX support!");
   }
@@ -88,7 +92,7 @@ class LJFunctorAVX
    *
    * @param cutoff
    */
-  explicit LJFunctorAVX(double cutoff) : LJFunctorAVX(cutoff, nullptr) {
+  explicit LJFunctorLammpsAVX(double cutoff, const interactingTypes_t& interactingTypes) : LJFunctorLammpsAVX(cutoff, interactingTypes, nullptr) {
     static_assert(not useMixing,
                   "Mixing without a ParticlePropertiesLibrary is not possible! Use a different constructor or set "
                   "mixing to false.");
@@ -100,8 +104,8 @@ class LJFunctorAVX
    * @param cutoff
    * @param particlePropertiesLibrary
    */
-  explicit LJFunctorAVX(double cutoff, ParticlePropertiesLibrary<double, size_t> &particlePropertiesLibrary)
-      : LJFunctorAVX(cutoff, nullptr) {
+  explicit LJFunctorLammpsAVX(double cutoff, const interactingTypes_t& interactingTypes, ParticlePropertiesLibrary<double, size_t> &particlePropertiesLibrary)
+      : LJFunctorLammpsAVX(cutoff, interactingTypes, nullptr) {
     static_assert(useMixing,
                   "Not using Mixing but using a ParticlePropertiesLibrary is not allowed! Use a different constructor "
                   "or set mixing to true.");
@@ -110,13 +114,15 @@ class LJFunctorAVX
 
   bool isRelevantForTuning() final { return relevantForTuning; }
 
-  bool allowsNewton3() final { return useNewton3 == FunctorN3Modes::Newton3Only or useNewton3 == FunctorN3Modes::Both; }
+  bool allowsNewton3() final { return useNewton3 == autopas::FunctorN3Modes::Newton3Only or useNewton3 == autopas::FunctorN3Modes::Both; }
 
   bool allowsNonNewton3() final {
-    return useNewton3 == FunctorN3Modes::Newton3Off or useNewton3 == FunctorN3Modes::Both;
+    return useNewton3 == autopas::FunctorN3Modes::Newton3Off or useNewton3 == autopas::FunctorN3Modes::Both;
   }
 
-  void AoSFunctor(Particle &i, Particle &j, bool newton3) final {
+  inline void AoSFunctor(Particle &i, Particle &j, bool newton3) final {
+    using namespace autopas::utils::ArrayMath::literals;
+    if(not doesInteract(i.getTypeId(), j.getTypeId()) or i.isDummy() or j.isDummy()) return;
     if (i.isDummy() or j.isDummy()) {
       return;
     }
@@ -130,8 +136,8 @@ class LJFunctorAVX
         shift6 = _PPLibrary->mixingShift6(i.getTypeId(), j.getTypeId());
       }
     }
-    auto dr = utils::ArrayMath::sub(i.getR(), j.getR());
-    double dr2 = utils::ArrayMath::dot(dr, dr);
+    auto dr = i.getR() - j.getR();
+    double dr2 = autopas::utils::ArrayMath::dot(dr, dr);
 
     if (dr2 > _cutoffsquareAoS) {
       return;
@@ -143,39 +149,42 @@ class LJFunctorAVX
     double lj12 = lj6 * lj6;
     double lj12m6 = lj12 - lj6;
     double fac = epsilon24 * (lj12 + lj12m6) * invdr2;
-    auto f = utils::ArrayMath::mulScalar(dr, fac);
+    auto f = dr * fac;
     i.addF(f);
     if (newton3) {
       // only if we use newton 3 here, we want to
       j.subF(f);
     }
     if (calculateGlobals) {
-      auto virial = utils::ArrayMath::mul(dr, f);
+      std::array<double, 6> dr_virial = {dr[0], dr[1], dr[2], dr[0], dr[0], dr[1]};
+      std::array<double, 6> f_virial = {f[0], f[1], f[2], f[1], f[2], f[2]};
+      auto virial = dr_virial * f_virial;
       double upot = epsilon24 * lj12m6 + shift6;
 
-      const int threadnum = autopas_get_thread_num();
+      const int threadnum = autopas::autopas_get_thread_num();
       // for non-newton3 the division is in the post-processing step.
       if (newton3) {
         upot *= 0.5;
-        virial = utils::ArrayMath::mulScalar(virial, (double)0.5);
+        virial *= (double)0.5;
       }
       if (i.isOwned()) {
         _aosThreadData[threadnum].upotSum += upot;
-        _aosThreadData[threadnum].virialSum = utils::ArrayMath::add(_aosThreadData[threadnum].virialSum, virial);
+        _aosThreadData[threadnum].virialSum += virial;
       }
       // for non-newton3 the second particle will be considered in a separate calculation
       if (newton3 and j.isOwned()) {
         _aosThreadData[threadnum].upotSum += upot;
-        _aosThreadData[threadnum].virialSum = utils::ArrayMath::add(_aosThreadData[threadnum].virialSum, virial);
+        _aosThreadData[threadnum].virialSum += virial;
       }
     }
   }
 
   /**
    * @copydoc Functor::SoAFunctorSingle(SoAView<SoAArraysType> soa, bool newton3)
-   * This functor ignores the newton3 value, as we do not expect any benefit from disabling newton3.
+   * This functor will always do a newton3 like traversal of the soa.
+   * However, it still needs to know about newton3 to correctly add up the global values.
    */
-  void SoAFunctorSingle(SoAView<SoAArraysType> soa, bool newton3) final {
+  inline void SoAFunctorSingle(autopas::SoAView<SoAArraysType> soa, bool newton3) final {
     if (newton3) {
       SoAFunctorSingleImpl<true>(soa);
     } else {
@@ -188,7 +197,7 @@ class LJFunctorAVX
    * @copydoc Functor::SoAFunctorPair(SoAView<SoAArraysType> soa1, SoAView<SoAArraysType> soa2, bool newton3)
    */
   // clang-format on
-  void SoAFunctorPair(SoAView<SoAArraysType> soa1, SoAView<SoAArraysType> soa2, const bool newton3) final {
+  inline void SoAFunctorPair(autopas::SoAView<SoAArraysType> soa1, autopas::SoAView<SoAArraysType> soa2, const bool newton3) final {
     if (newton3) {
       SoAFunctorPairImpl<true>(soa1, soa2);
     } else {
@@ -203,7 +212,8 @@ class LJFunctorAVX
    * @param soa
    */
   template <bool newton3>
-  void SoAFunctorSingleImpl(SoAView<SoAArraysType> soa) {
+  inline void SoAFunctorSingleImpl(autopas::SoAView<SoAArraysType> soa) {
+    using namespace autopas;
 #ifdef __AVX__
     if (soa.getNumberOfParticles() == 0) return;
 
@@ -219,9 +229,12 @@ class LJFunctorAVX
 
     const auto *const __restrict typeIDptr = soa.template begin<Particle::AttributeNames::typeId>();
 
-    __m256d virialSumX = _mm256_setzero_pd();
-    __m256d virialSumY = _mm256_setzero_pd();
-    __m256d virialSumZ = _mm256_setzero_pd();
+    __m256d virialSumXX = _mm256_setzero_pd();
+    __m256d virialSumYY = _mm256_setzero_pd();
+    __m256d virialSumZZ = _mm256_setzero_pd();
+    __m256d virialSumXY = _mm256_setzero_pd();
+    __m256d virialSumXZ = _mm256_setzero_pd();
+    __m256d virialSumYZ = _mm256_setzero_pd();
     __m256d upotSum = _mm256_setzero_pd();
 
     // reverse outer loop s.th. inner loop always beginns at aligned array start
@@ -252,16 +265,16 @@ class LJFunctorAVX
       // a & ~(b -1) == a - (a mod b)
       for (; j < (i & ~(vecLength - 1)); j += 4) {
         SoAKernel<true, false>(j, ownedStateI, reinterpret_cast<const int64_t *>(ownedStatePtr), x1, y1, z1, xptr, yptr,
-                               zptr, fxptr, fyptr, fzptr, &typeIDptr[i], typeIDptr, fxacc, fyacc, fzacc, &virialSumX,
-                               &virialSumY, &virialSumZ, &upotSum, 0);
+                               zptr, fxptr, fyptr, fzptr, &typeIDptr[i], typeIDptr, fxacc, fyacc, fzacc, &virialSumXX,
+                               &virialSumYY, &virialSumZZ, &virialSumXY, &virialSumXZ, &virialSumYZ, &upotSum, 0);
       }
       // If b is a power of 2 the following holds:
       // a & (b -1) == a mod b
       const int rest = (int)(i & (vecLength - 1));
       if (rest > 0) {
         SoAKernel<true, true>(j, ownedStateI, reinterpret_cast<const int64_t *>(ownedStatePtr), x1, y1, z1, xptr, yptr,
-                              zptr, fxptr, fyptr, fzptr, &typeIDptr[i], typeIDptr, fxacc, fyacc, fzacc, &virialSumX,
-                              &virialSumY, &virialSumZ, &upotSum, rest);
+                              zptr, fxptr, fyptr, fzptr, &typeIDptr[i], typeIDptr, fxacc, fyacc, fzacc, &virialSumXX,
+                              &virialSumYY, &virialSumZZ, &virialSumXY, &virialSumXZ, &virialSumYZ, &upotSum, rest);
       }
 
       // horizontally reduce fDacc to sumfD
@@ -289,38 +302,34 @@ class LJFunctorAVX
     if constexpr (calculateGlobals) {
       const int threadnum = autopas_get_thread_num();
 
-      // horizontally reduce virialSumX and virialSumY
-      const __m256d hSumVirialxy = _mm256_hadd_pd(virialSumX, virialSumY);
-      const __m128d hSumVirialxyLow = _mm256_extractf128_pd(hSumVirialxy, 0);
-      const __m128d hSumVirialxyHigh = _mm256_extractf128_pd(hSumVirialxy, 1);
-      const __m128d hSumVirialxyVec = _mm_add_pd(hSumVirialxyHigh, hSumVirialxyLow);
-
-      // horizontally reduce virialSumZ and upotSum
-      const __m256d hSumVirialzUpot = _mm256_hadd_pd(virialSumZ, upotSum);
-      const __m128d hSumVirialzUpotLow = _mm256_extractf128_pd(hSumVirialzUpot, 0);
-      const __m128d hSumVirialzUpotHigh = _mm256_extractf128_pd(hSumVirialzUpot, 1);
-      const __m128d hSumVirialzUpotVec = _mm_add_pd(hSumVirialzUpotHigh, hSumVirialzUpotLow);
-
-      // globals = {virialX, virialY, virialZ, uPot}
-      double globals[4];
-      _mm_store_pd(&globals[0], hSumVirialxyVec);
-      _mm_store_pd(&globals[2], hSumVirialzUpotVec);
+      // horizontally reduce virialSum and upot
+      const auto [hSumVirialXX, hSumVirialYY] =
+              horizontallySumRegister(virialSumXX, virialSumYY);
+      const auto [hSumVirialZZ, hSumVirialXY] =
+              horizontallySumRegister(virialSumZZ, virialSumXY);
+      const auto [hSumVirialXZ, hSumVirialYZ] =
+              horizontallySumRegister(virialSumXZ, virialSumYZ);
+      const auto [_, hSumUpot] = horizontallySumRegister(_zero, upotSum);
 
       double factor = 1.;
       // we assume newton3 to be enabled in this function call, thus we multiply by two if the value of newton3 is
       // false, since for newton3 disabled we divide by two later on.
       factor *= newton3 ? .5 : 1.;
       // In case we have a non-cell-wise owned state, we have multiplied everything by two, so we divide it by 2 again.
-      _aosThreadData[threadnum].virialSum[0] += globals[0] * factor;
-      _aosThreadData[threadnum].virialSum[1] += globals[1] * factor;
-      _aosThreadData[threadnum].virialSum[2] += globals[2] * factor;
-      _aosThreadData[threadnum].upotSum += globals[3] * factor;
+      _aosThreadData[threadnum].virialSum[0] += hSumVirialXX * factor;
+      _aosThreadData[threadnum].virialSum[1] += hSumVirialYY * factor;
+      _aosThreadData[threadnum].virialSum[2] += hSumVirialZZ * factor;
+      _aosThreadData[threadnum].virialSum[3] += hSumVirialXY * factor;
+      _aosThreadData[threadnum].virialSum[4] += hSumVirialXZ * factor;
+      _aosThreadData[threadnum].virialSum[5] += hSumVirialYZ * factor;
+      _aosThreadData[threadnum].upotSum += hSumUpot * factor;
     }
 #endif
   }
 
   template <bool newton3>
-  void SoAFunctorPairImpl(SoAView<SoAArraysType> soa1, SoAView<SoAArraysType> soa2) {
+  inline void SoAFunctorPairImpl(autopas::SoAView<SoAArraysType> soa1, autopas::SoAView<SoAArraysType> soa2) {
+  using namespace autopas;
 #ifdef __AVX__
     if (soa1.getNumberOfParticles() == 0 || soa2.getNumberOfParticles() == 0) return;
 
@@ -344,13 +353,16 @@ class LJFunctorAVX
     const auto *const __restrict typeID1ptr = soa1.template begin<Particle::AttributeNames::typeId>();
     const auto *const __restrict typeID2ptr = soa2.template begin<Particle::AttributeNames::typeId>();
 
-    __m256d virialSumX = _mm256_setzero_pd();
-    __m256d virialSumY = _mm256_setzero_pd();
-    __m256d virialSumZ = _mm256_setzero_pd();
+    __m256d virialSumXX = _mm256_setzero_pd();
+    __m256d virialSumYY = _mm256_setzero_pd();
+    __m256d virialSumZZ = _mm256_setzero_pd();
+    __m256d virialSumXY = _mm256_setzero_pd();
+    __m256d virialSumXZ = _mm256_setzero_pd();
+    __m256d virialSumYZ = _mm256_setzero_pd();
     __m256d upotSum = _mm256_setzero_pd();
 
     for (unsigned int i = 0; i < soa1.getNumberOfParticles(); ++i) {
-      if (ownedStatePtr1[i] == OwnershipState::dummy) {
+      if (ownedStatePtr1[i] == autopas::OwnershipState::dummy) {
         // If the i-th particle is a dummy, skip this loop iteration.
         continue;
       }
@@ -374,13 +386,15 @@ class LJFunctorAVX
       for (; j < (soa2.getNumberOfParticles() & ~(vecLength - 1)); j += 4) {
         SoAKernel<newton3, false>(j, ownedStateI, reinterpret_cast<const int64_t *>(ownedStatePtr2), x1, y1, z1, x2ptr,
                                   y2ptr, z2ptr, fx2ptr, fy2ptr, fz2ptr, typeID1ptr, typeID2ptr, fxacc, fyacc, fzacc,
-                                  &virialSumX, &virialSumY, &virialSumZ, &upotSum, 0);
+                                  &virialSumXX, &virialSumYY, &virialSumZZ, &virialSumXY, &virialSumXZ, &virialSumYZ,
+                                  &upotSum, 0);
       }
       const int rest = (int)(soa2.getNumberOfParticles() & (vecLength - 1));
       if (rest > 0)
         SoAKernel<newton3, true>(j, ownedStateI, reinterpret_cast<const int64_t *>(ownedStatePtr2), x1, y1, z1, x2ptr,
                                  y2ptr, z2ptr, fx2ptr, fy2ptr, fz2ptr, typeID1ptr, typeID2ptr, fxacc, fyacc, fzacc,
-                                 &virialSumX, &virialSumY, &virialSumZ, &upotSum, rest);
+                                 &virialSumXX, &virialSumYY, &virialSumZZ, &virialSumXY, &virialSumXZ, &virialSumYZ,
+                                 &upotSum, rest);
 
       // horizontally reduce fDacc to sumfD
       const __m256d hSumfxfy = _mm256_hadd_pd(fxacc, fyacc);
@@ -407,22 +421,14 @@ class LJFunctorAVX
     if constexpr (calculateGlobals) {
       const int threadnum = autopas_get_thread_num();
 
-      // horizontally reduce virialSumX and virialSumY
-      const __m256d hSumVirialxy = _mm256_hadd_pd(virialSumX, virialSumY);
-      const __m128d hSumVirialxyLow = _mm256_extractf128_pd(hSumVirialxy, 0);
-      const __m128d hSumVirialxyHigh = _mm256_extractf128_pd(hSumVirialxy, 1);
-      const __m128d hSumVirialxyVec = _mm_add_pd(hSumVirialxyHigh, hSumVirialxyLow);
-
-      // horizontally reduce virialSumZ and upotSum
-      const __m256d hSumVirialzUpot = _mm256_hadd_pd(virialSumZ, upotSum);
-      const __m128d hSumVirialzUpotLow = _mm256_extractf128_pd(hSumVirialzUpot, 0);
-      const __m128d hSumVirialzUpotHigh = _mm256_extractf128_pd(hSumVirialzUpot, 1);
-      const __m128d hSumVirialzUpotVec = _mm_add_pd(hSumVirialzUpotHigh, hSumVirialzUpotLow);
-
-      // globals = {virialX, virialY, virialZ, uPot}
-      double globals[4];
-      _mm_store_pd(&globals[0], hSumVirialxyVec);
-      _mm_store_pd(&globals[2], hSumVirialzUpotVec);
+      // horizontally reduce virialSum and upot
+      const auto [hSumVirialXX, hSumVirialYY] =
+              horizontallySumRegister(virialSumXX, virialSumYY);
+      const auto [hSumVirialZZ, hSumVirialXY] =
+              horizontallySumRegister(virialSumZZ, virialSumXY);
+      const auto [hSumVirialXZ, hSumVirialYZ] =
+              horizontallySumRegister(virialSumXZ, virialSumYZ);
+      const auto [_, hSumUpot] = horizontallySumRegister(_zero, upotSum);
 
       // we have duplicated calculations, i.e., we calculate interactions multiple times, so we have to take care
       // that we do not add the energy multiple times!
@@ -431,15 +437,17 @@ class LJFunctorAVX
         energyfactor *= 0.5;  // we count the energies partly to one of the two cells!
       }
 
-      _aosThreadData[threadnum].virialSum[0] += globals[0] * energyfactor;
-      _aosThreadData[threadnum].virialSum[1] += globals[1] * energyfactor;
-      _aosThreadData[threadnum].virialSum[2] += globals[2] * energyfactor;
-      _aosThreadData[threadnum].upotSum += globals[3] * energyfactor;
+      _aosThreadData[threadnum].virialSum[0] += hSumVirialXX * energyfactor;
+      _aosThreadData[threadnum].virialSum[1] += hSumVirialYY * energyfactor;
+      _aosThreadData[threadnum].virialSum[2] += hSumVirialZZ * energyfactor;
+      _aosThreadData[threadnum].virialSum[3] += hSumVirialXY * energyfactor;
+      _aosThreadData[threadnum].virialSum[4] += hSumVirialXZ * energyfactor;
+      _aosThreadData[threadnum].virialSum[5] += hSumVirialYZ * energyfactor;
+      _aosThreadData[threadnum].upotSum += hSumUpot * energyfactor;
     }
 #endif
   }
 
-#ifdef __AVX__
   /**
    * Actual inner kernel of the SoAFunctors.
    *
@@ -475,11 +483,14 @@ class LJFunctorAVX
                         const double *const __restrict y2ptr, const double *const __restrict z2ptr,
                         double *const __restrict fx2ptr, double *const __restrict fy2ptr,
                         double *const __restrict fz2ptr, const size_t *const typeID1ptr, const size_t *const typeID2ptr,
-                        __m256d &fxacc, __m256d &fyacc, __m256d &fzacc, __m256d *virialSumX, __m256d *virialSumY,
-                        __m256d *virialSumZ, __m256d *upotSum, const unsigned int rest = 0) {
+                        __m256d &fxacc, __m256d &fyacc, __m256d &fzacc, __m256d *virialSumXX, __m256d *virialSumYY,
+                        __m256d *virialSumZZ,__m256d *virialSumXY, __m256d *virialSumXZ, __m256d *virialSumYZ,
+                        __m256d *upotSum, const unsigned int rest = 0) {
+#ifdef __AVX__
     __m256d epsilon24s = _epsilon24;
     __m256d sigmaSquares = _sigmaSquare;
     __m256d shift6s = _shift6;
+    __m256d doesInteractMask = _ffff;
     if (useMixing) {
       // the first argument for set lands in the last bits of the register
       epsilon24s = _mm256_set_pd(
@@ -492,6 +503,20 @@ class LJFunctorAVX
           not remainderIsMasked or rest > 2 ? _PPLibrary->mixingSigmaSquare(*typeID1ptr, *(typeID2ptr + 2)) : 0,
           not remainderIsMasked or rest > 1 ? _PPLibrary->mixingSigmaSquare(*typeID1ptr, *(typeID2ptr + 1)) : 0,
           _PPLibrary->mixingSigmaSquare(*typeID1ptr, *(typeID2ptr + 0)));
+      const __m256d doesInteractVec =
+          _mm256_set_pd(not remainderIsMasked or rest > 3
+                            ? doesInteract(*typeID1ptr, *(typeID2ptr + 3))
+                            : 0,
+                        not remainderIsMasked or rest > 2
+                            ? doesInteract(*typeID1ptr, *(typeID2ptr + 2))
+                            : 0,
+                        not remainderIsMasked or rest > 1
+                            ? doesInteract(*typeID1ptr, *(typeID2ptr + 1))
+                            : 0,
+                        doesInteract(*typeID1ptr, *(typeID2ptr + 0)));
+      // convert entries with 1 to 1 masks
+      doesInteractMask = _mm256_cmp_pd(_zero, doesInteractVec, _CMP_GT_OS);
+
       if constexpr (applyShift) {
         shift6s = _mm256_set_pd(
             (not remainderIsMasked or rest > 3) ? _PPLibrary->mixingShift6(*typeID1ptr, *(typeID2ptr + 3)) : 0,
@@ -529,9 +554,11 @@ class LJFunctorAVX
     // This requires that dummy is the first entry in OwnershipState!
     const __m256d dummyMask = _mm256_cmp_pd(_mm256_castsi256_pd(ownedStateJ), _zero, _CMP_NEQ_UQ);
     const __m256d cutoffDummyMask = _mm256_and_pd(cutoffMask, dummyMask);
+    const __m256d cutoffDummyInteractMask = // cutoffDummyMask;
+        _mm256_and_pd(cutoffDummyMask, doesInteractMask);
 
     // if everything is masked away return from this function.
-    if (_mm256_movemask_pd(cutoffDummyMask) == 0) {
+    if (_mm256_movemask_pd(cutoffDummyInteractMask) == 0) {
       return;
     }
 
@@ -546,8 +573,11 @@ class LJFunctorAVX
     const __m256d fac = _mm256_mul_pd(lj12m6alj12e, invdr2);
 
     const __m256d facMasked =
-        remainderIsMasked ? _mm256_and_pd(fac, _mm256_and_pd(cutoffDummyMask, _mm256_castsi256_pd(_masks[rest - 1])))
-                          : _mm256_and_pd(fac, cutoffDummyMask);
+        remainderIsMasked
+            ? _mm256_and_pd(
+                  fac, _mm256_and_pd(cutoffDummyInteractMask,
+                                     _mm256_castsi256_pd(_masks[rest - 1])))
+            : _mm256_and_pd(fac, cutoffDummyInteractMask);
 
     const __m256d fx = _mm256_mul_pd(drx, facMasked);
     const __m256d fy = _mm256_mul_pd(dry, facMasked);
@@ -558,7 +588,7 @@ class LJFunctorAVX
     fzacc = _mm256_add_pd(fzacc, fz);
 
     // if newton 3 is used subtract fD from particle j
-    if (newton3) {
+    if constexpr (newton3) {
       const __m256d fx2 =
           remainderIsMasked ? _mm256_maskload_pd(&fx2ptr[j], _masks[rest - 1]) : _mm256_loadu_pd(&fx2ptr[j]);
       const __m256d fy2 =
@@ -578,7 +608,7 @@ class LJFunctorAVX
                         : _mm256_storeu_pd(&fz2ptr[j], fz2new);
     }
 
-    if (calculateGlobals) {
+    if constexpr (calculateGlobals) {
       // Global Virial
       const __m256d virialX = _mm256_mul_pd(fx, drx);
       const __m256d virialY = _mm256_mul_pd(fy, dry);
@@ -588,8 +618,11 @@ class LJFunctorAVX
       const __m256d upot = wrapperFMA(epsilon24s, lj12m6, shift6s);
 
       const __m256d upotMasked =
-          remainderIsMasked ? _mm256_and_pd(upot, _mm256_and_pd(cutoffDummyMask, _mm256_castsi256_pd(_masks[rest - 1])))
-                            : _mm256_and_pd(upot, cutoffDummyMask);
+          remainderIsMasked
+              ? _mm256_and_pd(
+                    upot, _mm256_and_pd(cutoffDummyInteractMask,
+                                        _mm256_castsi256_pd(_masks[rest - 1])))
+              : _mm256_and_pd(upot, cutoffDummyInteractMask);
 
       __m256d ownedMaskI =
           _mm256_cmp_pd(_mm256_castsi256_pd(ownedStateI), _mm256_castsi256_pd(_ownedStateOwnedMM256i), _CMP_EQ_UQ);
@@ -600,12 +633,12 @@ class LJFunctorAVX
         energyFactor = _mm256_add_pd(energyFactor, _mm256_blendv_pd(_zero, _one, ownedMaskJ));
       }
       *upotSum = wrapperFMA(energyFactor, upotMasked, *upotSum);
-      *virialSumX = wrapperFMA(energyFactor, virialX, *virialSumX);
-      *virialSumY = wrapperFMA(energyFactor, virialY, *virialSumY);
-      *virialSumZ = wrapperFMA(energyFactor, virialZ, *virialSumZ);
+      *virialSumXX = wrapperFMA(energyFactor, virialX, *virialSumXX);
+      *virialSumYY = wrapperFMA(energyFactor, virialY, *virialSumYY);
+      *virialSumZZ = wrapperFMA(energyFactor, virialZ, *virialSumZZ);
     }
-  }
 #endif
+  }
 
  public:
   // clang-format off
@@ -615,7 +648,7 @@ class LJFunctorAVX
    * are no dependencies, i.e. introduce colors and specify iFrom and iTo accordingly.
    */
   // clang-format on
-  void SoAFunctorVerlet(SoAView<SoAArraysType> soa, const size_t indexFirst,
+  inline void SoAFunctorVerlet(autopas::SoAView<SoAArraysType> soa, const size_t indexFirst,
                         const std::vector<size_t, autopas::AlignedAllocator<size_t>> &neighborList,
                         bool newton3) final {
     if (soa.getNumberOfParticles() == 0 or neighborList.empty()) return;
@@ -627,9 +660,24 @@ class LJFunctorAVX
   }
 
  private:
-  template <bool newton3>
-  void SoAFunctorVerletImpl(SoAView<SoAArraysType> soa, const size_t indexFirst,
+  /**
+   *   [a0, a1, a2, a3]
+   * + [b0, b1, b2, b3]
+   * ==================
+   *       [sumA, sumB]
+   */
+      inline __m128d horizontallySumRegister(__m256d a, __m256d b) {
+        const __m256d hSumAB = _mm256_hadd_pd(a, b);
+        const __m128d hSumABLow = _mm256_extractf128_pd(hSumAB, 0);
+        const __m128d hSumABHigh = _mm256_extractf128_pd(hSumAB, 1);
+        const __m128d hSumABVec = _mm_add_pd(hSumABHigh, hSumABLow);
+        return hSumABVec;
+      };
+
+        template <bool newton3>
+  inline void SoAFunctorVerletImpl(autopas::SoAView<SoAArraysType> soa, const size_t indexFirst,
                             const std::vector<size_t, autopas::AlignedAllocator<size_t>> &neighborList) {
+  using namespace autopas;
 #ifdef __AVX__
     const auto *const __restrict ownedStatePtr = soa.template begin<Particle::AttributeNames::ownershipState>();
     if (ownedStatePtr[indexFirst] == OwnershipState::dummy) {
@@ -647,9 +695,12 @@ class LJFunctorAVX
     const auto *const __restrict typeIDptr = soa.template begin<Particle::AttributeNames::typeId>();
 
     // accumulators
-    __m256d virialSumX = _mm256_setzero_pd();
-    __m256d virialSumY = _mm256_setzero_pd();
-    __m256d virialSumZ = _mm256_setzero_pd();
+    __m256d virialSumXX = _mm256_setzero_pd();
+    __m256d virialSumYY = _mm256_setzero_pd();
+    __m256d virialSumZZ = _mm256_setzero_pd();
+    __m256d virialSumXY = _mm256_setzero_pd();
+    __m256d virialSumXZ = _mm256_setzero_pd();
+    __m256d virialSumYZ = _mm256_setzero_pd();
     __m256d upotSum = _mm256_setzero_pd();
     __m256d fxacc = _mm256_setzero_pd();
     __m256d fyacc = _mm256_setzero_pd();
@@ -692,19 +743,21 @@ class LJFunctorAVX
         x2tmp[vecIndex] = xptr[neighborList[j + vecIndex]];
         y2tmp[vecIndex] = yptr[neighborList[j + vecIndex]];
         z2tmp[vecIndex] = zptr[neighborList[j + vecIndex]];
-        fx2tmp[vecIndex] = fxptr[neighborList[j + vecIndex]];
-        fy2tmp[vecIndex] = fyptr[neighborList[j + vecIndex]];
-        fz2tmp[vecIndex] = fzptr[neighborList[j + vecIndex]];
+        if constexpr (newton3) {
+          fx2tmp[vecIndex] = fxptr[neighborList[j + vecIndex]];
+          fy2tmp[vecIndex] = fyptr[neighborList[j + vecIndex]];
+          fz2tmp[vecIndex] = fzptr[neighborList[j + vecIndex]];
+        }
         typeID2tmp[vecIndex] = typeIDptr[neighborList[j + vecIndex]];
         ownedStates2tmp[vecIndex] = ownedStatePtr[neighborList[j + vecIndex]];
       }
 
       SoAKernel<newton3, false>(0, ownedStateI, reinterpret_cast<const int64_t *>(ownedStates2tmp.data()), x1, y1, z1,
                                 x2tmp.data(), y2tmp.data(), z2tmp.data(), fx2tmp.data(), fy2tmp.data(), fz2tmp.data(),
-                                &typeIDptr[indexFirst], typeID2tmp.data(), fxacc, fyacc, fzacc, &virialSumX,
-                                &virialSumY, &virialSumZ, &upotSum, 0);
+                                &typeIDptr[indexFirst], typeID2tmp.data(), fxacc, fyacc, fzacc, &virialSumXX,
+                                &virialSumYY, &virialSumZZ, &virialSumXY, &virialSumXZ, &virialSumYZ, &upotSum, 0);
 
-      if (newton3) {
+      if constexpr (newton3) {
         for (size_t vecIndex = 0; vecIndex < vecLength; ++vecIndex) {
           fxptr[neighborList[j + vecIndex]] = fx2tmp[vecIndex];
           fyptr[neighborList[j + vecIndex]] = fy2tmp[vecIndex];
@@ -712,9 +765,10 @@ class LJFunctorAVX
         }
       }
     }
+    // Remainder loop
     // If b is a power of 2 the following holds:
     // a & (b -1) == a mod b
-    const int rest = (int)(neighborList.size() & (vecLength - 1));
+    const auto rest = static_cast<int>(neighborList.size() & (vecLength - 1));
     if (rest > 0) {
       // AVX2 variant:
       // create buffer for 4 interaction particles
@@ -732,19 +786,22 @@ class LJFunctorAVX
         x2tmp[vecIndex] = xptr[neighborList[j + vecIndex]];
         y2tmp[vecIndex] = yptr[neighborList[j + vecIndex]];
         z2tmp[vecIndex] = zptr[neighborList[j + vecIndex]];
-        fx2tmp[vecIndex] = fxptr[neighborList[j + vecIndex]];
-        fy2tmp[vecIndex] = fyptr[neighborList[j + vecIndex]];
-        fz2tmp[vecIndex] = fzptr[neighborList[j + vecIndex]];
+        // if newton3 is used we need to load f of particle j so the kernel can update it too
+        if constexpr (newton3) {
+          fx2tmp[vecIndex] = fxptr[neighborList[j + vecIndex]];
+          fy2tmp[vecIndex] = fyptr[neighborList[j + vecIndex]];
+          fz2tmp[vecIndex] = fzptr[neighborList[j + vecIndex]];
+        }
         typeID2tmp[vecIndex] = typeIDptr[neighborList[j + vecIndex]];
         ownedStates2tmp[vecIndex] = ownedStatePtr[neighborList[j + vecIndex]];
       }
 
       SoAKernel<newton3, true>(0, ownedStateI, reinterpret_cast<const int64_t *>(ownedStates2tmp.data()), x1, y1, z1,
                                x2tmp.data(), y2tmp.data(), z2tmp.data(), fx2tmp.data(), fy2tmp.data(), fz2tmp.data(),
-                               &typeIDptr[indexFirst], typeID2tmp.data(), fxacc, fyacc, fzacc, &virialSumX, &virialSumY,
-                               &virialSumZ, &upotSum, rest);
+                               &typeIDptr[indexFirst], typeID2tmp.data(), fxacc, fyacc, fzacc, &virialSumXX, &virialSumYY,
+                               &virialSumZZ, &virialSumXY, &virialSumXZ, &virialSumYZ, &upotSum, rest);
 
-      if (newton3) {
+      if constexpr (newton3) {
         for (size_t vecIndex = 0; vecIndex < rest; ++vecIndex) {
           fxptr[neighborList[j + vecIndex]] = fx2tmp[vecIndex];
           fyptr[neighborList[j + vecIndex]] = fy2tmp[vecIndex];
@@ -777,32 +834,27 @@ class LJFunctorAVX
     if constexpr (calculateGlobals) {
       const int threadnum = autopas_get_thread_num();
 
-      // horizontally reduce virialSumX and virialSumY
-      const __m256d hSumVirialxy = _mm256_hadd_pd(virialSumX, virialSumY);
-      const __m128d hSumVirialxyLow = _mm256_extractf128_pd(hSumVirialxy, 0);
-      const __m128d hSumVirialxyHigh = _mm256_extractf128_pd(hSumVirialxy, 1);
-      const __m128d hSumVirialxyVec = _mm_add_pd(hSumVirialxyHigh, hSumVirialxyLow);
-
-      // horizontally reduce virialSumZ and upotSum
-      const __m256d hSumVirialzUpot = _mm256_hadd_pd(virialSumZ, upotSum);
-      const __m128d hSumVirialzUpotLow = _mm256_extractf128_pd(hSumVirialzUpot, 0);
-      const __m128d hSumVirialzUpotHigh = _mm256_extractf128_pd(hSumVirialzUpot, 1);
-      const __m128d hSumVirialzUpotVec = _mm_add_pd(hSumVirialzUpotHigh, hSumVirialzUpotLow);
-
-      // globals = {virialX, virialY, virialZ, uPot}
-      double globals[4];
-      _mm_store_pd(&globals[0], hSumVirialxyVec);
-      _mm_store_pd(&globals[2], hSumVirialzUpotVec);
+      // horizontally reduce virialSum and upot
+      const auto [hSumVirialXX, hSumVirialYY] =
+              horizontallySumRegister(virialSumXX, virialSumYY);
+      const auto [hSumVirialZZ, hSumVirialXY] =
+              horizontallySumRegister(virialSumZZ, virialSumXY);
+      const auto [hSumVirialXZ, hSumVirialYZ] =
+              horizontallySumRegister(virialSumXZ, virialSumYZ);
+      const auto [_, hSumUpot] = horizontallySumRegister(_zero, upotSum);
 
       double factor = 1.;
       // we assume newton3 to be enabled in this function call, thus we multiply by two if the value of newton3 is
       // false, since for newton3 disabled we divide by two later on.
       factor *= newton3 ? .5 : 1.;
       // In case we have a non-cell-wise owned state, we have multiplied everything by two, so we divide it by 2 again.
-      _aosThreadData[threadnum].virialSum[0] += globals[0] * factor;
-      _aosThreadData[threadnum].virialSum[1] += globals[1] * factor;
-      _aosThreadData[threadnum].virialSum[2] += globals[2] * factor;
-      _aosThreadData[threadnum].upotSum += globals[3] * factor;
+      _aosThreadData[threadnum].virialSum[0] += hSumVirialXX * factor;
+      _aosThreadData[threadnum].virialSum[1] += hSumVirialYY * factor;
+      _aosThreadData[threadnum].virialSum[2] += hSumVirialZZ * factor;
+      _aosThreadData[threadnum].virialSum[3] += hSumVirialXY * factor;
+      _aosThreadData[threadnum].virialSum[4] += hSumVirialXZ * factor;
+      _aosThreadData[threadnum].virialSum[5] += hSumVirialYZ * factor;
+      _aosThreadData[threadnum].upotSum += hSumUpot * factor;
     }
     // interact with i with 4 neighbors
 #endif  // __AVX__
@@ -860,7 +912,7 @@ class LJFunctorAVX
    */
   void initTraversal() final {
     _upotSum = 0.;
-    _virialSum = {0., 0., 0.};
+    _virialSum = {0., 0., 0., 0., 0., 0.};
     _postProcessed = false;
     for (size_t i = 0; i < _aosThreadData.size(); ++i) {
       _aosThreadData[i].setZero();
@@ -872,21 +924,23 @@ class LJFunctorAVX
    * @param newton3
    */
   void endTraversal(bool newton3) final {
+    using namespace autopas::utils::ArrayMath::literals;
+
     if (_postProcessed) {
-      throw utils::ExceptionHandler::AutoPasException(
+      throw autopas::utils::ExceptionHandler::AutoPasException(
           "Already postprocessed, endTraversal(bool newton3) was called twice without calling initTraversal().");
     }
 
     if (calculateGlobals) {
       for (size_t i = 0; i < _aosThreadData.size(); ++i) {
         _upotSum += _aosThreadData[i].upotSum;
-        _virialSum = utils::ArrayMath::add(_virialSum, _aosThreadData[i].virialSum);
+        _virialSum += _aosThreadData[i].virialSum;
       }
       if (not newton3) {
         // if the newton3 optimization is disabled we have added every energy contribution twice, so we divide by 2
         // here.
         _upotSum *= 0.5;
-        _virialSum = utils::ArrayMath::mulScalar(_virialSum, 0.5);
+        _virialSum *= 0.5;
       }
       // we have always calculated 6*upot, so we divide by 6 here!
       _upotSum /= 6.;
@@ -900,12 +954,12 @@ class LJFunctorAVX
    */
   double getUpot() {
     if (not calculateGlobals) {
-      throw utils::ExceptionHandler::AutoPasException(
+      throw autopas::utils::ExceptionHandler::AutoPasException(
           "Trying to get upot even though calculateGlobals is false. If you want this functor to calculate global "
           "values, please specify calculateGlobals to be true.");
     }
     if (not _postProcessed) {
-      throw utils::ExceptionHandler::AutoPasException("Cannot get upot, because endTraversal was not called.");
+      throw autopas::utils::ExceptionHandler::AutoPasException("Cannot get upot, because endTraversal was not called.");
     }
     return _upotSum;
   }
@@ -914,16 +968,16 @@ class LJFunctorAVX
    * Get the virial
    * @return the virial
    */
-  double getVirial() {
+  std::array<double, 6>* getVirial() {
     if (not calculateGlobals) {
-      throw utils::ExceptionHandler::AutoPasException(
+      throw autopas::utils::ExceptionHandler::AutoPasException(
           "Trying to get virial even though calculateGlobals is false. If you want this functor to calculate global "
           "values, please specify calculateGlobals to be true.");
     }
     if (not _postProcessed) {
-      throw utils::ExceptionHandler::AutoPasException("Cannot get virial, because endTraversal was not called.");
+      throw autopas::utils::ExceptionHandler::AutoPasException("Cannot get virial, because endTraversal was not called.");
     }
-    return _virialSum[0] + _virialSum[1] + _virialSum[2];
+    return &_virialSum;
   }
 
   /**
@@ -956,6 +1010,10 @@ class LJFunctorAVX
   }
 
  private:
+  inline int doesInteract(size_t i, size_t j) const{
+    return _interactingTypes[i - 1][j - 1];
+  }
+
 #ifdef __AVX__
   /**
    * Wrapper function for FMA. If FMA is not supported it executes first the multiplication then the addition.
@@ -982,19 +1040,19 @@ class LJFunctorAVX
    */
   class AoSThreadData {
    public:
-    AoSThreadData() : virialSum{0., 0., 0.}, upotSum{0.} {}
+    AoSThreadData() : virialSum{0., 0., 0., 0., 0., 0.}, upotSum{0.} {}
     void setZero() {
-      virialSum = {0., 0., 0.};
+      virialSum = {0., 0., 0., 0., 0., 0.};
       upotSum = 0.;
     }
 
     // variables
-    std::array<double, 3> virialSum;
+    std::array<double, 6> virialSum;
     double upotSum;
 
    private:
     // dummy parameter to get the right size (64 bytes)
-    double __remainingTo64[4];
+    double __remainingTo64[(64 - 7 * sizeof(double)) / sizeof(double)];
   };
   // make sure of the size of AoSThreadData
   static_assert(sizeof(AoSThreadData) % 64 == 0, "AoSThreadData has wrong size");
@@ -1002,6 +1060,7 @@ class LJFunctorAVX
 #ifdef __AVX__
   const __m256d _zero{_mm256_set1_pd(0.)};
   const __m256d _one{_mm256_set1_pd(1.)};
+  const __m256d _ffff{_mm256_castsi256_pd(_mm256_set1_epi64x(-1LL))};
   const __m256i _vindex = _mm256_set_epi64x(0, 1, 3, 4);
   const __m256i _masks[3]{
       _mm256_set_epi64x(0, 0, 0, -1),
@@ -1009,7 +1068,7 @@ class LJFunctorAVX
       _mm256_set_epi64x(0, -1, -1, -1),
   };
   const __m256i _ownedStateDummyMM256i{0x0};
-  const __m256i _ownedStateOwnedMM256i{_mm256_set1_epi64x(static_cast<int64_t>(OwnershipState::owned))};
+  const __m256i _ownedStateOwnedMM256i{_mm256_set1_epi64x(static_cast<int64_t>(autopas::OwnershipState::owned))};
   const __m256d _cutoffsquare{};
   __m256d _shift6 = _mm256_setzero_pd();
   __m256d _epsilon24{};
@@ -1025,7 +1084,7 @@ class LJFunctorAVX
   double _upotSum;
 
   // sum of the virial, only calculated if calculateGlobals is true
-  std::array<double, 3> _virialSum;
+  std::array<double, 6> _virialSum;
 
   // thread buffer for aos
   std::vector<AoSThreadData> _aosThreadData;
@@ -1036,5 +1095,8 @@ class LJFunctorAVX
   // number of double values that fit into a vector register.
   // MUST be power of 2 because some optimizations make this assumption
   constexpr static size_t vecLength = 4;
+
+  // Type map
+  interactingTypes_t _interactingTypes;
 };
 }  // namespace autopas
