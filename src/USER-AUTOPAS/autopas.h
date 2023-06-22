@@ -50,7 +50,7 @@ public:
   /**
    * Rebuild the AutoPas container and update the leaving particles with the ones returned by AutoPas.
    */
-  void update_autopas();
+  bool update_autopas();
 
   /**
    * Get a particle by its global index / particle ID.

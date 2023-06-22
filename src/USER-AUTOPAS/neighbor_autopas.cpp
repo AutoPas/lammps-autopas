@@ -168,7 +168,7 @@ void LAMMPS_NS::NeighborAutoPas::build(int topoflag) {
 int LAMMPS_NS::NeighborAutoPas::decide() {
   assert(lmp->autopas->is_initialized());
 
-  // bool must_rebuild = Neighbor::decide();
-  lmp->autopas->update_autopas();
-  return 1;
+  bool must_rebuild = Neighbor::decide();
+  bool autopas_rebuild = lmp->autopas->update_autopas();
+  return (must_rebuild || autopas_rebuild);
 }

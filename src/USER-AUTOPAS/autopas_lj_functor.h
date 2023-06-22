@@ -503,6 +503,7 @@ namespace LAMMPS_NS {
                 fy1ptr[i] += fyacc;
                 fz1ptr[i] += fzacc;
             }
+
             if (calculateGlobals) {
                 const int threadnum = autopas_get_thread_num();
                 SoAFloatPrecision newton3Factor = 1.;

@@ -362,12 +362,15 @@ AutoPasLMP::ParticleType *AutoPasLMP::particle_by_index(int idx) {
   }
 }
 
-void AutoPasLMP::update_autopas() {
+bool AutoPasLMP::update_autopas() {
   auto invalidParticles = _autopas->updateContainer();
+  if (!invalidParticles.empty()) {
+    _leavingParticles = std::move(invalidParticles);
+    _index_structure_valid = false;
+    return true;
+  }
 
-  _leavingParticles = std::move(invalidParticles);
-  _index_structure_valid = false;
-  return;
+  return false;
 }
 
 void AutoPasLMP::move_into() {
