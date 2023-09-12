@@ -126,6 +126,10 @@ public:
     if (i.isDummy() or j.isDummy()) {
       return;
     }
+    if (i.getOwnershipState() == autopas::OwnershipState::halo && j.getOwnershipState() == autopas::OwnershipState::halo) {
+      return;
+    }
+    _counter += 1;
     auto sigmasquare = _sigmaSquareAoS;
     auto epsilon24 = _epsilon24AoS;
     auto shift6 = _shift6AoS;
@@ -142,7 +146,7 @@ public:
     if (dr2 > _cutoffsquareAoS) {
       return;
     }
-
+    _finalCounter += 1;
     double invdr2 = 1. / dr2;
     double lj6 = sigmasquare * invdr2;
     lj6 = lj6 * lj6 * lj6;
@@ -263,6 +267,7 @@ public:
       // floor soa numParticles to multiple of vecLength
       // If b is a power of 2 the following holds:
       // a & ~(b -1) == a - (a mod b)
+      _kernelTimer.start();
       for (; j < (i & ~(vecLength - 1)); j += 4) {
         SoAKernel<true, false>(j, ownedStateI, reinterpret_cast<const int64_t *>(ownedStatePtr), x1, y1, z1, xptr, yptr,
                                zptr, fxptr, fyptr, fzptr, &typeIDptr[i], typeIDptr, fxacc, fyacc, fzacc, &virialSumXX,
@@ -276,7 +281,6 @@ public:
                               zptr, fxptr, fyptr, fzptr, &typeIDptr[i], typeIDptr, fxacc, fyacc, fzacc, &virialSumXX,
                               &virialSumYY, &virialSumZZ, &virialSumXY, &virialSumXZ, &virialSumYZ, &upotSum, rest);
       }
-
       // horizontally reduce fDacc to sumfD
       const __m256d hSumfxfy = _mm256_hadd_pd(fxacc, fyacc);
       const __m256d hSumfz = _mm256_hadd_pd(fzacc, fzacc);
@@ -297,6 +301,7 @@ public:
       fxptr[i] += sumfx;
       fyptr[i] += sumfy;
       fzptr[i] += sumfz;
+      _kernelTimer.stop();
     }
 
     if constexpr (calculateGlobals) {
@@ -381,6 +386,7 @@ public:
       const __m256d y1 = _mm256_broadcast_sd(&y1ptr[i]);
       const __m256d z1 = _mm256_broadcast_sd(&z1ptr[i]);
 
+      _kernelTimer.start();
       // floor soa2 numParticles to multiple of vecLength
       unsigned int j = 0;
       for (; j < (soa2.getNumberOfParticles() & ~(vecLength - 1)); j += 4) {
@@ -416,6 +422,7 @@ public:
       fx1ptr[i] += sumfx;
       fy1ptr[i] += sumfy;
       fz1ptr[i] += sumfz;
+      _kernelTimer.stop();
     }
 
     if constexpr (calculateGlobals) {
@@ -486,6 +493,7 @@ public:
                         __m256d &fxacc, __m256d &fyacc, __m256d &fzacc, __m256d *virialSumXX, __m256d *virialSumYY,
                         __m256d *virialSumZZ,__m256d *virialSumXY, __m256d *virialSumXZ, __m256d *virialSumYZ,
                         __m256d *upotSum, const unsigned int rest = 0) {
+//    _counter += 1;
 #ifdef __AVX__
     __m256d epsilon24s = _epsilon24;
     __m256d sigmaSquares = _sigmaSquare;
@@ -980,6 +988,27 @@ public:
     return &_virialSum;
   }
 
+  int getCounter() {
+    if (not _postProcessed) {
+      throw autopas::utils::ExceptionHandler::AutoPasException(
+              "Cannot get counter, because endTraversal was not called.");
+    }
+    return _counter;
+  }
+  int getFinalCounter() {
+    if (not _postProcessed) {
+      throw autopas::utils::ExceptionHandler::AutoPasException(
+              "Cannot get counter, because endTraversal was not called.");
+    }
+    return _finalCounter;
+  }
+  int getKernelTimer() {
+    if (not _postProcessed) {
+      throw autopas::utils::ExceptionHandler::AutoPasException(
+              "Cannot get counter, because endTraversal was not called.");
+    }
+    return _kernelTimer.getTotalTime();
+  }
   /**
    * Sets the particle properties constants for this functor.
    *
@@ -1085,7 +1114,9 @@ public:
 
   // sum of the virial, only calculated if calculateGlobals is true
   std::array<double, 6> _virialSum;
-
+  int _counter = 0;
+  int _finalCounter = 0;
+  autopas::utils::Timer _kernelTimer = autopas::utils::Timer();
   // thread buffer for aos
   std::vector<AoSThreadData> _aosThreadData;
 

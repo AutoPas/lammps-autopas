@@ -30,6 +30,7 @@
 #include "math_const.h"
 #include "memory.h"
 #include "error.h"
+#include <chrono>
 
 using namespace LAMMPS_NS;
 using namespace MathConst;
@@ -69,6 +70,8 @@ void PairLJCut::compute(int eflag, int vflag)
   double xtmp,ytmp,ztmp,delx,dely,delz,evdwl,fpair;
   double rsq,r2inv,r6inv,forcelj,factor_lj;
   int *ilist,*jlist,*numneigh,**firstneigh;
+  int counter = 0;
+  int finalCounter = 0;
 
   evdwl = 0.0;
   ev_init(eflag,vflag);
@@ -86,7 +89,7 @@ void PairLJCut::compute(int eflag, int vflag)
   firstneigh = list->firstneigh;
 
   // loop over neighbors of my atoms
-
+  long int timer = 0;
   for (ii = 0; ii < inum; ii++) {
     i = ilist[ii];
     xtmp = x[i][0];
@@ -97,6 +100,7 @@ void PairLJCut::compute(int eflag, int vflag)
     jnum = numneigh[i];
 
     for (jj = 0; jj < jnum; jj++) {
+      counter += 1;
       j = jlist[jj];
       factor_lj = special_lj[sbmask(j)];
       j &= NEIGHMASK;
@@ -108,6 +112,8 @@ void PairLJCut::compute(int eflag, int vflag)
       jtype = type[j];
 
       if (rsq < cutsq[itype][jtype]) {
+        auto start = std::chrono::high_resolution_clock::now();
+        finalCounter += 1;
         r2inv = 1.0/rsq;
         r6inv = r2inv*r2inv*r2inv;
         forcelj = r6inv * (lj1[itype][jtype]*r6inv - lj2[itype][jtype]);
@@ -121,7 +127,8 @@ void PairLJCut::compute(int eflag, int vflag)
           f[j][1] -= dely*fpair;
           f[j][2] -= delz*fpair;
         }
-
+        auto end = std::chrono::high_resolution_clock::now();
+        timer += std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count();
         if (eflag) {
           evdwl = r6inv*(lj3[itype][jtype]*r6inv-lj4[itype][jtype]) -
             offset[itype][jtype];
@@ -135,6 +142,8 @@ void PairLJCut::compute(int eflag, int vflag)
   }
 
   if (vflag_fdotr) virial_fdotr_compute();
+  std::cout << "Force counter/atom: " << counter / 32000 << std::endl << "Final force counter / atom: " << finalCounter / 32000  << std::endl;
+  std::cout << "Kernel timer: " << timer / 1000000 << " ms" << std::endl;
 }
 
 /* ---------------------------------------------------------------------- */

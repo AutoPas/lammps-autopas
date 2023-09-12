@@ -41,7 +41,9 @@ void PairLJCutAutoPas::compute(int eflag, int vflag) {
   std::copy_n(functor.getVirial()->begin(), 6, virial);
   auto upot = functor.getUpot();
   eng_vdwl = upot;
-
+//  std::cout << "Counter / atom: " << functor.getCounter() / 32000 <<  std::endl;
+//  std::cout << "Final counter / atom: " << functor.getFinalCounter() / 32000 <<  std::endl;
+//  std::cout << "Kernel time: " << functor.getKernelTimer() / 1000000<< " ms" << std::endl;
 }
 
 /* ---------------------------------------------------------------------- */
