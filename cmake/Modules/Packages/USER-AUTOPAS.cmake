@@ -19,14 +19,14 @@ if (PKG_USER-AUTOPAS)
         set(autopasRepoPath git@github.com:AutoPas/AutoPas.git)
     endif ()
 
+    # Final version of 2 Body AutoPas
+    set(AUTOPAS_TAG v2.0.0 CACHE STRING "AutoPas Git tag or commit id to use")
+
     # Download and install autopas
     FetchContent_Declare(
             autopas
             GIT_REPOSITORY ${autopasRepoPath}
-            # GIT_TAG cacb3fa0e14b28bb8b50f10ec7fe16628bbb2582
-#            GIT_TAG 435aca75cfb61b8284e84310cf19d6a5859f0b82
-#            GIT_TAG 829912490c798c2eff623e9da1f645ed8b97754e
-            GIT_TAG db49723d513f7c523c144e4d9c0d50dc91911a5e
+            GIT_TAG ${AUTOPAS_TAG}
     )
 
     option(AUTOPAS_BUILD_TESTS "" OFF)
