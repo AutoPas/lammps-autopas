@@ -1,3 +1,5 @@
+option(PKG_USER-AUTOPAS "Enable AutoPas support" ON)
+
 if (PKG_USER-AUTOPAS)
 
     if (CMAKE_VERSION VERSION_LESS "3.16")
