@@ -95,7 +95,7 @@ AutoPasLMP::AutoPasLMP(class LAMMPS *lmp, int narg, char **argc)
       auto opts = autopas::TuningStrategyOption::parseOptions(args[iarg + 1]);
       if (opts.size() != 1)
         error->all(FLERR, "Invalid AutoPas command-line arg: strategy");
-      _opt.tuning_strategy = *opts.begin();
+      _opt.tuning_strategies = autopas::TuningStrategyOption::parseOptions<std::vector<autopas::TuningStrategyOption>>("");//args[iarg + 1]);
       iarg += 2;
     } else if (args[iarg] == "selector") {
       if (iarg + 2 > narg)
@@ -229,7 +229,7 @@ void AutoPasLMP::init_autopas(double cutoff, double **epsilon, double **sigma) {
   force->newton = force->newton_pair = force->newton_bond = false;
   _autopas->setAllowedNewton3Options(_opt.allowed_newton3);
 
-  _autopas->setTuningStrategyOption(_opt.tuning_strategy);
+  _autopas->setTuningStrategyOption(_opt.tuning_strategies);
 
   autopas::Logger::create();
   autopas::Logger::get()->set_level(_opt.log_level);
@@ -290,22 +290,23 @@ void AutoPasLMP::print_config(double *const *epsilon,
     printVal("Num Samples", std::set{_opt.num_samples});
     printVal("Max Evidence", std::set{_opt.max_evidence});
 
-    printOpt("Tuning Strategy", std::set{_opt.tuning_strategy},
+    printOpt("Tuning Strategies", _opt.tuning_strategies,
              autopas::TuningStrategyOption::getOptionNames());
     printOpt("Selector Strategy", std::set{_opt.selector_strategy},
              autopas::SelectorStrategyOption::getOptionNames());
 
-    if (_opt.tuning_strategy == autopas::TuningStrategyOption::bayesianSearch ||
-        _opt.tuning_strategy ==
-            autopas::TuningStrategyOption::bayesianClusterSearch) {
-      printOpt("Acquisition Function", std::set{_opt.acquisition_function},
-               autopas::AcquisitionFunctionOption::getOptionNames());
-    } else if (_opt.tuning_strategy ==
-               autopas::TuningStrategyOption::predictiveTuning) {
-      printVal("Relative Optimum Range",
-               std::set{_opt.predictive_tuning.relative_optimum_range});
-      printVal("Max Tuning Phases Without Test",
-               std::set{_opt.predictive_tuning.max_tuning_phases_without_test});
+    for (const auto &strategy : _opt.tuning_strategies) {
+      if (strategy == autopas::TuningStrategyOption::bayesianSearch ||
+          strategy == autopas::TuningStrategyOption::bayesianClusterSearch) {
+        printOpt("Acquisition Function", std::set{_opt.acquisition_function},
+                 autopas::AcquisitionFunctionOption::getOptionNames());
+      } else if (strategy ==
+                 autopas::TuningStrategyOption::predictiveTuning) {
+        printVal("Relative Optimum Range",
+                 std::set{_opt.predictive_tuning.relative_optimum_range});
+        printVal("Max Tuning Phases Without Test",
+                 std::set{_opt.predictive_tuning.max_tuning_phases_without_test});
+      }
     }
 
     if (_opt.allowed_traversals.count(
@@ -338,12 +339,12 @@ void AutoPasLMP::print_config(double *const *epsilon,
   }
 
   // dummy because LAMMPS starts with typeID 1 and autopas with 0
-  _particlePropertiesLibrary->addType(0, 1, 1, 1);
+  _particlePropertiesLibrary->addSiteType(0, 1, 1, 1);
   std::cout << "  Particle Properties\n";
   for (int i = 1; i <= atom->ntypes; ++i) {
     std::cout << "    Type, Eps, Sig: " << i << " " << epsilon[i][i] << " "
               << sigma[i][i] << "\n";
-    _particlePropertiesLibrary->addType(i, epsilon[i][i], sigma[i][i],
+    _particlePropertiesLibrary->addSiteType(i, epsilon[i][i], sigma[i][i],
                                         atom->mass[i]);
   }
   _particlePropertiesLibrary->calculateMixingCoefficients();

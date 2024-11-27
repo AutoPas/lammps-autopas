@@ -3,16 +3,16 @@
 #include <array>
 #include <utility>
 
-#include "autopas/molecularDynamics/ParticlePropertiesLibrary.h"
-#include "autopas/pairwiseFunctors/Functor.h"
-#include "autopas/particles/OwnershipState.h"
-#include "autopas/utils/AlignedAllocator.h"
-#include "autopas/utils/ArrayMath.h"
-#include "autopas/utils/ExceptionHandler.h"
-#include "autopas/utils/SoA.h"
-#include "autopas/utils/StaticBoolSelector.h"
-#include "autopas/utils/WrapOpenMP.h"
-#include "autopas/utils/inBox.h"
+#include <molecularDynamicsLibrary/ParticlePropertiesLibrary.h>
+#include <autopas/pairwiseFunctors/Functor.h>
+#include <autopas/particles/OwnershipState.h>
+#include <autopas/utils/AlignedAllocator.h>
+#include <autopas/utils/ArrayMath.h>
+#include <autopas/utils/ExceptionHandler.h>
+#include <autopas/utils/SoA.h>
+#include <autopas/utils/StaticBoolSelector.h>
+#include <autopas/utils/WrapOpenMP.h>
+#include <autopas/utils/inBox.h>
 
 namespace LAMMPS_NS {
 
@@ -120,10 +120,10 @@ namespace LAMMPS_NS {
             auto epsilon24 = _epsilon24;
             auto shift6 = _shift6;
             if constexpr (useMixing) {
-                sigmasquare = _PPLibrary->mixingSigmaSquare(i.getTypeId(), j.getTypeId());
-                epsilon24 = _PPLibrary->mixing24Epsilon(i.getTypeId(), j.getTypeId());
+                sigmasquare = _PPLibrary->getMixingSigmaSquared(i.getTypeId(), j.getTypeId());
+                epsilon24 = _PPLibrary->getMixing24Epsilon(i.getTypeId(), j.getTypeId());
                 if constexpr (applyShift) {
-                    shift6 = _PPLibrary->mixingShift6(i.getTypeId(), j.getTypeId());
+                    shift6 = _PPLibrary->getMixingShift6(i.getTypeId(), j.getTypeId());
                 }
             }
             auto dr = utils::ArrayMath::sub(i.getR(), j.getR());
@@ -176,7 +176,7 @@ namespace LAMMPS_NS {
          */
         void SoAFunctorSingle(autopas::SoAView<SoAArraysType> soa, bool newton3) final {
             using namespace autopas;
-            if (soa.getNumberOfParticles() == 0) return;
+            if (soa.size() == 0) return;
 
             const auto *const __restrict xptr = soa.template begin<Particle::AttributeNames::posX>();
             const auto *const __restrict yptr = soa.template begin<Particle::AttributeNames::posY>();
@@ -206,11 +206,11 @@ namespace LAMMPS_NS {
             if constexpr (useMixing) {
                 // Preload all sigma and epsilons for next vectorized region.
                 // Not preloading and directly using the values, will produce worse results.
-                sigmaSquares.resize(soa.getNumberOfParticles());
-                epsilon24s.resize(soa.getNumberOfParticles());
+                sigmaSquares.resize(soa.size());
+                epsilon24s.resize(soa.size());
                 // if no mixing or mixing but no shift shift6 is constant therefore we do not need this vector.
                 if constexpr (applyShift) {
-                    shift6s.resize(soa.getNumberOfParticles());
+                    shift6s.resize(soa.size());
                 }
             }
 
@@ -218,7 +218,7 @@ namespace LAMMPS_NS {
             const SoAFloatPrecision const_sigmasquare = _sigmasquare;
             const SoAFloatPrecision const_epsilon24 = _epsilon24;
 
-            for (unsigned int i = 0; i < soa.getNumberOfParticles(); ++i) {
+            for (unsigned int i = 0; i < soa.size(); ++i) {
                 const auto ownedStateI = ownedStatePtr[i];
                 if (ownedStateI == OwnershipState::dummy) {
                     continue;
@@ -229,7 +229,7 @@ namespace LAMMPS_NS {
                 SoAFloatPrecision fzacc = 0.;
 
                 if constexpr (useMixing) {
-                    for (unsigned int j = 0; j < soa.getNumberOfParticles(); ++j) {
+                    for (unsigned int j = 0; j < soa.size(); ++j) {
                         auto mixingData = _PPLibrary->getMixingData(typeptr[i], typeptr[j]);
                         sigmaSquares[j] = mixingData.sigmaSquare;
                         epsilon24s[j] = mixingData.epsilon24;
@@ -242,7 +242,7 @@ namespace LAMMPS_NS {
 // icpc vectorizes this.
 // g++ only with -ffast-math or -funsafe-math-optimizations
 #pragma omp simd reduction(+ : fxacc, fyacc, fzacc, upotSum, virialSumXX, virialSumYY, virialSumZZ, virialSumXY, virialSumXZ, virialSumYZ)
-                for (unsigned int j = i + 1; j < soa.getNumberOfParticles(); ++j) {
+                for (unsigned int j = i + 1; j < soa.size(); ++j) {
                     if(!doesInteract(typeptr[i], typeptr[j])) continue;
                     SoAFloatPrecision shift6 = const_shift6;
                     SoAFloatPrecision sigmasquare = const_sigmasquare;
@@ -356,7 +356,7 @@ namespace LAMMPS_NS {
         template <bool newton3>
         void SoAFunctorPairImpl(autopas::SoAView<SoAArraysType> soa1, autopas::SoAView<SoAArraysType> soa2) {
             using namespace autopas;
-            if (soa1.getNumberOfParticles() == 0 || soa2.getNumberOfParticles() == 0) return;
+            if (soa1.size() == 0 || soa2.size() == 0) return;
 
             const auto *const __restrict x1ptr = soa1.template begin<Particle::AttributeNames::posX>();
             const auto *const __restrict y1ptr = soa1.template begin<Particle::AttributeNames::posY>();
@@ -395,15 +395,15 @@ namespace LAMMPS_NS {
             std::vector<SoAFloatPrecision, AlignedAllocator<SoAFloatPrecision>> epsilon24s;
             std::vector<SoAFloatPrecision, AlignedAllocator<SoAFloatPrecision>> shift6s;
             if constexpr (useMixing) {
-                sigmaSquares.resize(soa2.getNumberOfParticles());
-                epsilon24s.resize(soa2.getNumberOfParticles());
+                sigmaSquares.resize(soa2.size());
+                epsilon24s.resize(soa2.size());
                 // if no mixing or mixing but no shift shift6 is constant therefore we do not need this vector.
                 if constexpr (applyShift) {
-                    shift6s.resize(soa2.getNumberOfParticles());
+                    shift6s.resize(soa2.size());
                 }
             }
 
-            for (unsigned int i = 0; i < soa1.getNumberOfParticles(); ++i) {
+            for (unsigned int i = 0; i < soa1.size(); ++i) {
                 SoAFloatPrecision fxacc = 0;
                 SoAFloatPrecision fyacc = 0;
                 SoAFloatPrecision fzacc = 0;
@@ -415,11 +415,11 @@ namespace LAMMPS_NS {
 
                 // preload all sigma and epsilons for next vectorized region
                 if constexpr (useMixing) {
-                    for (unsigned int j = 0; j < soa2.getNumberOfParticles(); ++j) {
-                        sigmaSquares[j] = _PPLibrary->mixingSigmaSquare(typeptr1[i], typeptr2[j]);
-                        epsilon24s[j] = _PPLibrary->mixing24Epsilon(typeptr1[i], typeptr2[j]);
+                    for (unsigned int j = 0; j < soa2.size(); ++j) {
+                        sigmaSquares[j] = _PPLibrary->getMixingSigmaSquared(typeptr1[i], typeptr2[j]);
+                        epsilon24s[j] = _PPLibrary->getMixing24Epsilon(typeptr1[i], typeptr2[j]);
                         if constexpr (applyShift) {
-                            shift6s[j] = _PPLibrary->mixingShift6(typeptr1[i], typeptr2[j]);
+                            shift6s[j] = _PPLibrary->getMixingShift6(typeptr1[i], typeptr2[j]);
                         }
                     }
                 }
@@ -427,7 +427,7 @@ namespace LAMMPS_NS {
 // icpc vectorizes this.
 // g++ only with -ffast-math or -funsafe-math-optimizations
 #pragma omp simd reduction(+ : fxacc, fyacc, fzacc, upotSum, virialSumXX, virialSumYY, virialSumZZ, virialSumXY, virialSumXZ, virialSumYZ)
-                for (unsigned int j = 0; j < soa2.getNumberOfParticles(); ++j) {
+                for (unsigned int j = 0; j < soa2.size(); ++j) {
                     if(!doesInteract(typeptr1[i], typeptr2[j])) continue;
              
                     if constexpr (useMixing) {
@@ -532,7 +532,7 @@ namespace LAMMPS_NS {
                               const std::vector<size_t, autopas::AlignedAllocator<size_t>> &neighborList,
                               bool newton3) final {
             using namespace autopas;
-            if (soa.getNumberOfParticles() == 0 or neighborList.empty()) return;
+            if (soa.size() == 0 or neighborList.empty()) return;
             if (newton3) {
                 SoAFunctorVerletImpl<true>(soa, indexFirst, neighborList);
             } else {
@@ -771,10 +771,10 @@ namespace LAMMPS_NS {
                     [[maybe_unused]] alignas(DEFAULT_CACHE_LINE_SIZE) std::array<SoAFloatPrecision, vecsize> shift6s;
                     if constexpr (useMixing) {
                         for (size_t j = 0; j < vecsize; j++) {
-                            sigmaSquares[j] = _PPLibrary->mixingSigmaSquare(typeptr[indexFirst], typeptr[neighborListPtr[joff + j]]);
-                            epsilon24s[j] = _PPLibrary->mixing24Epsilon(typeptr[indexFirst], typeptr[neighborListPtr[joff + j]]);
+                            sigmaSquares[j] = _PPLibrary->getMixingSigmaSquared(typeptr[indexFirst], typeptr[neighborListPtr[joff + j]]);
+                            epsilon24s[j] = _PPLibrary->getMixing24Epsilon(typeptr[indexFirst], typeptr[neighborListPtr[joff + j]]);
                             if constexpr (applyShift) {
-                                shift6s[j] = _PPLibrary->mixingShift6(typeptr[indexFirst], typeptr[neighborListPtr[joff + j]]);
+                                shift6s[j] = _PPLibrary->getMixingShift6(typeptr[indexFirst], typeptr[neighborListPtr[joff + j]]);
                             }
                         }
                     }
@@ -876,10 +876,10 @@ namespace LAMMPS_NS {
                 if (indexFirst == j) continue;
                 if(!doesInteract(typeptr[indexFirst], typeptr[j])) continue;
                 if constexpr (useMixing) {
-                    sigmasquare = _PPLibrary->mixingSigmaSquare(typeptr[indexFirst], typeptr[j]);
-                    epsilon24 = _PPLibrary->mixing24Epsilon(typeptr[indexFirst], typeptr[j]);
+                    sigmasquare = _PPLibrary->getMixingSigmaSquared(typeptr[indexFirst], typeptr[j]);
+                    epsilon24 = _PPLibrary->getMixing24Epsilon(typeptr[indexFirst], typeptr[j]);
                     if constexpr (applyShift) {
-                        shift6 = _PPLibrary->mixingShift6(typeptr[indexFirst], typeptr[j]);
+                        shift6 = _PPLibrary->getMixingShift6(typeptr[indexFirst], typeptr[j]);
                     }
                 }
 

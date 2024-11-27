@@ -8,7 +8,7 @@
 
 #include <autopas/AutoPas.h>
 #include <autopas/cells/FullParticleCell.h>
-#include <autopas/molecularDynamics/ParticlePropertiesLibrary.h>
+#include <molecularDynamicsLibrary/ParticlePropertiesLibrary.h>
 
 #include "autopas_lj_functor.h"
 #include "autopas_lj_functor_avx.h"
@@ -240,8 +240,8 @@ private:
     autopas::AcquisitionFunctionOption acquisition_function = {
         autopas::AcquisitionFunctionOption::upperConfidenceBound};
 
-    autopas::TuningStrategyOption tuning_strategy{
-        autopas::TuningStrategyOption::fullSearch};
+    std::vector<autopas::TuningStrategyOption> tuning_strategies{};
+    std::string rule_filename{};
     autopas::SelectorStrategyOption selector_strategy{
         autopas::SelectorStrategyOption::fastestAbs};
 

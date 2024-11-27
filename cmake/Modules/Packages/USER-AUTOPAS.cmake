@@ -46,6 +46,8 @@ if (PKG_USER-AUTOPAS)
     FetchContent_MakeAvailable(autopas)
 
     list(APPEND LAMMPS_LINK_LIBS "autopas")
+    # Link detached library which contains the particle properties library
+    list(APPEND LAMMPS_LINK_LIBS "molecularDynamicsLibrary")
 
 
     ######### 2. AutoPas package settings #########
