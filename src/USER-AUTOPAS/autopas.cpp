@@ -19,7 +19,6 @@ AutoPasLMP::AutoPasLMP(class LAMMPS *lmp, int narg, char **argc)
     : Pointers(lmp) {
   lmp->autopas = this;
 
-  // TODO Check again with new Autopas version
   // Remove additional traversals from the defaults provided by AutoPas
   _opt.allowed_traversals.erase(
       autopas::TraversalOption::vcl_cluster_iteration); //  Wrong results
@@ -30,12 +29,6 @@ AutoPasLMP::AutoPasLMP(class LAMMPS *lmp, int narg, char **argc)
 
   // Command line parsing
   std::vector<std::string> args(argc, argc + narg);
-
-  // Convert arguments all to lowercase
-  std::transform(args.begin(), args.end(), args.begin(), [](auto s) {
-    std::transform(s.begin(), s.end(), s.begin(), ::tolower);
-    return s;
-  });
 
   int iarg = 0;
   while (iarg < narg) {
@@ -89,13 +82,15 @@ AutoPasLMP::AutoPasLMP(class LAMMPS *lmp, int narg, char **argc)
         error->all(FLERR, "Invalid AutoPas command-line arg: interval");
       _opt.tuning_interval = std::stoi(args[iarg + 1]);
       iarg += 2;
-    } else if (args[iarg] == "s" || args[iarg] == "strategy") {
+    } else if (args[iarg] == "s" || args[iarg] == "strategies") {
       if (iarg + 2 > narg)
-        error->all(FLERR, "Invalid AutoPas command-line arg: strategy");
-      auto opts = autopas::TuningStrategyOption::parseOptions(args[iarg + 1]);
-      if (opts.size() != 1)
-        error->all(FLERR, "Invalid AutoPas command-line arg: strategy");
-      _opt.tuning_strategies = autopas::TuningStrategyOption::parseOptions<std::vector<autopas::TuningStrategyOption>>("");//args[iarg + 1]);
+        error->all(FLERR, "Invalid AutoPas command-line arg: strategies");
+      _opt.tuning_strategies = autopas::TuningStrategyOption::parseOptions<std::vector<autopas::TuningStrategyOption>>(args[iarg + 1]);
+      iarg += 2;
+    } else if (args[iarg] == "f" || args[iarg] == "rule_file") {
+      if (iarg + 2 > narg)
+        error->all(FLERR, "Invalid AutoPas command-line arg: rule_file");
+      _opt.rule_filename = args[iarg + 1];
       iarg += 2;
     } else if (args[iarg] == "selector") {
       if (iarg + 2 > narg)
@@ -223,6 +218,7 @@ void AutoPasLMP::init_autopas(double cutoff, double **epsilon, double **sigma) {
   _autopas->setAllowedTraversals(_opt.allowed_traversals);
   _autopas->setAllowedDataLayouts(_opt.allowed_data_layouts);
 
+  _autopas->setRuleFileName(_opt.rule_filename);
   // TODO AutoPas always calculates FullShell.
   //  Turn LAMMPS newton setting off to disable force exchange?
   //  Or just leave reverse_comm empty? What about other forces?
