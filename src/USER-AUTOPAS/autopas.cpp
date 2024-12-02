@@ -19,7 +19,6 @@ AutoPasLMP::AutoPasLMP(class LAMMPS *lmp, int narg, char **argc)
     : Pointers(lmp) {
   lmp->autopas = this;
 
-  // TODO Check again with new Autopas version
   // Remove additional traversals from the defaults provided by AutoPas
   _opt.allowed_traversals.erase(
       autopas::TraversalOption::vcl_cluster_iteration); //  Wrong results
@@ -27,18 +26,9 @@ AutoPasLMP::AutoPasLMP(class LAMMPS *lmp, int narg, char **argc)
       autopas::TraversalOption::vcl_c06); // Wrong results
   _opt.allowed_traversals.erase(
       autopas::TraversalOption::vcl_c01_balanced); // Wrong results
-  _opt.allowed_traversals.erase(
-      autopas::TraversalOption::vcc_cluster_iteration_cuda); // Vector out of
-                                                             // range exception
 
   // Command line parsing
   std::vector<std::string> args(argc, argc + narg);
-
-  // Convert arguments all to lowercase
-  std::transform(args.begin(), args.end(), args.begin(), [](auto s) {
-    std::transform(s.begin(), s.end(), s.begin(), ::tolower);
-    return s;
-  });
 
   int iarg = 0;
   while (iarg < narg) {
@@ -92,13 +82,15 @@ AutoPasLMP::AutoPasLMP(class LAMMPS *lmp, int narg, char **argc)
         error->all(FLERR, "Invalid AutoPas command-line arg: interval");
       _opt.tuning_interval = std::stoi(args[iarg + 1]);
       iarg += 2;
-    } else if (args[iarg] == "s" || args[iarg] == "strategy") {
+    } else if (args[iarg] == "s" || args[iarg] == "strategies") {
       if (iarg + 2 > narg)
-        error->all(FLERR, "Invalid AutoPas command-line arg: strategy");
-      auto opts = autopas::TuningStrategyOption::parseOptions(args[iarg + 1]);
-      if (opts.size() != 1)
-        error->all(FLERR, "Invalid AutoPas command-line arg: strategy");
-      _opt.tuning_strategy = *opts.begin();
+        error->all(FLERR, "Invalid AutoPas command-line arg: strategies");
+      _opt.tuning_strategies = autopas::TuningStrategyOption::parseOptions<std::vector<autopas::TuningStrategyOption>>(args[iarg + 1]);
+      iarg += 2;
+    } else if (args[iarg] == "f" || args[iarg] == "rule_file") {
+      if (iarg + 2 > narg)
+        error->all(FLERR, "Invalid AutoPas command-line arg: rule_file");
+      _opt.rule_filename = args[iarg + 1];
       iarg += 2;
     } else if (args[iarg] == "selector") {
       if (iarg + 2 > narg)
@@ -204,9 +196,9 @@ void AutoPasLMP::init_autopas(double cutoff, double **epsilon, double **sigma) {
 
   _autopas->setAllowedCellSizeFactors(*_opt.allowed_cell_size_factors);
 
-  _autopas->setVerletSkin(neighbor->skin);
   _autopas->setVerletRebuildFrequency(
       std::max(neighbor->every, neighbor->delay));
+  _autopas->setVerletSkinPerTimestep(neighbor->skin / _autopas->getVerletRebuildFrequency());
   _autopas->setVerletClusterSize(_opt.verlet_cluster_size);
 
   _autopas->setTuningInterval(_opt.tuning_interval);
@@ -226,13 +218,14 @@ void AutoPasLMP::init_autopas(double cutoff, double **epsilon, double **sigma) {
   _autopas->setAllowedTraversals(_opt.allowed_traversals);
   _autopas->setAllowedDataLayouts(_opt.allowed_data_layouts);
 
+  _autopas->setRuleFileName(_opt.rule_filename);
   // TODO AutoPas always calculates FullShell.
   //  Turn LAMMPS newton setting off to disable force exchange?
   //  Or just leave reverse_comm empty? What about other forces?
   force->newton = force->newton_pair = force->newton_bond = false;
   _autopas->setAllowedNewton3Options(_opt.allowed_newton3);
 
-  _autopas->setTuningStrategyOption(_opt.tuning_strategy);
+  _autopas->setTuningStrategyOption(_opt.tuning_strategies);
 
   autopas::Logger::create();
   autopas::Logger::get()->set_level(_opt.log_level);
@@ -282,8 +275,6 @@ void AutoPasLMP::print_config(double *const *epsilon,
 
   if (_opt.allowed_traversals.count(
           autopas::TraversalOption::vcl_cluster_iteration) ||
-      _opt.allowed_traversals.count(
-          autopas::TraversalOption::vcc_cluster_iteration_cuda) ||
       _opt.allowed_traversals.count(autopas::TraversalOption::vcl_c06) ||
       _opt.allowed_traversals.count(
           autopas::TraversalOption::vcl_c01_balanced)) {
@@ -295,22 +286,23 @@ void AutoPasLMP::print_config(double *const *epsilon,
     printVal("Num Samples", std::set{_opt.num_samples});
     printVal("Max Evidence", std::set{_opt.max_evidence});
 
-    printOpt("Tuning Strategy", std::set{_opt.tuning_strategy},
+    printOpt("Tuning Strategies", _opt.tuning_strategies,
              autopas::TuningStrategyOption::getOptionNames());
     printOpt("Selector Strategy", std::set{_opt.selector_strategy},
              autopas::SelectorStrategyOption::getOptionNames());
 
-    if (_opt.tuning_strategy == autopas::TuningStrategyOption::bayesianSearch ||
-        _opt.tuning_strategy ==
-            autopas::TuningStrategyOption::bayesianClusterSearch) {
-      printOpt("Acquisition Function", std::set{_opt.acquisition_function},
-               autopas::AcquisitionFunctionOption::getOptionNames());
-    } else if (_opt.tuning_strategy ==
-               autopas::TuningStrategyOption::predictiveTuning) {
-      printVal("Relative Optimum Range",
-               std::set{_opt.predictive_tuning.relative_optimum_range});
-      printVal("Max Tuning Phases Without Test",
-               std::set{_opt.predictive_tuning.max_tuning_phases_without_test});
+    for (const auto &strategy : _opt.tuning_strategies) {
+      if (strategy == autopas::TuningStrategyOption::bayesianSearch ||
+          strategy == autopas::TuningStrategyOption::bayesianClusterSearch) {
+        printOpt("Acquisition Function", std::set{_opt.acquisition_function},
+                 autopas::AcquisitionFunctionOption::getOptionNames());
+      } else if (strategy ==
+                 autopas::TuningStrategyOption::predictiveTuning) {
+        printVal("Relative Optimum Range",
+                 std::set{_opt.predictive_tuning.relative_optimum_range});
+        printVal("Max Tuning Phases Without Test",
+                 std::set{_opt.predictive_tuning.max_tuning_phases_without_test});
+      }
     }
 
     if (_opt.allowed_traversals.count(
@@ -343,12 +335,12 @@ void AutoPasLMP::print_config(double *const *epsilon,
   }
 
   // dummy because LAMMPS starts with typeID 1 and autopas with 0
-  _particlePropertiesLibrary->addType(0, 1, 1, 1);
+  _particlePropertiesLibrary->addSiteType(0, 1, 1, 1);
   std::cout << "  Particle Properties\n";
   for (int i = 1; i <= atom->ntypes; ++i) {
     std::cout << "    Type, Eps, Sig: " << i << " " << epsilon[i][i] << " "
               << sigma[i][i] << "\n";
-    _particlePropertiesLibrary->addType(i, epsilon[i][i], sigma[i][i],
+    _particlePropertiesLibrary->addSiteType(i, epsilon[i][i], sigma[i][i],
                                         atom->mass[i]);
   }
   _particlePropertiesLibrary->calculateMixingCoefficients();
@@ -367,15 +359,15 @@ AutoPasLMP::ParticleType *AutoPasLMP::particle_by_index(int idx) {
   }
 }
 
-bool AutoPasLMP::update_autopas(bool must_rebuild) {
-  auto &&[invalidParticles, updated] = _autopas->updateContainer(must_rebuild);
-
-  if (updated) {
+bool AutoPasLMP::update_autopas() {
+  auto invalidParticles = _autopas->updateContainer();
+  if (!invalidParticles.empty()) {
     _leavingParticles = std::move(invalidParticles);
     _index_structure_valid = false;
+    return true;
   }
 
-  return updated;
+  return false;
 }
 
 void AutoPasLMP::move_into() {
@@ -412,7 +404,7 @@ void AutoPasLMP::copy_back() const {
   atom->f = memory->grow(atom->f, nmax, 3, "atom:f");
 
 #pragma omp parallel default(none)
-  for (auto iter = const_iterate<autopas::ownedOnly>(); iter.isValid();
+  for (auto iter = const_iterate<autopas::IteratorBehavior::owned>(); iter.isValid();
        ++iter) {
     auto &p = *iter;
     auto idx{iter->getLocalID()};
@@ -430,7 +422,7 @@ void AutoPasLMP::copy_back() const {
 }
 
 void AutoPasLMP::update_index_structure() {
-  auto n = _autopas->getNumberOfParticles(autopas::haloAndOwned);
+  auto n = _autopas->getNumberOfParticles(autopas::IteratorBehavior::ownedOrHalo);
   if (_use_index_map) {
     _index_map.clear();
     _index_map.reserve(n);
@@ -460,7 +452,7 @@ template <bool halo> void AutoPasLMP::add_particle(const ParticleType &p) {
   assert(p.getTypeId() <= atom->ntypes);
 
   if constexpr (halo) {
-    _autopas->addOrUpdateHaloParticle(p);
+    _autopas->addHaloParticle(p);
   } else {
     _autopas->addParticle(p);
   }
@@ -474,22 +466,22 @@ template <bool halo> void AutoPasLMP::add_particle(const ParticleType &p) {
 #pragma clang diagnostic pop
 
 template <bool haloOnly>
-autopas::ParticleIteratorWrapper<AutoPasLMP::ParticleType, true>
+AutoPasLMP::AutoPasType::RegionIteratorT
 AutoPasLMP::particles_by_slab(int dim, double lo, double hi) const {
 
   std::array<double, 3> low{};
   std::array<double, 3> high{};
 
-  low.fill(-std::numeric_limits<double>::max());
+  low.fill(std::numeric_limits<double>::lowest());
   high.fill(std::numeric_limits<double>::max());
 
   low[dim] = lo;
   high[dim] = hi;
 
   if constexpr (haloOnly) {
-    return _autopas->getRegionIterator(low, high, autopas::haloOnly);
+    return _autopas->getRegionIterator(low, high, autopas::IteratorBehavior::halo);
   } else {
-    return _autopas->getRegionIterator(low, high, autopas::haloAndOwned);
+    return _autopas->getRegionIterator(low, high, autopas::IteratorBehavior::ownedOrHalo);
   }
 }
 
@@ -513,27 +505,27 @@ bool AutoPasLMP::iterate_pairwise(AutoPasLMP::PairFunctorType *functor) {
   return _autopas->iteratePairwise(functor);
 }
 
-AutoPasLMP::AutoPasType::const_iterator_t
+AutoPasLMP::AutoPasType::ConstIteratorT
 AutoPasLMP::const_iterate_auto(int first, int last) {
   auto nlocal{atom->nlocal};
   if (last < nlocal) {
-    return const_iterate<autopas::ownedOnly>();
+    return const_iterate<autopas::IteratorBehavior::owned>();
   } else if (first >= nlocal) {
-    return const_iterate<autopas::haloOnly>();
+    return const_iterate<autopas::IteratorBehavior::halo>();
   } else {
-    return const_iterate<autopas::haloAndOwned>();
+    return const_iterate<autopas::IteratorBehavior::ownedOrHalo>();
   }
 }
 
-AutoPasLMP::AutoPasType::iterator_t AutoPasLMP::iterate_auto(int first,
+AutoPasLMP::AutoPasType::IteratorT AutoPasLMP::iterate_auto(int first,
                                                              int last) {
   auto nlocal{atom->nlocal};
   if (last < nlocal) {
-    return iterate<autopas::ownedOnly>();
+    return iterate<autopas::IteratorBehavior::owned>();
   } else if (first >= nlocal) {
-    return iterate<autopas::haloOnly>();
+    return iterate<autopas::IteratorBehavior::halo>();
   } else {
-    return iterate<autopas::haloAndOwned>();
+    return iterate<autopas::IteratorBehavior::ownedOrHalo>();
   }
 }
 
@@ -585,8 +577,8 @@ template void AutoPasLMP::add_particle<false>(const ParticleType &p);
 
 template void AutoPasLMP::add_particle<true>(const ParticleType &p);
 
-template autopas::ParticleIteratorWrapper<AutoPasLMP::ParticleType, true>
+template AutoPasLMP::AutoPasType::RegionIteratorT
 AutoPasLMP::particles_by_slab<true>(int dim, double lo, double hi) const;
 
-template autopas::ParticleIteratorWrapper<AutoPasLMP::ParticleType, true>
+template AutoPasLMP::AutoPasType::RegionIteratorT
 AutoPasLMP::particles_by_slab<false>(int dim, double lo, double hi) const;

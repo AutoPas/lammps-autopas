@@ -16,7 +16,7 @@ using namespace LAMMPS_NS;
 void CommAutoPas::forward_comm(int /*dummy*/) {
   // exchange data with another proc
   // if other proc is self, just copy
-  // if comm_x_only set, exchange or copy directly to x, don't unpack
+  // (if comm_x_only set, exchange or copy directly to x, don't unpack)
 
   for (int iswap = 0; iswap < nswap; iswap++) {
     if (sendproc[iswap] != me) {
@@ -80,7 +80,7 @@ void CommAutoPas::reverse_comm() {
     // Using force buffer
     force_buf.resize(atom->nlocal + atom->nghost);
 #pragma omp parallel default(none)
-    for (auto iter = lmp->autopas->const_iterate<autopas::haloAndOwned>(); iter.isValid(); ++iter) {
+    for (auto iter = lmp->autopas->const_iterate<autopas::IteratorBehavior::ownedOrHalo>(); iter.isValid(); ++iter) {
       auto idx{iter->getLocalID()};
       auto &f{iter->getF()};
       std::copy(f.begin(), f.end(), force_buf[idx].begin());
@@ -196,7 +196,7 @@ void CommAutoPas::exchange() {
          iter < leavingParticles.end();) {
       auto &p{*iter};
       auto &x{p.getR()};
-      if (x[dim] < lo || x[dim] >= hi) {
+      if (x[dim] < lo || x[dim] >= hi) { // TODO: check necessary as AutoPas already checked?
         // Particle must be sent
         if (nsend > maxsend) grow_send(nsend, 1);
         nsend += avec->pack_exchange(p, &buf_send[nsend]);
@@ -205,7 +205,7 @@ void CommAutoPas::exchange() {
         auto idx{p.getLocalID()};
         avec->copy(nlocal - 1, idx, 1);
         nlocal--;
-        iter = leavingParticles.erase(iter);
+        iter = leavingParticles.erase(iter); //TODO: somehow avoid erase()
         //////////////////
       } else {
         ++iter;

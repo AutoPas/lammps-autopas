@@ -8,7 +8,7 @@
 
 #include <autopas/AutoPas.h>
 #include <autopas/cells/FullParticleCell.h>
-#include <autopas/molecularDynamics/ParticlePropertiesLibrary.h>
+#include <molecularDynamicsLibrary/ParticlePropertiesLibrary.h>
 
 #include "autopas_lj_functor.h"
 #include "autopas_lj_functor_avx.h"
@@ -24,9 +24,9 @@ public:
   using FloatVecType = std::array<FloatType, 3>;
   using ParticleType = MoleculeLJLammps<FloatType>;
   using ParticleCellType = autopas::FullParticleCell<ParticleType>;
-  using AutoPasType = autopas::AutoPas<ParticleType, ParticleCellType>;
+  using AutoPasType = autopas::AutoPas<ParticleType>;
   using ParticlePropertiesLibraryType = ParticlePropertiesLibrary<FloatType, size_t>;
-  using PairFunctorType = LJFunctorAVXLammps<ParticleType, ParticleCellType, /*applyShift*/ false, /*useMixing*/ false, /*useNewton3*/ autopas::FunctorN3Modes::Both, /*calculateGlobals*/ true>;
+  using PairFunctorType = LJFunctorLammpsAVX<ParticleType, /*applyShift*/ false, /*useMixing*/ false, /*useNewton3*/ autopas::FunctorN3Modes::Both, /*calculateGlobals*/ true>;
 
   /*
    * Flag used to differentiate when LAMMPS is build with and without
@@ -49,10 +49,8 @@ public:
 
   /**
    * Rebuild the AutoPas container and update the leaving particles with the ones returned by AutoPas.
-   * @param must_rebuild When false, let AutoPas decide if rebuild is necessary
-   * @return Was container rebuild?
    */
-  bool update_autopas(bool must_rebuild);
+  bool update_autopas();
 
   /**
    * Get a particle by its global index / particle ID.
@@ -97,7 +95,7 @@ public:
    * @return
    */
   template<bool haloOnly = false>
-  [[nodiscard]] autopas::ParticleIteratorWrapper<ParticleType, true>
+  [[nodiscard]] AutoPasLMP::AutoPasType::RegionIteratorT
   particles_by_slab(int dim, double lo, double hi) const;
 
   /**
@@ -105,8 +103,8 @@ public:
    * @tparam iterateBehavior Local, ghost or both
    * @return Particle iterator
    */
-  template<autopas::IteratorBehavior iterateBehavior>
-  [[nodiscard]] AutoPasLMP::AutoPasType::iterator_t iterate() {
+  template<autopas::IteratorBehavior::Value iterateBehavior>
+  [[nodiscard]] AutoPasLMP::AutoPasType::IteratorT iterate() {
     return _autopas->begin(iterateBehavior);
   }
 
@@ -115,8 +113,8 @@ public:
    * @tparam iterateBehavior Local, ghost or both
    * @return Const particle iterator
    */
-  template<autopas::IteratorBehavior iterateBehavior>
-  [[nodiscard]] AutoPasLMP::AutoPasType::const_iterator_t const_iterate() const {
+  template<autopas::IteratorBehavior::Value iterateBehavior>
+  [[nodiscard]] AutoPasLMP::AutoPasType::ConstIteratorT const_iterate() const {
     return _autopas->cbegin(iterateBehavior);
   }
 
@@ -128,7 +126,7 @@ public:
    * @param last  Upper local index
    * @return Particle iterator
    */
-  [[nodiscard]] AutoPasLMP::AutoPasType::const_iterator_t
+  [[nodiscard]] AutoPasLMP::AutoPasType::ConstIteratorT
   const_iterate_auto(int first, int last);
 
   /**
@@ -139,7 +137,7 @@ public:
    * @param last  Upper local index
    * @return Const particle iterator
    */
-  [[nodiscard]] AutoPasLMP::AutoPasType::iterator_t
+  [[nodiscard]] AutoPasLMP::AutoPasType::IteratorT
   iterate_auto(int first, int last);
 
 
@@ -242,8 +240,8 @@ private:
     autopas::AcquisitionFunctionOption acquisition_function = {
         autopas::AcquisitionFunctionOption::upperConfidenceBound};
 
-    autopas::TuningStrategyOption tuning_strategy{
-        autopas::TuningStrategyOption::fullSearch};
+    std::vector<autopas::TuningStrategyOption> tuning_strategies{};
+    std::string rule_filename{};
     autopas::SelectorStrategyOption selector_strategy{
         autopas::SelectorStrategyOption::fastestAbs};
 

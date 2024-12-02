@@ -36,7 +36,7 @@ void FixAveForceAutoPas::post_force(int /*vflag*/) {
   foriginal[0] = foriginal[1] = foriginal[2] = foriginal[3] = 0.0;
 
 #pragma omp parallel default(none) shared(region) reduction(+:foriginal[:4])
-  for (auto iter = lmp->autopas->iterate<autopas::ownedOnly>(); iter.isValid(); ++iter) {
+  for (auto iter = lmp->autopas->iterate<autopas::IteratorBehavior::owned>(); iter.isValid(); ++iter) {
     auto &x = iter->getR();
     auto &f = iter->getF();
     auto idx{iter->getLocalID()};
@@ -75,7 +75,7 @@ void FixAveForceAutoPas::post_force(int /*vflag*/) {
   // only for active dimensions
 
 #pragma omp parallel default(none) shared(region, fave)
-  for (auto iter = lmp->autopas->iterate<autopas::ownedOnly>(); iter.isValid(); ++iter) {
+  for (auto iter = lmp->autopas->iterate<autopas::IteratorBehavior::owned>(); iter.isValid(); ++iter) {
     auto &x = iter->getR();
     auto &f = iter->getF();
     auto idx{iter->getLocalID()};
@@ -108,7 +108,7 @@ FixAveForceAutoPas::post_force_respa(int vflag, int ilevel, int /*iloop*/) {
     foriginal[0] = foriginal[1] = foriginal[2] = foriginal[3] = 0.0;
 
 #pragma omp parallel default(none) shared(region) reduction(+:foriginal[:4])
-    for (auto iter = lmp->autopas->iterate<autopas::ownedOnly>(); iter.isValid(); ++iter) {
+    for (auto iter = lmp->autopas->iterate<autopas::IteratorBehavior::owned>(); iter.isValid(); ++iter) {
       auto &x = iter->getR();
       auto &f = iter->getF();
       auto idx{iter->getLocalID()};
@@ -132,7 +132,7 @@ FixAveForceAutoPas::post_force_respa(int vflag, int ilevel, int /*iloop*/) {
     fave[2] = foriginal_all[2] / ncount;
 
 #pragma omp parallel default(none) shared(region, fave)
-    for (auto iter = lmp->autopas->iterate<autopas::ownedOnly>(); iter.isValid(); ++iter) {
+    for (auto iter = lmp->autopas->iterate<autopas::IteratorBehavior::owned>(); iter.isValid(); ++iter) {
       auto &x = iter->getR();
       auto &f = iter->getF();
       auto idx{iter->getLocalID()};

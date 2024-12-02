@@ -66,7 +66,7 @@ void FixTempRescaleAutoPas::end_of_step() {
     energy += (t_current - t_target) * efactor;
 
 #pragma omp parallel default(none) shared(factor)
-    for (auto iter = lmp->autopas->iterate<autopas::ownedOnly>(); iter.isValid(); ++iter) {
+    for (auto iter = lmp->autopas->iterate<autopas::IteratorBehavior::owned>(); iter.isValid(); ++iter) {
       auto v = iter->getV();
       int idx = iter->getLocalID();
       if (atom->mask[idx] & groupbit) {

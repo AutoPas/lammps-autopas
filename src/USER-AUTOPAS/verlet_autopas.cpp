@@ -35,7 +35,7 @@ void VerletAutoPas::run(int i) {
 
 void VerletAutoPas::force_clear() {
 #pragma omp parallel default(none)
-  for (auto iter = lmp->autopas->iterate<autopas::IteratorBehavior::ownedOnly>(); iter.isValid(); ++iter) {
+  for (auto iter = lmp->autopas->iterate<autopas::IteratorBehavior::owned>(); iter.isValid(); ++iter) {
     iter->setF({0, 0, 0});
   }
 }

@@ -1,3 +1,5 @@
+option(PKG_USER-AUTOPAS "Enable AutoPas support" ON)
+
 if (PKG_USER-AUTOPAS)
 
     if (CMAKE_VERSION VERSION_LESS "3.16")
@@ -19,11 +21,14 @@ if (PKG_USER-AUTOPAS)
         set(autopasRepoPath git@github.com:AutoPas/AutoPas.git)
     endif ()
 
+    # Final version of 2 Body AutoPas
+    set(AUTOPAS_TAG v2.0.0 CACHE STRING "AutoPas Git tag or commit id to use")
+
     # Download and install autopas
     FetchContent_Declare(
             autopas
             GIT_REPOSITORY ${autopasRepoPath}
-            GIT_TAG cacb3fa0e14b28bb8b50f10ec7fe16628bbb2582
+            GIT_TAG ${AUTOPAS_TAG}
     )
 
     option(AUTOPAS_BUILD_TESTS "" OFF)
@@ -43,6 +48,8 @@ if (PKG_USER-AUTOPAS)
     FetchContent_MakeAvailable(autopas)
 
     list(APPEND LAMMPS_LINK_LIBS "autopas")
+    # Link detached library which contains the particle properties library
+    list(APPEND LAMMPS_LINK_LIBS "molecularDynamicsLibrary")
 
 
     ######### 2. AutoPas package settings #########
